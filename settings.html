@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — My Finance Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="settings.css" />
+</head>
+
+<body>
+
+  <header>
+    <div class="header-inner">
+      <h1>Settings</h1>
+      <p class="subtitle">Accounts · Categories · Sub-categories</p>
+    </div>
+  </header>
+
+  <nav class="top-nav">
+    <div class="top-nav-inner">
+      <span id="dbStatus" class="db-status connecting">Connecting...</span>
+      <div class="top-nav-tabs">
+        <a href="index.html" class="top-nav-tab">Tracker</a>
+        <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
+        <a href="charts.html" class="top-nav-tab">Charts</a>
+        <a href="forecast.html" class="top-nav-tab">Forecast</a>
+        <a href="settings.html" class="top-nav-tab active">Settings</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="settings-wrap">
+
+    <!-- ── Accounts ── -->
+    <section class="settings-section">
+      <h2>Accounts</h2>
+      <p class="settings-hint">These appear in the Account dropdown when adding a transaction.</p>
+      <div id="accountList" class="tag-list"></div>
+      <div class="add-row">
+        <input type="text" id="newAccount" placeholder="e.g. Maybank, TNG, Cash..." maxlength="30" />
+        <button onclick="addAccount()">+ Add</button>
+      </div>
+    </section>
+
+    <!-- ── Categories ── -->
+    <section class="settings-section">
+      <h2>Categories &amp; Sub-categories</h2>
+      <p class="settings-hint">Choose a type to manage its categories. Click a category to edit its sub-categories.</p>
+
+      <!-- Type switcher -->
+      <div class="type-tabs">
+        <button class="type-tab active" onclick="switchType(this,'expense')">Expense</button>
+        <button class="type-tab" onclick="switchType(this,'income')">Income</button>
+        <button class="type-tab" onclick="switchType(this,'savings')">Savings</button>
+      </div>
+
+      <!-- Category list -->
+      <div class="cat-columns">
+
+        <!-- Left: categories -->
+        <div class="cat-col">
+          <p class="col-label">Categories</p>
+          <div id="categoryList" class="tag-list"></div>
+          <div class="add-row">
+            <input type="text" id="newCategory" placeholder="New category..." maxlength="30" />
+            <button onclick="addCategory()">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Right: sub-categories for selected category -->
+        <div class="cat-col" id="subCol">
+          <p class="col-label" id="subColLabel">Select a category →</p>
+          <div id="subcategoryList" class="tag-list"></div>
+          <div class="add-row" id="subAddRow" style="display:none">
+            <input type="text" id="newSubcategory" placeholder="New sub-category..." maxlength="30" />
+            <button onclick="addSubcategory()">+ Add</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Save button -->
+    <div class="save-bar">
+      <button class="save-btn" onclick="saveSettings()">Save All Changes</button>
+      <span id="saveStatus" class="save-msg"></span>
+    </div>
+
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="settings.js"></script>
+</body>
+
+</html>

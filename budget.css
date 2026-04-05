@@ -107,7 +107,9 @@
   transition: background 0.2s;
 }
 
-.save-row button:hover { background: #155f49; }
+.save-row button:hover {
+  background: #155f49;
+}
 
 .save-status {
   font-size: 13px;
@@ -129,10 +131,21 @@
   border-left: 4px solid #ddd;
 }
 
-.progress-card.ok      { border-left-color: #2ecc71; }
-.progress-card.warning { border-left-color: #f39c12; }
-.progress-card.over    { border-left-color: #e74c3c; }
-.progress-card.unset   { border-left-color: #ccc; }
+.progress-card.ok {
+  border-left-color: #2ecc71;
+}
+
+.progress-card.warning {
+  border-left-color: #f39c12;
+}
+
+.progress-card.over {
+  border-left-color: #e74c3c;
+}
+
+.progress-card.unset {
+  border-left-color: #ccc;
+}
 
 .progress-top {
   display: flex;
@@ -173,9 +186,17 @@
   transition: width 0.5s ease;
 }
 
-.fill-ok      { background: #2ecc71; }
-.fill-warning { background: #f39c12; }
-.fill-over    { background: #e74c3c; }
+.fill-ok {
+  background: #2ecc71;
+}
+
+.fill-warning {
+  background: #f39c12;
+}
+
+.fill-over {
+  background: #e74c3c;
+}
 
 .progress-bottom {
   display: flex;
@@ -188,9 +209,17 @@
   font-weight: 600;
 }
 
-.pct-ok      { color: #27ae60; }
-.pct-warning { color: #d68910; }
-.pct-over    { color: #c0392b; }
+.pct-ok {
+  color: #27ae60;
+}
+
+.pct-warning {
+  color: #d68910;
+}
+
+.pct-over {
+  color: #c0392b;
+}
 
 .progress-alert {
   font-size: 11px;
@@ -199,9 +228,20 @@
   border-radius: 10px;
 }
 
-.alert-warning { background: #fef9e7; color: #d68910; }
-.alert-over    { background: #fdecea; color: #c0392b; }
-.alert-ok      { background: #eafaf1; color: #27ae60; }
+.alert-warning {
+  background: #fef9e7;
+  color: #d68910;
+}
+
+.alert-over {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.alert-ok {
+  background: #eafaf1;
+  color: #27ae60;
+}
 
 .no-budget-note {
   font-size: 11px;
@@ -234,14 +274,22 @@
   border-bottom: 1px solid #f5f5f5;
 }
 
-.unset-row:last-child { border-bottom: none; }
-.unset-amount { font-weight: 600; color: #333; }
+.unset-row:last-child {
+  border-bottom: none;
+}
+
+.unset-amount {
+  font-weight: 600;
+  color: #333;
+}
 
 @media (max-width: 500px) {
+
   .budget-form-header,
   .budget-row {
     grid-template-columns: 1fr 100px;
   }
+
   .budget-form-header span:nth-child(3),
   .budget-form-header span:nth-child(4),
   .budget-row .threshold-select {

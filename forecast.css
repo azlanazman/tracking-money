@@ -25,7 +25,11 @@
   line-height: 1;
 }
 
-.goal-info { display: flex; flex-direction: column; gap: 3px; }
+.goal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 
 .goal-name {
   font-size: 14px;
@@ -62,10 +66,25 @@
   white-space: nowrap;
 }
 
-.goal-status.ok      { background: #eafaf1; color: #27ae60; }
-.goal-status.tight   { background: #fef9e7; color: #d68910; }
-.goal-status.over    { background: #fdecea; color: #c0392b; }
-.goal-status.unknown { background: #f0f0f0; color: #999; }
+.goal-status.ok {
+  background: #eafaf1;
+  color: #27ae60;
+}
+
+.goal-status.tight {
+  background: #fef9e7;
+  color: #d68910;
+}
+
+.goal-status.over {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.goal-status.unknown {
+  background: #f0f0f0;
+  color: #999;
+}
 
 .goal-delete {
   background: none;
@@ -78,7 +97,9 @@
   line-height: 1;
 }
 
-.goal-delete:hover { color: #e74c3c; }
+.goal-delete:hover {
+  color: #e74c3c;
+}
 
 /* ── Add goal row ── */
 .add-goal-row {
@@ -119,7 +140,9 @@
   transition: background 0.2s;
 }
 
-.add-goal-row button:hover { background: #155f49; }
+.add-goal-row button:hover {
+  background: #155f49;
+}
 
 /* ── Save row ── */
 .save-row {
@@ -143,7 +166,9 @@
   transition: background 0.2s;
 }
 
-.save-row button:hover { background: #155f49; }
+.save-row button:hover {
+  background: #155f49;
+}
 
 .save-status {
   font-size: 13px;
@@ -167,9 +192,17 @@
   border-top: 3px solid #ddd;
 }
 
-.fc-card.income   { border-top-color: #2ecc71; }
-.fc-card.expense  { border-top-color: #e74c3c; }
-.fc-card.saving   { border-top-color: #1abc9c; }
+.fc-card.income {
+  border-top-color: #2ecc71;
+}
+
+.fc-card.expense {
+  border-top-color: #e74c3c;
+}
+
+.fc-card.saving {
+  border-top-color: #1abc9c;
+}
 
 .fc-label {
   font-size: 11px;
@@ -207,7 +240,9 @@
   border-bottom: 1px solid #f5f5f5;
 }
 
-.cat-fc-row:last-child { border-bottom: none; }
+.cat-fc-row:last-child {
+  border-bottom: none;
+}
 
 .cat-fc-dot {
   width: 10px;
@@ -239,9 +274,20 @@
   text-align: center;
 }
 
-.trend-up   { background: #fdecea; color: #c0392b; }
-.trend-down { background: #eafaf1; color: #27ae60; }
-.trend-flat { background: #f0f0f0; color: #888; }
+.trend-up {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.trend-down {
+  background: #eafaf1;
+  color: #27ae60;
+}
+
+.trend-flat {
+  background: #f0f0f0;
+  color: #888;
+}
 
 .no-data {
   text-align: center;
@@ -254,13 +300,21 @@
   .goal-card {
     grid-template-columns: 36px 1fr 36px;
   }
+
   .goal-card .goal-input,
-  .goal-card .goal-status { display: none; }
+  .goal-card .goal-status {
+    display: none;
+  }
 
   .add-goal-row {
     grid-template-columns: 1fr 110px;
   }
-  .add-goal-row input:nth-child(3) { display: none; }
 
-  .forecast-summary { grid-template-columns: 1fr; }
+  .add-goal-row input:nth-child(3) {
+    display: none;
+  }
+
+  .forecast-summary {
+    grid-template-columns: 1fr;
+  }
 }

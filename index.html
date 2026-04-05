@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Finance Tracker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
   <header>
@@ -21,13 +19,19 @@
       </div>
     </div>
   </header>
-
-  <nav class="page-nav">
-    <span id="dbStatus" class="db-status connecting">Connecting...</span>
-    <a href="budget.html">Budget Monitor</a>
-    <a href="charts.html">Charts</a>
-    <a href="forecast.html">Forecast →</a>
+  <nav class="top-nav">
+    <div class="top-nav-inner">
+      <span id="dbStatus" class="db-status connecting">Connecting...</span>
+      <div class="top-nav-tabs">
+        <a href="index.html"    class="top-nav-tab active">Tracker</a>
+        <a href="budget.html"   class="top-nav-tab ">Budget Monitor</a>
+        <a href="charts.html"   class="top-nav-tab ">Charts</a>
+        <a href="forecast.html" class="top-nav-tab ">Forecast</a>
+      </div>
+    </div>
   </nav>
+
+  
 
   <!-- Summary Cards -->
   <section class="summary">
@@ -66,15 +70,7 @@
 
       <div class="form-group">
         <label>Account</label>
-        <select id="account">
-          <option value="CIMB">CIMB</option>
-          <option value="Maybank">Maybank</option>
-          <option value="TNG">TNG</option>
-          <option value="SETEL">SETEL</option>
-          <option value="SPay">SPay</option>
-          <option value="Cash">Cash</option>
-          <option value="Other">Other</option>
-        </select>
+        <select id="account"><option value="">Loading...</option></select>
       </div>
 
       <div class="form-group">
@@ -170,16 +166,7 @@
     <!-- Filters row -->
     <div class="tx-filters">
       <input type="hidden" id="filterType" value="all" />
-      <select id="filterAccount" onchange="resetPage();renderTransactions()">
-        <option value="all">All Accounts</option>
-        <option value="CIMB">CIMB</option>
-        <option value="Maybank">Maybank</option>
-        <option value="TNG">TNG</option>
-        <option value="SETEL">SETEL</option>
-        <option value="SPay">SPay</option>
-        <option value="Cash">Cash</option>
-        <option value="Other">Other</option>
-      </select>
+      <select id="filterAccount" onchange="resetPage();renderTransactions()"><option value="all">All Accounts</option></select>
       <select id="filterCategory" onchange="resetPage();renderTransactions()">
         <option value="all">All Categories</option>
       </select>
@@ -233,5 +220,4 @@
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
-
 </html>

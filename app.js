@@ -1,33 +1,49 @@
-// ── Your Category Structure ──
-const CATEGORIES = {
+// ── Categories and accounts — loaded dynamically from Firebase settings ──
+// Fallback defaults used if settings not yet saved
+let CATEGORIES = {
   expense: {
-    'Loan': ['PTPTN', 'Emas'],
-    'Bills': ['Unifi', 'Umobile', 'TNB', 'Air Selangor'],
-    'Takaful': [],
-    'Family': ['Abah+Coway', 'Abah+Motor', 'Wife', 'Aidan', 'Dapur'],
-    'CC': ['Charge'],
-    'Subs': ['Netflix', 'Sooka', 'Google One', 'Dorioo+', 'Quronly'],
-    'SPay': [],
-    'Car': [],
-    'Community': ['Zakat', 'Sedekah'],
-    'Food': ['Family', 'Work'],
-    'Toll': ['Family', 'Work'],
-    'Parking': [],
-    'Fuel': ['Fuel', 'Charge'],
-    'Medical': [],
-    'Misc': [],
+    'Loan': ['PTPTN', 'Emas'], 'Bills': ['Unifi', 'Umobile', 'TNB', 'Air Selangor'],
+    'Takaful': [], 'Family': ['Abah+Coway', 'Abah+Motor', 'Wife', 'Aidan', 'Dapur'],
+    'CC': ['Charge'], 'Subs': ['Netflix', 'Sooka', 'Google One', 'Dorioo+', 'Quronly'],
+    'SPay': [], 'Car': [], 'Community': ['Zakat', 'Sedekah'],
+    'Food': ['Family', 'Work'], 'Toll': ['Family', 'Work'],
+    'Parking': [], 'Fuel': ['Fuel', 'Charge'], 'Medical': [], 'Misc': [],
   },
-  income: {
-    'Salary': [],
-    'Freelance': [],
-    'Bonus': [],
-    'Investment': [],
-    'Other': [],
-  },
-  savings: {
-    'Saving': [],
-  }
+  income: { 'Salary': [], 'Freelance': [], 'Bonus': [], 'Investment': [], 'Other': [] },
+  savings: { 'Saving': [] }
 };
+let ACCOUNTS = ['CIMB', 'Maybank', 'RHB', 'AEON', 'TNG', 'SETEL', 'SPay', 'Cash', 'Other'];
+
+// Load user settings from Firebase and refresh dropdowns
+function loadUserSettings() {
+  if (!db) return;
+  db.collection('settings').doc('preferences').onSnapshot(doc => {
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.categories) CATEGORIES = data.categories;
+      if (data.accounts) ACCOUNTS = data.accounts;
+    }
+    refreshAccountDropdowns();
+    updateCategories();
+    updateFilterCategories();
+  });
+}
+
+function refreshAccountDropdowns() {
+  const opts = ACCOUNTS.map(a => `<option value="${a}">${a}</option>`).join('');
+  ['account', 'filterAccount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    if (id === 'filterAccount') {
+      el.innerHTML = '<option value="all">All Accounts</option>' + opts;
+    } else {
+      el.innerHTML = opts;
+    }
+    // Restore previous selection if still valid
+    if ([...el.options].some(o => o.value === cur)) el.value = cur;
+  });
+}
 
 
 // ── Category icons ──
@@ -51,6 +67,7 @@ function initFirebase() {
     setStatus('connected', 'Connected to Firebase');
     migrateFromLocalStorage();
     loadTransactions();
+    loadUserSettings();
   } catch (err) {
     setStatus('error', 'Firebase not configured — using local storage');
     fallbackToLocal();
