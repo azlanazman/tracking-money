@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Finance Tracker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
   <header>
@@ -154,17 +156,21 @@
     </div>
   </section>
 
-  <!-- Filter Bar -->
-  <section class="filter-section">
-    <h2>Transactions</h2>
-    <div class="filters">
-      <select id="filterType" onchange="renderTransactions()">
-        <option value="all">All Types</option>
-        <option value="expense">Expenses</option>
-        <option value="income">Income</option>
-        <option value="savings">Savings</option>
-      </select>
-      <select id="filterAccount" onchange="renderTransactions()">
+  <!-- Transactions: tabbed panel -->
+  <section class="tx-section">
+
+    <!-- Tab bar -->
+    <div class="tx-tabs">
+      <button class="tx-tab active" onclick="switchTab(this,'all')" data-type="all">All</button>
+      <button class="tx-tab" onclick="switchTab(this,'expense')" data-type="expense">Expenses</button>
+      <button class="tx-tab" onclick="switchTab(this,'income')" data-type="income">Income</button>
+      <button class="tx-tab" onclick="switchTab(this,'savings')" data-type="savings">Savings</button>
+    </div>
+
+    <!-- Filters row -->
+    <div class="tx-filters">
+      <input type="hidden" id="filterType" value="all" />
+      <select id="filterAccount" onchange="resetPage();renderTransactions()">
         <option value="all">All Accounts</option>
         <option value="CIMB">CIMB</option>
         <option value="Maybank">Maybank</option>
@@ -174,10 +180,10 @@
         <option value="Cash">Cash</option>
         <option value="Other">Other</option>
       </select>
-      <select id="filterCategory" onchange="renderTransactions()">
+      <select id="filterCategory" onchange="resetPage();renderTransactions()">
         <option value="all">All Categories</option>
       </select>
-      <select id="filterMonth" onchange="renderTransactions()">
+      <select id="filterMonth" onchange="resetPage();renderTransactions()">
         <option value="all">All Months</option>
         <option value="01">January</option>
         <option value="02">February</option>
@@ -194,13 +200,29 @@
       </select>
       <button class="btn-clear" onclick="clearAll()">Clear All</button>
     </div>
-  </section>
 
-  <!-- Transaction List -->
-  <section class="list-section">
+    <!-- Transaction list -->
     <div id="transactionList">
       <p class="empty-msg">Loading transactions...</p>
     </div>
+
+    <!-- Pagination -->
+    <div class="tx-pagination">
+      <div class="page-size-row">
+        <span class="page-info" id="pageInfo">Showing 0 – 0 of 0</span>
+        <div class="page-size-picker">
+          <span>Show</span>
+          <select id="pageSize" onchange="resetPage();renderTransactions()">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+          <span>per page</span>
+        </div>
+      </div>
+      <div class="page-nav-row" id="pageNavRow"></div>
+    </div>
+
   </section>
 
   <!-- Firebase SDK (v9 compat mode — works without a build tool) -->
@@ -211,4 +233,5 @@
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>

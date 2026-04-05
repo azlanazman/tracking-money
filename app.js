@@ -1,28 +1,28 @@
 // ── Your Category Structure ──
 const CATEGORIES = {
   expense: {
-    'Loan':      ['PTPTN', 'Emas'],
-    'Bills':     ['Unifi', 'Umobile', 'TNB', 'Air Selangor'],
-    'Takaful':   [],
-    'Family':    ['Abah+Coway', 'Abah+Motor', 'Wife', 'Aidan', 'Dapur'],
-    'CC':        ['Charge'],
-    'Subs':      ['Netflix', 'Sooka', 'Google One', 'Dorioo+', 'Quronly'],
-    'SPay':      [],
-    'Car':       [],
+    'Loan': ['PTPTN', 'Emas'],
+    'Bills': ['Unifi', 'Umobile', 'TNB', 'Air Selangor'],
+    'Takaful': [],
+    'Family': ['Abah+Coway', 'Abah+Motor', 'Wife', 'Aidan', 'Dapur'],
+    'CC': ['Charge'],
+    'Subs': ['Netflix', 'Sooka', 'Google One', 'Dorioo+', 'Quronly'],
+    'SPay': [],
+    'Car': [],
     'Community': ['Zakat', 'Sedekah'],
-    'Food':      ['Family', 'Work'],
-    'Toll':      ['Family', 'Work'],
-    'Parking':   [],
-    'Fuel':      ['Fuel', 'Charge'],
-    'Medical':   [],
-    'Misc':      [],
+    'Food': ['Family', 'Work'],
+    'Toll': ['Family', 'Work'],
+    'Parking': [],
+    'Fuel': ['Fuel', 'Charge'],
+    'Medical': [],
+    'Misc': [],
   },
   income: {
-    'Salary':     [],
-    'Freelance':  [],
-    'Bonus':      [],
+    'Salary': [],
+    'Freelance': [],
+    'Bonus': [],
     'Investment': [],
-    'Other':      [],
+    'Other': [],
   },
   savings: {
     'Saving': [],
@@ -32,12 +32,12 @@ const CATEGORIES = {
 
 // ── Category icons ──
 const ICONS = {
-  Loan:'🏦', Bills:'💡', Takaful:'🛡️', Family:'👨‍👩‍👧',
-  CC:'💳', Subs:'📱', SPay:'💳', Car:'🚗',
-  Community:'🕌', Food:'🍱', Toll:'🛣️', Parking:'🅿️',
-  Fuel:'⛽', Medical:'🏥', Misc:'📦',
-  Salary:'💰', Freelance:'💼', Bonus:'🎁', Investment:'📈',
-  Saving:'🏧', Other:'📌'
+  Loan: '🏦', Bills: '💡', Takaful: '🛡️', Family: '👨‍👩‍👧',
+  CC: '💳', Subs: '📱', SPay: '💳', Car: '🚗',
+  Community: '🕌', Food: '🍱', Toll: '🛣️', Parking: '🅿️',
+  Fuel: '⛽', Medical: '🏥', Misc: '📦',
+  Salary: '💰', Freelance: '💼', Bonus: '🎁', Investment: '📈',
+  Saving: '🏧', Other: '📌'
 };
 
 // ── Firebase init ──
@@ -75,14 +75,14 @@ async function migrateFromLocalStorage() {
     local.forEach(t => {
       const ref = db.collection('transactions').doc(String(t.id));
       batch.set(ref, {
-        date:         t.date,
-        amount:       t.amount,
-        account:      t.account      || 'Other',
-        type:         t.type,
-        category:     t.category,
-        subcategory:  t.subcategory  || '',
-        description:  t.description  || '',
-        createdAt:    t.id
+        date: t.date,
+        amount: t.amount,
+        account: t.account || 'Other',
+        type: t.type,
+        category: t.category,
+        subcategory: t.subcategory || '',
+        description: t.description || '',
+        createdAt: t.id
       });
     });
     await batch.commit();
@@ -124,15 +124,15 @@ function saveLocal() {
 // ── Add a new transaction ──
 async function addTransaction() {
   const description = document.getElementById('description').value.trim();
-  const amount      = parseFloat(document.getElementById('amount').value);
-  const type        = document.getElementById('type').value;
-  const account     = document.getElementById('account').value;
-  const category    = document.getElementById('category').value;
+  const amount = parseFloat(document.getElementById('amount').value);
+  const type = document.getElementById('type').value;
+  const account = document.getElementById('account').value;
+  const category = document.getElementById('category').value;
   const subcategory = document.getElementById('subcategory').value;
-  const date        = document.getElementById('date').value;
+  const date = document.getElementById('date').value;
 
   if (!amount || amount <= 0) { alert('Please enter a valid amount.'); return; }
-  if (!date)                  { alert('Please select a date.'); return; }
+  if (!date) { alert('Please select a date.'); return; }
 
   const t = {
     date, amount, account, type, category,
@@ -187,7 +187,7 @@ async function clearAll() {
   if (db) {
     try {
       const snapshot = await db.collection('transactions').get();
-      const batch    = db.batch();
+      const batch = db.batch();
       snapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
     } catch (err) {
@@ -210,7 +210,10 @@ function clearForm() {
 
 // ── Format helpers ──
 function formatRM(amount) {
-  return 'RM ' + parseFloat(amount).toFixed(2);
+  return 'RM ' + parseFloat(amount).toLocaleString('en-MY', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 }
 function formatDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-MY', {
@@ -220,9 +223,9 @@ function formatDate(dateStr) {
 
 // ── Category dropdowns ──
 function updateCategories() {
-  const type  = document.getElementById('type').value;
+  const type = document.getElementById('type').value;
   const catEl = document.getElementById('category');
-  const cats  = CATEGORIES[type] || {};
+  const cats = CATEGORIES[type] || {};
 
   catEl.innerHTML = Object.keys(cats).map(c =>
     `<option value="${c}">${c}</option>`
@@ -233,10 +236,10 @@ function updateCategories() {
 }
 
 function updateSubcategories() {
-  const type  = document.getElementById('type').value;
-  const cat   = document.getElementById('category').value;
+  const type = document.getElementById('type').value;
+  const cat = document.getElementById('category').value;
   const subEl = document.getElementById('subcategory');
-  const subs  = (CATEGORIES[type] && CATEGORIES[type][cat]) || [];
+  const subs = (CATEGORIES[type] && CATEGORIES[type][cat]) || [];
 
   subEl.innerHTML = subs.length === 0
     ? '<option value="">— none —</option>'
@@ -245,8 +248,8 @@ function updateSubcategories() {
 
 function updateFilterCategories() {
   const filterCat = document.getElementById('filterCategory');
-  const current   = filterCat.value;
-  const allCats   = new Set();
+  const current = filterCat.value;
+  const allCats = new Set();
 
   Object.values(CATEGORIES).forEach(typeObj =>
     Object.keys(typeObj).forEach(c => allCats.add(c))
@@ -258,32 +261,62 @@ function updateFilterCategories() {
   if ([...allCats].includes(current)) filterCat.value = current;
 }
 
-// ── Render transaction list ──
+// ── Pagination state ──
+let currentPage = 1;
+function resetPage() { currentPage = 1; }
+
+// ── Tab switching ──
+function switchTab(btn, type) {
+  document.querySelectorAll('.tx-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('filterType').value = type;
+  resetPage();
+  renderTransactions();
+}
+
+// ── Render transaction list with pagination ──
 function renderTransactions() {
-  const filterType    = document.getElementById('filterType').value;
+  const filterType = document.getElementById('filterType').value;
   const filterAccount = document.getElementById('filterAccount').value;
-  const filterCat     = document.getElementById('filterCategory').value;
-  const filterMonth   = document.getElementById('filterMonth').value;
-  const list          = document.getElementById('transactionList');
+  const filterCat = document.getElementById('filterCategory').value;
+  const filterMonth = document.getElementById('filterMonth').value;
+  const pageSize = parseInt(document.getElementById('pageSize').value) || 10;
+  const list = document.getElementById('transactionList');
 
   let filtered = transactions.filter(t => {
-    const matchType    = filterType    === 'all' || t.type     === filterType;
-    const matchAccount = filterAccount === 'all' || t.account  === filterAccount;
-    const matchCat     = filterCat     === 'all' || t.category === filterCat;
-    const matchMonth   = filterMonth   === 'all' || (t.date && t.date.slice(5, 7) === filterMonth);
+    const matchType = filterType === 'all' || t.type === filterType;
+    const matchAccount = filterAccount === 'all' || t.account === filterAccount;
+    const matchCat = filterCat === 'all' || t.category === filterCat;
+    const matchMonth = filterMonth === 'all' || (t.date && t.date.slice(5, 7) === filterMonth);
     return matchType && matchAccount && matchCat && matchMonth;
   });
 
   if (filtered.length === 0) {
     list.innerHTML = '<p class="empty-msg">No transactions found.</p>';
+    document.getElementById('pageInfo').textContent = 'Showing 0 – 0 of 0';
+    document.getElementById('pageNavRow').innerHTML = '';
     return;
   }
 
-  list.innerHTML = filtered.map(t => {
-    const sign        = t.type === 'income' ? '+' : '-';
-    const subLabel    = t.subcategory ? ` › ${t.subcategory}` : '';
+  // Clamp currentPage
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, filtered.length);
+  const paged = filtered.slice(start, end);
+
+  // Page info
+  document.getElementById('pageInfo').textContent =
+    `Showing ${filtered.length === 0 ? 0 : start + 1} – ${end} of ${filtered.length}`;
+
+  // Render rows
+  list.innerHTML = paged.map(t => {
+    const sign = t.type === 'income' ? '+' : '-';
+    const subLabel = t.subcategory ? ` › ${t.subcategory}` : '';
     const remarkLabel = t.description ? ` · ${t.description}` : '';
-    const icon        = ICONS[t.category] || '💳';
+    const icon = ICONS[t.category] || '💳';
 
     return `
       <div class="transaction-item ${t.type}">
@@ -298,20 +331,49 @@ function renderTransactions() {
       </div>
     `;
   }).join('');
+
+  // Render pagination buttons
+  const navRow = document.getElementById('pageNavRow');
+  if (totalPages <= 1) { navRow.innerHTML = ''; return; }
+
+  let pages = [];
+  pages.push(1);
+  for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+    if (i > 1 && i < totalPages) pages.push(i);
+  }
+  pages.push(totalPages);
+  pages = [...new Set(pages)].sort((a, b) => a - b);
+
+  let btns = '';
+  btns += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&#8592;</button>`;
+  let prev = 0;
+  pages.forEach(p => {
+    if (p - prev > 1) btns += `<span class="page-ellipsis">…</span>`;
+    btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    prev = p;
+  });
+  btns += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&#8594;</button>`;
+  navRow.innerHTML = btns;
+}
+
+function goPage(n) {
+  currentPage = n;
+  renderTransactions();
+  document.getElementById('transactionList').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── Update summary cards ──
 function updateSummary() {
-  const income   = transactions.filter(t => t.type === 'income').reduce((s,t)  => s + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-  const savings  = transactions.filter(t => t.type === 'savings').reduce((s,t) => s + t.amount, 0);
-  const balance  = income - expenses - savings;
+  const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const savings = transactions.filter(t => t.type === 'savings').reduce((s, t) => s + t.amount, 0);
+  const balance = income - expenses - savings;
 
-  document.getElementById('totalIncome').textContent   = formatRM(income);
+  document.getElementById('totalIncome').textContent = formatRM(income);
   document.getElementById('totalExpenses').textContent = formatRM(expenses);
-  document.getElementById('totalSavings').textContent  = formatRM(savings);
+  document.getElementById('totalSavings').textContent = formatRM(savings);
 
-  const balEl       = document.getElementById('balance');
+  const balEl = document.getElementById('balance');
   balEl.textContent = formatRM(balance);
   balEl.style.color = balance >= 0 ? '#27ae60' : '#e74c3c';
 
@@ -332,25 +394,25 @@ function updateSummary() {
 
 // ── Export helpers ──
 function getExportData() {
-  const start      = document.getElementById('exportStart').value;
-  const end        = document.getElementById('exportEnd').value;
+  const start = document.getElementById('exportStart').value;
+  const end = document.getElementById('exportEnd').value;
   const exportType = document.getElementById('exportType').value;
 
   if (!start || !end) { alert('Please select a Start Date and End Date.'); return null; }
-  if (start > end)    { alert('Start Date must be before End Date.'); return null; }
+  if (start > end) { alert('Start Date must be before End Date.'); return null; }
 
   return transactions.filter(t => {
-    const inRange  = t.date >= start && t.date <= end;
+    const inRange = t.date >= start && t.date <= end;
     const matchType = exportType === 'all' || t.type === exportType;
     return inRange && matchType;
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 async function exportToSheets() {
-  const url  = document.getElementById('sheetUrl').value.trim();
+  const url = document.getElementById('sheetUrl').value.trim();
   const data = getExportData();
   if (!data) return;
-  if (!url)  { alert('Please paste your Google Apps Script URL first.'); return; }
+  if (!url) { alert('Please paste your Google Apps Script URL first.'); return; }
   if (data.length === 0) { alert('No transactions in selected date range.'); return; }
 
   const statusEl = document.getElementById('exportStatus');
@@ -370,7 +432,7 @@ async function exportToSheets() {
     document.body.appendChild(iframe);
   }
 
-  const form  = document.createElement('form');
+  const form = document.createElement('form');
   form.method = 'POST'; form.action = url; form.target = 'exportFrame';
   const input = document.createElement('input');
   input.type = 'hidden'; input.name = 'payload';
@@ -391,17 +453,17 @@ function exportCSV() {
   if (!data) return;
   if (data.length === 0) { alert('No transactions in selected date range.'); return; }
 
-  const headers = ['Date','Amount','Account','Category','Sub-category','Remarks','Type'];
-  const rows    = data.map(t => [
+  const headers = ['Date', 'Amount', 'Account', 'Category', 'Sub-category', 'Remarks', 'Type'];
+  const rows = data.map(t => [
     formatDate(t.date), t.amount.toFixed(2), t.account,
     t.category, t.subcategory || '', t.description || '', t.type
   ]);
 
-  const csv  = [headers, ...rows]
-    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
   a.download = `finance_${document.getElementById('exportStart').value}_to_${document.getElementById('exportEnd').value}.csv`;
   a.click();
 }
@@ -410,7 +472,7 @@ function exportCSV() {
 function loadSheetUrl() {
   document.getElementById('sheetUrl').value = localStorage.getItem('sheetUrl') || '';
 }
-document.getElementById('sheetUrl').addEventListener('change', function() {
+document.getElementById('sheetUrl').addEventListener('change', function () {
   localStorage.setItem('sheetUrl', this.value.trim());
 });
 
