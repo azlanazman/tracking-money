@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Finance Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <h1>My Finance Tracker</h1>
+      <p class="subtitle">Track · Categorise · Monitor</p>
+      <div class="header-balance">
+        <div class="header-balance-label">Net Balance</div>
+        <div class="header-balance-amount" id="headerBalance">RM 0.00</div>
+        <div class="header-balance-sub" id="headerBalanceSub">Loading...</div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="page-nav">
+    <span id="dbStatus" class="db-status connecting">Connecting...</span>
+    <a href="budget.html">Budget Monitor</a>
+    <a href="charts.html">Charts</a>
+    <a href="forecast.html">Forecast →</a>
+  </nav>
+
+  <!-- Summary Cards -->
+  <section class="summary">
+    <div class="card green">
+      <p class="card-label">Total Income</p>
+      <p class="card-amount" id="totalIncome">RM 0.00</p>
+    </div>
+    <div class="card red">
+      <p class="card-label">Total Expenses</p>
+      <p class="card-amount" id="totalExpenses">RM 0.00</p>
+    </div>
+    <div class="card blue">
+      <p class="card-label">Balance</p>
+      <p class="card-amount" id="balance">RM 0.00</p>
+    </div>
+    <div class="card teal">
+      <p class="card-label">Savings</p>
+      <p class="card-amount" id="totalSavings">RM 0.00</p>
+    </div>
+  </section>
+
+  <!-- Add Transaction Form -->
+  <section class="form-section">
+    <h2>Add Transaction</h2>
+    <div class="form-grid">
+
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="date" />
+      </div>
+
+      <div class="form-group">
+        <label>Amount (RM)</label>
+        <input type="number" id="amount" placeholder="0.00" min="0" step="0.01" />
+      </div>
+
+      <div class="form-group">
+        <label>Account</label>
+        <select id="account">
+          <option value="CIMB">CIMB</option>
+          <option value="Maybank">Maybank</option>
+          <option value="TNG">TNG</option>
+          <option value="SETEL">SETEL</option>
+          <option value="SPay">SPay</option>
+          <option value="Cash">Cash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Type</label>
+        <select id="type" onchange="updateCategories()">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+          <option value="savings">Savings</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Category</label>
+        <select id="category" onchange="updateSubcategories()"></select>
+      </div>
+
+      <div class="form-group">
+        <label>Sub-category</label>
+        <select id="subcategory"></select>
+      </div>
+
+      <div class="form-group form-group-full">
+        <label>Remarks</label>
+        <input type="text" id="description" placeholder="Optional note..." />
+      </div>
+
+      <div class="form-group form-group-btn">
+        <button onclick="addTransaction()">+ Add Transaction</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Export to Google Sheets -->
+  <section class="export-section">
+    <h2>Export to Google Sheets</h2>
+    <div class="export-setup">
+      <div class="form-group">
+        <label>Your Google Sheet Web App URL</label>
+        <input type="text" id="sheetUrl" placeholder="Paste your Apps Script URL here..." />
+      </div>
+    </div>
+    <div class="export-row">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="exportStart" />
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="exportEnd" />
+      </div>
+      <div class="form-group">
+        <label>Type Filter</label>
+        <select id="exportType">
+          <option value="all">All Types</option>
+          <option value="expense">Expenses only</option>
+          <option value="income">Income only</option>
+          <option value="savings">Savings only</option>
+        </select>
+      </div>
+      <div class="form-group form-group-btn">
+        <button class="btn-export" onclick="exportToSheets()">Export to Google Sheets</button>
+      </div>
+      <div class="form-group form-group-btn">
+        <button class="btn-csv" onclick="exportCSV()">Download as CSV</button>
+      </div>
+    </div>
+    <p id="exportStatus" class="export-status"></p>
+    <div class="setup-guide">
+      <p class="guide-title">How to set up Google Sheets export (one time only)</p>
+      <ol>
+        <li>Open <strong>Google Sheets</strong> and create a new spreadsheet</li>
+        <li>Click <strong>Extensions → Apps Script</strong></li>
+        <li>Delete everything and paste the code from <strong>sheets-script.gs</strong></li>
+        <li>Click <strong>Deploy → New deployment → Web app</strong></li>
+        <li>Set <em>Execute as</em>: <strong>Me</strong> · <em>Who has access</em>: <strong>Anyone</strong></li>
+        <li>Click <strong>Deploy</strong>, copy the Web App URL, and paste it above</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Filter Bar -->
+  <section class="filter-section">
+    <h2>Transactions</h2>
+    <div class="filters">
+      <select id="filterType" onchange="renderTransactions()">
+        <option value="all">All Types</option>
+        <option value="expense">Expenses</option>
+        <option value="income">Income</option>
+        <option value="savings">Savings</option>
+      </select>
+      <select id="filterAccount" onchange="renderTransactions()">
+        <option value="all">All Accounts</option>
+        <option value="CIMB">CIMB</option>
+        <option value="Maybank">Maybank</option>
+        <option value="TNG">TNG</option>
+        <option value="SETEL">SETEL</option>
+        <option value="SPay">SPay</option>
+        <option value="Cash">Cash</option>
+        <option value="Other">Other</option>
+      </select>
+      <select id="filterCategory" onchange="renderTransactions()">
+        <option value="all">All Categories</option>
+      </select>
+      <select id="filterMonth" onchange="renderTransactions()">
+        <option value="all">All Months</option>
+        <option value="01">January</option>
+        <option value="02">February</option>
+        <option value="03">March</option>
+        <option value="04">April</option>
+        <option value="05">May</option>
+        <option value="06">June</option>
+        <option value="07">July</option>
+        <option value="08">August</option>
+        <option value="09">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+      <button class="btn-clear" onclick="clearAll()">Clear All</button>
+    </div>
+  </section>
+
+  <!-- Transaction List -->
+  <section class="list-section">
+    <div id="transactionList">
+      <p class="empty-msg">Loading transactions...</p>
+    </div>
+  </section>
+
+  <!-- Firebase SDK (v9 compat mode — works without a build tool) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Your config + app -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

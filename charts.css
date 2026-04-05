@@ -1,0 +1,127 @@
+.page-nav {
+  max-width: 760px;
+  margin: 14px auto 0;
+  padding: 0 16px;
+}
+
+.page-nav a {
+  font-size: 13px;
+  color: #1a7a5e;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.page-nav a:hover {
+  text-decoration: underline;
+}
+
+/* ── Controls ── */
+.chart-controls {
+  background: white;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin: 14px 16px;
+  max-width: 760px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+@media (min-width: 792px) {
+  .chart-controls {
+    margin: 14px auto;
+  }
+}
+
+.control-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.control-row .form-group {
+  min-width: 120px;
+  flex: 1;
+}
+
+/* ── Chart sections ── */
+.chart-section {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 14px 16px;
+  max-width: 760px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+@media (min-width: 792px) {
+  .chart-section {
+    margin: 14px auto;
+  }
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 300px;
+}
+
+/* ── Category Table ── */
+.cat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cat-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: #f0f4f8;
+  color: #555;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cat-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+}
+
+.cat-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cat-table tr:hover td {
+  background: #fafafa;
+}
+
+.bar-cell {
+  width: 40%;
+}
+
+.bar-track {
+  background: #eee;
+  border-radius: 4px;
+  height: 8px;
+  width: 100%;
+}
+
+.bar-fill {
+  height: 8px;
+  border-radius: 4px;
+  background: #1a7a5e;
+  transition: width 0.4s ease;
+}
+
+.pct-cell {
+  color: #888;
+  font-size: 12px;
+  text-align: right;
+}
+
+.no-data {
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+  padding: 30px 0;
+}

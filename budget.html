@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Budget Monitor — My Finance Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="budget.css"/>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <h1>Budget Monitor</h1>
+      <p class="subtitle">Current month · Per category</p>
+    </div>
+  </header>
+
+  <nav class="page-nav">
+    <a href="index.html">← Back to Tracker</a>
+    <a href="charts.html">Charts</a>
+    <a href="forecast.html">Forecast →</a>
+  </nav>
+
+  <!-- Month summary -->
+  <section class="summary">
+    <div class="card red">
+      <p class="card-label">Total spent</p>
+      <p class="card-amount" id="totalSpent">RM 0.00</p>
+    </div>
+    <div class="card blue">
+      <p class="card-label">Total budgeted</p>
+      <p class="card-amount" id="totalBudgeted">RM 0.00</p>
+    </div>
+    <div class="card green">
+      <p class="card-label">Remaining</p>
+      <p class="card-amount" id="totalRemaining">RM 0.00</p>
+    </div>
+    <div class="card teal">
+      <p class="card-label">Month</p>
+      <p class="card-amount" id="currentMonth" style="font-size:15px">—</p>
+    </div>
+  </section>
+
+  <!-- Budget settings -->
+  <section class="form-section">
+    <h2>Set Category Budgets</h2>
+    <p class="section-hint">Set a monthly budget and alert threshold for each expense category. Leave amount as 0 to skip that category.</p>
+    <div id="budgetForm"></div>
+    <div class="save-row">
+      <button onclick="saveBudgets()">Save Budgets</button>
+      <span id="saveStatus" class="save-status"></span>
+    </div>
+  </section>
+
+  <!-- Budget progress -->
+  <section class="form-section">
+    <h2>This Month's Progress</h2>
+    <div id="budgetProgress">
+      <p class="empty-msg">Loading...</p>
+    </div>
+  </section>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="budget.js"></script>
+</body>
+</html>

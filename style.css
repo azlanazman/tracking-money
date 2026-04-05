@@ -1,0 +1,461 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f4f8;
+  color: #333;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 1: Dark header
+   ══════════════════════════════════════ */
+header {
+  background: #0f3d2e;
+  color: white;
+  padding: 24px 24px 20px;
+}
+
+.header-inner {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #fff;
+}
+
+header .subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 2px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.header-balance {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.header-balance-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.header-balance-amount {
+  font-size: 30px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.header-balance-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+}
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 2: Nav pills
+   ══════════════════════════════════════ */
+.page-nav {
+  background: #0f3d2e;
+  padding: 0 24px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.page-nav::-webkit-scrollbar { display: none; }
+
+.page-nav a {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+.page-nav a:hover {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+.page-nav a.active {
+  background: #1d9e75;
+  color: #fff;
+  border-color: transparent;
+}
+
+/* DB status — sits in the nav bar */
+.db-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.db-status.connected  { background: rgba(29,158,117,0.3); color: #9fe1cb; }
+.db-status.connecting { background: rgba(255,220,100,0.2); color: #ffd166; }
+.db-status.error      { background: rgba(231,76,60,0.25); color: #f1948a; }
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 3: Summary cards — coloured numbers, no top border
+   ══════════════════════════════════════ */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 18px 16px 8px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+@media (min-width: 600px) {
+  .summary { grid-template-columns: repeat(4, 1fr); }
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+  border: 1px solid #ebebeb;
+}
+
+.card-label {
+  font-size: 10px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.card-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d2d2d;
+}
+.card.green .card-amount { color: #1d9e75; }
+.card.red   .card-amount { color: #e24b4a; }
+.card.blue  .card-amount { color: #185fa5; }
+.card.teal  .card-amount { color: #0f6e56; }
+
+/* ══════════════════════════════════════
+   Shared section styles
+   ══════════════════════════════════════ */
+.form-section,
+.export-section,
+.filter-section,
+.list-section {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 12px 16px;
+  max-width: 760px;
+  border: 1px solid #ebebeb;
+}
+@media (min-width: 792px) {
+  .form-section,
+  .export-section,
+  .filter-section,
+  .list-section { margin: 12px auto; }
+}
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 6: Section headings with green accent bar
+   ══════════════════════════════════════ */
+h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h2::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 15px;
+  background: #1d9e75;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 5: Form fields — warmer, more modern
+   ══════════════════════════════════════ */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (min-width: 500px) {
+  .form-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.form-group-full { grid-column: 1 / -1; }
+
+.form-group label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.form-group input,
+.form-group select {
+  padding: 10px 12px;
+  border: 1.5px solid #ebebeb;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #222;
+  background: #f7f8fa;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+}
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #1d9e75;
+  background: #fff;
+}
+
+.form-group-btn { justify-content: flex-end; }
+.form-group-btn button {
+  padding: 11px 0;
+  width: 100%;
+  background: #0f3d2e;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 18px;
+  letter-spacing: 0.2px;
+}
+.form-group-btn button:hover { background: #1d9e75; }
+
+/* ── Export Section ── */
+.export-section {
+  border: 1px solid #d4efdf;
+  background: #fafffe;
+}
+.export-setup { margin-bottom: 14px; }
+.export-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (min-width: 500px) {
+  .export-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+.btn-export {
+  padding: 11px 0 !important;
+  width: 100% !important;
+  background: #185fa5 !important;
+  margin-top: 18px !important;
+  border-radius: 10px !important;
+}
+.btn-export:hover { background: #0c447c !important; }
+
+.btn-csv {
+  padding: 11px 0 !important;
+  width: 100% !important;
+  background: #5f5e5a !important;
+  margin-top: 18px !important;
+  border-radius: 10px !important;
+}
+.btn-csv:hover { background: #444441 !important; }
+
+.export-status {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  display: none;
+}
+.export-status.sending { display: block; background: #fff8e1; color: #b8860b; }
+.export-status.success { display: block; background: #eafaf1; color: #1a7a5e; }
+.export-status.error   { display: block; background: #fdecea; color: #c0392b; }
+
+.setup-guide {
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 4px;
+}
+.guide-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 10px;
+}
+.setup-guide ol {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.setup-guide li { font-size: 13px; color: #555; line-height: 1.5; }
+.setup-guide strong { color: #1a7a5e; }
+.setup-guide em { color: #555; font-style: normal; font-weight: 500; }
+
+/* ── Filters ── */
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filters select {
+  padding: 7px 11px;
+  border: 1.5px solid #ebebeb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #333;
+  background: #f7f8fa;
+  cursor: pointer;
+}
+.btn-clear {
+  padding: 7px 14px;
+  background: #fff0f0;
+  color: #e24b4a;
+  border: 1.5px solid #f5c0c0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: auto;
+}
+.btn-clear:hover { background: #ffe0e0; }
+
+/* ══════════════════════════════════════
+   IMPROVEMENT 4: Transaction rows with category icon
+   ══════════════════════════════════════ */
+.empty-msg {
+  text-align: center;
+  color: #bbb;
+  font-size: 14px;
+  padding: 30px 0;
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: #f9fafb;
+  border: 1px solid #f0f0f0;
+  gap: 10px;
+  transition: background 0.15s;
+}
+.transaction-item:hover { background: #f3f4f6; }
+
+/* Remove old left border — icon replaces it */
+.transaction-item.expense,
+.transaction-item.income,
+.transaction-item.savings { border-left: 1px solid #f0f0f0; }
+
+/* Category icon */
+.tx-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: #f0faf6;
+}
+.tx-icon.expense { background: #fef4f4; }
+.tx-icon.income  { background: #eafaf1; }
+.tx-icon.savings { background: #e6f1fb; }
+
+.tx-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.tx-desc {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tx-meta { font-size: 11px; color: #bbb; }
+
+.tx-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.tx-badge.expense { background: #fdecea; color: #c0392b; }
+.tx-badge.income  { background: #eafaf1; color: #27ae60; }
+.tx-badge.savings { background: #e8f8f5; color: #16a085; }
+
+.tx-amount {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tx-amount.expense { color: #e24b4a; }
+.tx-amount.income  { color: #1d9e75; }
+.tx-amount.savings { color: #185fa5; }
+
+.tx-delete {
+  background: none;
+  border: none;
+  color: #ddd;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.tx-delete:hover { color: #e24b4a; }

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Charts — My Finance Tracker</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="charts.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <h1>Monthly Trends</h1>
+      <p class="subtitle">Spending by category</p>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav class="page-nav">
+    <a href="index.html">← Tracker</a>
+    <a href="budget.html">Budget Monitor</a>
+  </nav>
+
+  <!-- Summary Cards -->
+  <section class="summary">
+    <div class="card red">
+      <p class="card-label">Expenses in range</p>
+      <p class="card-amount" id="thisMonthExp">RM 0.00</p>
+    </div>
+    <div class="card green">
+      <p class="card-label">Income in range</p>
+      <p class="card-amount" id="thisMonthInc">RM 0.00</p>
+    </div>
+    <div class="card teal">
+      <p class="card-label">Savings in range</p>
+      <p class="card-amount" id="thisMonthSav">RM 0.00</p>
+    </div>
+    <div class="card blue">
+      <p class="card-label">Top category</p>
+      <p class="card-amount" id="topCategory" style="font-size:15px">—</p>
+    </div>
+  </section>
+
+  <!-- Controls -->
+  <section class="chart-controls">
+    <div class="control-row">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="startDate" onchange="renderAll()" />
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="endDate" onchange="renderAll()" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="typeSelect" onchange="renderAll()">
+          <option value="expense">Expenses</option>
+          <option value="income">Income</option>
+          <option value="savings">Savings</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Quick select</label>
+        <select id="quickSelect" onchange="applyQuickSelect()">
+          <option value="">— custom —</option>
+          <option value="this_month">This month</option>
+          <option value="last_month">Last month</option>
+          <option value="this_year">This year</option>
+          <option value="last_30">Last 30 days</option>
+          <option value="last_90">Last 90 days</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+      <div class="form-group form-group-btn">
+        <button onclick="renderAll()">Apply</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bar Chart -->
+  <section class="chart-section">
+    <h2 id="barTitle">Monthly expenses by category</h2>
+    <div class="chart-wrap">
+      <canvas id="barChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Line Chart -->
+  <section class="chart-section">
+    <h2 id="lineTitle">Category trends over months</h2>
+    <div class="chart-wrap">
+      <canvas id="lineChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Category Breakdown Table -->
+  <section class="chart-section">
+    <h2 id="tableTitle">Category breakdown</h2>
+    <div id="categoryTable"></div>
+  </section>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="charts.js"></script>
+</body>
+</html>
