@@ -48,20 +48,19 @@ function init() {
     db.collection('settings').doc('preferences').get().then(doc => {
       if (doc.exists) {
         settings = doc.data();
-        // Migrate: ensure all 3 type keys exist
         settings.categories = settings.categories || {};
         ['expense','income','savings'].forEach(t => {
           if (!settings.categories[t]) settings.categories[t] = DEFAULTS.categories[t];
         });
         if (!settings.accounts) settings.accounts = [...DEFAULTS.accounts];
       } else {
-        // First time — load defaults
         settings = {
           accounts:   [...DEFAULTS.accounts],
           categories: JSON.parse(JSON.stringify(DEFAULTS.categories))
         };
       }
       setStatus('connected', 'Connected');
+      loadPayPeriodFromSettings(settings);
       renderAll();
     });
 
@@ -222,10 +221,99 @@ function deleteSubcategory(i) {
   renderSubcategories();
 }
 
+
+// ══════════════════════════════════════
+//  PAY PERIOD SETTINGS
+// ══════════════════════════════════════
+
+let ppOverrides = {}; // { 'YYYY-MM': 'YYYY-MM-DD' }
+
+function initPayPeriod() {
+  // Populate year selector (current year ± 2)
+  const yearEl = document.getElementById('overrideYear');
+  const now    = new Date();
+  const curY   = now.getFullYear();
+  for (let y = curY - 1; y <= curY + 1; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === curY) opt.selected = true;
+    yearEl.appendChild(opt);
+  }
+
+  // Set current month as default in override selects
+  document.getElementById('overrideMonth').value = String(now.getMonth() + 1).padStart(2, '0');
+}
+
+function loadPayPeriodFromSettings(data) {
+  if (data.payperiod) {
+    document.getElementById('defaultDay').value = data.payperiod.defaultDay || 25;
+    ppOverrides = data.payperiod.overrides || {};
+  }
+  renderOverrides();
+  updatePreview();
+}
+
+function addOverride() {
+  const month = document.getElementById('overrideMonth').value;
+  const year  = document.getElementById('overrideYear').value;
+  const date  = document.getElementById('overrideDate').value;
+  if (!date) { alert('Please select an actual start date.'); return; }
+  const key = `${year}-${month}`;
+  ppOverrides[key] = date;
+  document.getElementById('overrideDate').value = '';
+  renderOverrides();
+  updatePreview();
+}
+
+function deleteOverride(key) {
+  delete ppOverrides[key];
+  renderOverrides();
+  updatePreview();
+}
+
+function renderOverrides() {
+  const container = document.getElementById('overrideList');
+  const keys = Object.keys(ppOverrides).sort();
+  if (keys.length === 0) {
+    container.innerHTML = '<p class="tag-empty">No overrides set — using default day every month.</p>';
+    return;
+  }
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  container.innerHTML = keys.map(k => {
+    const [y, m] = k.split('-');
+    const periodLabel = MONTHS[parseInt(m)-1] + ' ' + y;
+    const startDate   = new Date(ppOverrides[k] + 'T00:00:00')
+      .toLocaleDateString('en-MY', { day:'2-digit', month:'short', year:'numeric' });
+    return `
+      <div class="override-row">
+        <span class="override-period">${periodLabel}</span>
+        <span class="override-arrow">starts →</span>
+        <span class="override-date">${startDate}</span>
+        <button class="override-del" onclick="deleteOverride('${k}')" title="Remove">&#x2715;</button>
+      </div>`;
+  }).join('');
+}
+
+function updatePreview() {
+  const day = parseInt(document.getElementById('defaultDay').value) || 25;
+  // Temporarily apply to PAY_PERIOD for preview
+  PAY_PERIOD.save(day, ppOverrides).then(() => {
+    const period = PAY_PERIOD.currentPeriod();
+    document.getElementById('ppPreview').textContent =
+      'Current period: ' + period.label;
+  });
+}
+
+// Trigger preview on day change
+document.getElementById('defaultDay').addEventListener('input', updatePreview);
+
 // ── Save to Firebase ──
 async function saveSettings() {
   const statusEl = document.getElementById('saveStatus');
   statusEl.textContent = 'Saving...';
+  // Bundle payperiod into settings
+  const day = parseInt(document.getElementById('defaultDay').value) || 25;
+  settings.payperiod = { defaultDay: day, overrides: ppOverrides };
 
   if (db) {
     try {
@@ -248,4 +336,5 @@ document.getElementById('newCategory').addEventListener('keydown',    e => { if 
 document.getElementById('newSubcategory').addEventListener('keydown', e => { if (e.key==='Enter') addSubcategory(); });
 
 // ── Init ──
+initPayPeriod();
 init();

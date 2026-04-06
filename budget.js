@@ -27,8 +27,7 @@ const MONTH_PREFIX = `${CURRENT_YEAR}-${CURRENT_MONTH}`;
 const MONTH_NAMES  = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 
-document.getElementById('currentMonth').textContent =
-  MONTH_NAMES[NOW.getMonth()] + ' ' + CURRENT_YEAR;
+updatePeriodLabel();
 
 // ── Init Firebase ──
 function setStatus(state, msg) {

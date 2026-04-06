@@ -2,17 +2,17 @@
 // Fallback defaults used if settings not yet saved
 let CATEGORIES = {
   expense: {
-    'Loan': ['PTPTN', 'Emas'], 'Bills': ['Unifi', 'Umobile', 'TNB', 'Air Selangor'],
-    'Takaful': [], 'Family': ['Abah+Coway', 'Abah+Motor', 'Wife', 'Aidan', 'Dapur'],
-    'CC': ['Charge'], 'Subs': ['Netflix', 'Sooka', 'Google One', 'Dorioo+', 'Quronly'],
-    'SPay': [], 'Car': [], 'Community': ['Zakat', 'Sedekah'],
-    'Food': ['Family', 'Work'], 'Toll': ['Family', 'Work'],
-    'Parking': [], 'Fuel': ['Fuel', 'Charge'], 'Medical': [], 'Misc': [],
+    'Loan':['PTPTN','Emas'], 'Bills':['Unifi','Umobile','TNB','Air Selangor'],
+    'Takaful':[], 'Family':['Abah+Coway','Abah+Motor','Wife','Aidan','Dapur'],
+    'CC':['Charge'], 'Subs':['Netflix','Sooka','Google One','Dorioo+','Quronly'],
+    'SPay':[], 'Car':[], 'Community':['Zakat','Sedekah'],
+    'Food':['Family','Work'], 'Toll':['Family','Work'],
+    'Parking':[], 'Fuel':['Fuel','Charge'], 'Medical':[], 'Misc':[],
   },
-  income: { 'Salary': [], 'Freelance': [], 'Bonus': [], 'Investment': [], 'Other': [] },
-  savings: { 'Saving': [] }
+  income:  { 'Salary':[], 'Freelance':[], 'Bonus':[], 'Investment':[], 'Other':[] },
+  savings: { 'Saving':[] }
 };
-let ACCOUNTS = ['CIMB', 'Maybank', 'RHB', 'AEON', 'TNG', 'SETEL', 'SPay', 'Cash', 'Other'];
+let ACCOUNTS = ['CIMB','Maybank','RHB','AEON','TNG','SETEL','SPay','Cash','Other'];
 
 // Load user settings from Firebase and refresh dropdowns
 function loadUserSettings() {
@@ -21,7 +21,7 @@ function loadUserSettings() {
     if (doc.exists) {
       const data = doc.data();
       if (data.categories) CATEGORIES = data.categories;
-      if (data.accounts) ACCOUNTS = data.accounts;
+      if (data.accounts)   ACCOUNTS   = data.accounts;
     }
     refreshAccountDropdowns();
     updateCategories();
@@ -31,7 +31,7 @@ function loadUserSettings() {
 
 function refreshAccountDropdowns() {
   const opts = ACCOUNTS.map(a => `<option value="${a}">${a}</option>`).join('');
-  ['account', 'filterAccount'].forEach(id => {
+  ['account','filterAccount'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
@@ -48,12 +48,12 @@ function refreshAccountDropdowns() {
 
 // ── Category icons ──
 const ICONS = {
-  Loan: '🏦', Bills: '💡', Takaful: '🛡️', Family: '👨‍👩‍👧',
-  CC: '💳', Subs: '📱', SPay: '💳', Car: '🚗',
-  Community: '🕌', Food: '🍱', Toll: '🛣️', Parking: '🅿️',
-  Fuel: '⛽', Medical: '🏥', Misc: '📦',
-  Salary: '💰', Freelance: '💼', Bonus: '🎁', Investment: '📈',
-  Saving: '🏧', Other: '📌'
+  Loan:'🏦', Bills:'💡', Takaful:'🛡️', Family:'👨‍👩‍👧',
+  CC:'💳', Subs:'📱', SPay:'💳', Car:'🚗',
+  Community:'🕌', Food:'🍱', Toll:'🛣️', Parking:'🅿️',
+  Fuel:'⛽', Medical:'🏥', Misc:'📦',
+  Salary:'💰', Freelance:'💼', Bonus:'🎁', Investment:'📈',
+  Saving:'🏧', Other:'📌'
 };
 
 // ── Firebase init ──
@@ -66,6 +66,8 @@ function initFirebase() {
     db = firebase.firestore();
     setStatus('connected', 'Connected to Firebase');
     migrateFromLocalStorage();
+    PAY_PERIOD.init(db);
+    PAY_PERIOD.onChange(() => { updateSummary(); renderTransactions(); });
     loadTransactions();
     loadUserSettings();
   } catch (err) {
@@ -92,14 +94,14 @@ async function migrateFromLocalStorage() {
     local.forEach(t => {
       const ref = db.collection('transactions').doc(String(t.id));
       batch.set(ref, {
-        date: t.date,
-        amount: t.amount,
-        account: t.account || 'Other',
-        type: t.type,
-        category: t.category,
-        subcategory: t.subcategory || '',
-        description: t.description || '',
-        createdAt: t.id
+        date:         t.date,
+        amount:       t.amount,
+        account:      t.account      || 'Other',
+        type:         t.type,
+        category:     t.category,
+        subcategory:  t.subcategory  || '',
+        description:  t.description  || '',
+        createdAt:    t.id
       });
     });
     await batch.commit();
@@ -141,15 +143,15 @@ function saveLocal() {
 // ── Add a new transaction ──
 async function addTransaction() {
   const description = document.getElementById('description').value.trim();
-  const amount = parseFloat(document.getElementById('amount').value);
-  const type = document.getElementById('type').value;
-  const account = document.getElementById('account').value;
-  const category = document.getElementById('category').value;
+  const amount      = parseFloat(document.getElementById('amount').value);
+  const type        = document.getElementById('type').value;
+  const account     = document.getElementById('account').value;
+  const category    = document.getElementById('category').value;
   const subcategory = document.getElementById('subcategory').value;
-  const date = document.getElementById('date').value;
+  const date        = document.getElementById('date').value;
 
   if (!amount || amount <= 0) { alert('Please enter a valid amount.'); return; }
-  if (!date) { alert('Please select a date.'); return; }
+  if (!date)                  { alert('Please select a date.'); return; }
 
   const t = {
     date, amount, account, type, category,
@@ -204,7 +206,7 @@ async function clearAll() {
   if (db) {
     try {
       const snapshot = await db.collection('transactions').get();
-      const batch = db.batch();
+      const batch    = db.batch();
       snapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
     } catch (err) {
@@ -240,9 +242,9 @@ function formatDate(dateStr) {
 
 // ── Category dropdowns ──
 function updateCategories() {
-  const type = document.getElementById('type').value;
+  const type  = document.getElementById('type').value;
   const catEl = document.getElementById('category');
-  const cats = CATEGORIES[type] || {};
+  const cats  = CATEGORIES[type] || {};
 
   catEl.innerHTML = Object.keys(cats).map(c =>
     `<option value="${c}">${c}</option>`
@@ -253,10 +255,10 @@ function updateCategories() {
 }
 
 function updateSubcategories() {
-  const type = document.getElementById('type').value;
-  const cat = document.getElementById('category').value;
+  const type  = document.getElementById('type').value;
+  const cat   = document.getElementById('category').value;
   const subEl = document.getElementById('subcategory');
-  const subs = (CATEGORIES[type] && CATEGORIES[type][cat]) || [];
+  const subs  = (CATEGORIES[type] && CATEGORIES[type][cat]) || [];
 
   subEl.innerHTML = subs.length === 0
     ? '<option value="">— none —</option>'
@@ -265,8 +267,8 @@ function updateSubcategories() {
 
 function updateFilterCategories() {
   const filterCat = document.getElementById('filterCategory');
-  const current = filterCat.value;
-  const allCats = new Set();
+  const current   = filterCat.value;
+  const allCats   = new Set();
 
   Object.values(CATEGORIES).forEach(typeObj =>
     Object.keys(typeObj).forEach(c => allCats.add(c))
@@ -293,18 +295,18 @@ function switchTab(btn, type) {
 
 // ── Render transaction list with pagination ──
 function renderTransactions() {
-  const filterType = document.getElementById('filterType').value;
+  const filterType    = document.getElementById('filterType').value;
   const filterAccount = document.getElementById('filterAccount').value;
-  const filterCat = document.getElementById('filterCategory').value;
-  const filterMonth = document.getElementById('filterMonth').value;
-  const pageSize = parseInt(document.getElementById('pageSize').value) || 10;
-  const list = document.getElementById('transactionList');
+  const filterCat     = document.getElementById('filterCategory').value;
+  const filterMonth   = document.getElementById('filterMonth').value;
+  const pageSize      = parseInt(document.getElementById('pageSize').value) || 10;
+  const list          = document.getElementById('transactionList');
 
   let filtered = transactions.filter(t => {
-    const matchType = filterType === 'all' || t.type === filterType;
-    const matchAccount = filterAccount === 'all' || t.account === filterAccount;
-    const matchCat = filterCat === 'all' || t.category === filterCat;
-    const matchMonth = filterMonth === 'all' || (t.date && t.date.slice(5, 7) === filterMonth);
+    const matchType    = filterType    === 'all' || t.type     === filterType;
+    const matchAccount = filterAccount === 'all' || t.account  === filterAccount;
+    const matchCat     = filterCat     === 'all' || t.category === filterCat;
+    const matchMonth   = filterMonth   === 'all' || (t.date && t.date.slice(5, 7) === filterMonth);
     return matchType && matchAccount && matchCat && matchMonth;
   });
 
@@ -320,9 +322,9 @@ function renderTransactions() {
   if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
-  const start = (currentPage - 1) * pageSize;
-  const end = Math.min(start + pageSize, filtered.length);
-  const paged = filtered.slice(start, end);
+  const start   = (currentPage - 1) * pageSize;
+  const end     = Math.min(start + pageSize, filtered.length);
+  const paged   = filtered.slice(start, end);
 
   // Page info
   document.getElementById('pageInfo').textContent =
@@ -330,10 +332,10 @@ function renderTransactions() {
 
   // Render rows
   list.innerHTML = paged.map(t => {
-    const sign = t.type === 'income' ? '+' : '-';
-    const subLabel = t.subcategory ? ` › ${t.subcategory}` : '';
+    const sign        = t.type === 'income' ? '+' : '-';
+    const subLabel    = t.subcategory ? ` › ${t.subcategory}` : '';
     const remarkLabel = t.description ? ` · ${t.description}` : '';
-    const icon = ICONS[t.category] || '💳';
+    const icon        = ICONS[t.category] || '💳';
 
     return `
       <div class="transaction-item ${t.type}">
@@ -359,7 +361,7 @@ function renderTransactions() {
     if (i > 1 && i < totalPages) pages.push(i);
   }
   pages.push(totalPages);
-  pages = [...new Set(pages)].sort((a, b) => a - b);
+  pages = [...new Set(pages)].sort((a,b) => a - b);
 
   let btns = '';
   btns += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&#8592;</button>`;
@@ -379,22 +381,25 @@ function goPage(n) {
   document.getElementById('transactionList').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Update summary cards ──
+// ── Update summary cards (filtered to current pay period) ──
 function updateSummary() {
-  const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const savings = transactions.filter(t => t.type === 'savings').reduce((s, t) => s + t.amount, 0);
-  const balance = income - expenses - savings;
+  const period   = PAY_PERIOD.currentPeriod();
+  const inPeriod = PAY_PERIOD.filterToPeriod(transactions, period);
 
-  document.getElementById('totalIncome').textContent = formatRM(income);
+  const income   = inPeriod.filter(t => t.type === 'income').reduce((s,t)  => s + t.amount, 0);
+  const expenses = inPeriod.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  const savings  = inPeriod.filter(t => t.type === 'savings').reduce((s,t) => s + t.amount, 0);
+  const balance  = income - expenses - savings;
+
+  document.getElementById('totalIncome').textContent   = formatRM(income);
   document.getElementById('totalExpenses').textContent = formatRM(expenses);
-  document.getElementById('totalSavings').textContent = formatRM(savings);
+  document.getElementById('totalSavings').textContent  = formatRM(savings);
 
-  const balEl = document.getElementById('balance');
+  const balEl       = document.getElementById('balance');
   balEl.textContent = formatRM(balance);
   balEl.style.color = balance >= 0 ? '#27ae60' : '#e74c3c';
 
-  // Update header balance
+  // Update header balance + period label
   const hBal = document.getElementById('headerBalance');
   const hSub = document.getElementById('headerBalanceSub');
   if (hBal) {
@@ -402,34 +407,31 @@ function updateSummary() {
     hBal.style.color = balance >= 0 ? '#9fe1cb' : '#f1948a';
   }
   if (hSub) {
-    const count = transactions.length;
-    hSub.textContent = balance >= 0
-      ? `Surplus across ${count} transaction${count !== 1 ? 's' : ''}`
-      : `Deficit across ${count} transaction${count !== 1 ? 's' : ''}`;
+    hSub.textContent = period.label;
   }
 }
 
 // ── Export helpers ──
 function getExportData() {
-  const start = document.getElementById('exportStart').value;
-  const end = document.getElementById('exportEnd').value;
+  const start      = document.getElementById('exportStart').value;
+  const end        = document.getElementById('exportEnd').value;
   const exportType = document.getElementById('exportType').value;
 
   if (!start || !end) { alert('Please select a Start Date and End Date.'); return null; }
-  if (start > end) { alert('Start Date must be before End Date.'); return null; }
+  if (start > end)    { alert('Start Date must be before End Date.'); return null; }
 
   return transactions.filter(t => {
-    const inRange = t.date >= start && t.date <= end;
+    const inRange  = t.date >= start && t.date <= end;
     const matchType = exportType === 'all' || t.type === exportType;
     return inRange && matchType;
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 async function exportToSheets() {
-  const url = document.getElementById('sheetUrl').value.trim();
+  const url  = document.getElementById('sheetUrl').value.trim();
   const data = getExportData();
   if (!data) return;
-  if (!url) { alert('Please paste your Google Apps Script URL first.'); return; }
+  if (!url)  { alert('Please paste your Google Apps Script URL first.'); return; }
   if (data.length === 0) { alert('No transactions in selected date range.'); return; }
 
   const statusEl = document.getElementById('exportStatus');
@@ -449,7 +451,7 @@ async function exportToSheets() {
     document.body.appendChild(iframe);
   }
 
-  const form = document.createElement('form');
+  const form  = document.createElement('form');
   form.method = 'POST'; form.action = url; form.target = 'exportFrame';
   const input = document.createElement('input');
   input.type = 'hidden'; input.name = 'payload';
@@ -470,17 +472,17 @@ function exportCSV() {
   if (!data) return;
   if (data.length === 0) { alert('No transactions in selected date range.'); return; }
 
-  const headers = ['Date', 'Amount', 'Account', 'Category', 'Sub-category', 'Remarks', 'Type'];
-  const rows = data.map(t => [
+  const headers = ['Date','Amount','Account','Category','Sub-category','Remarks','Type'];
+  const rows    = data.map(t => [
     formatDate(t.date), t.amount.toFixed(2), t.account,
     t.category, t.subcategory || '', t.description || '', t.type
   ]);
 
-  const csv = [headers, ...rows]
-    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const csv  = [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
   a.download = `finance_${document.getElementById('exportStart').value}_to_${document.getElementById('exportEnd').value}.csv`;
   a.click();
 }
@@ -489,7 +491,7 @@ function exportCSV() {
 function loadSheetUrl() {
   document.getElementById('sheetUrl').value = localStorage.getItem('sheetUrl') || '';
 }
-document.getElementById('sheetUrl').addEventListener('change', function () {
+document.getElementById('sheetUrl').addEventListener('change', function() {
   localStorage.setItem('sheetUrl', this.value.trim());
 });
 

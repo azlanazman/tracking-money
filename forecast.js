@@ -40,6 +40,8 @@ function init() {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
     setStatus('connecting', 'Loading...');
+    PAY_PERIOD.init(db);
+    PAY_PERIOD.onChange(() => renderAll());
 
     // Load goals
     db.collection('goals').doc('list').get().then(doc => {
@@ -66,18 +68,21 @@ function init() {
   }
 }
 
-// ── Get last 3 months prefixes (excluding current month) ──
+// ── Get last 3 pay periods (excluding current) ──
 function getLast3Months() {
-  return [-3, -2, -1].map(o => getMonthPrefix(o));
+  return PAY_PERIOD.lastNPeriods(4).slice(1); // skip current, take 3 previous
 }
 
-// ── Compute monthly totals for a given type across a list of month prefixes ──
-function monthlyTotals(type, months) {
-  return months.map(prefix =>
-    transactions
-      .filter(t => t.type === type && t.date && t.date.startsWith(prefix))
-      .reduce((s, t) => s + (t.amount || 0), 0)
-  );
+// ── Compute totals for a given type across a list of period objects ──
+function monthlyTotals(type, periods) {
+  return periods.map(period => {
+    const p = typeof period === 'string'
+      ? { start: period + '-01', end: period + '-31' }
+      : period;
+    return transactions
+      .filter(t => t.type === type && t.date && t.date >= p.start && t.date <= p.end)
+      .reduce((s, t) => s + (t.amount || 0), 0);
+  });
 }
 
 // ── Average of an array ──
@@ -232,9 +237,9 @@ async function saveGoals() {
 
 // ── Forecast chart & summary ──
 function renderForecast() {
-  const past3   = getLast3Months();
-  const next3   = [0, 1, 2].map(o => getMonthPrefix(o));
-  const allMonths = [...past3, ...next3];
+  const past3     = getLast3Months();
+  const next3     = PAY_PERIOD.lastNPeriods(3).reverse(); // current + 2 future
+  const allMonths = [...past3, ...next3].reverse();
 
   const avgInc = avg(monthlyTotals('income',  past3));
   const avgExp = avg(monthlyTotals('expense', past3));
@@ -270,7 +275,11 @@ function renderForecast() {
   const forecastExpenses = next3.map(() => avgExp);
   const forecastSavings  = next3.map(() => totalGoalSavings || avgSav);
 
-  const labels = allMonths.map(monthLabel);
+  const labels = allMonths.map(p => {
+    if (typeof p === 'string') return monthLabel(p);
+    const parts = p.label.split(' – ');
+    return parts[1] || p.label; // show end date as label
+  });
 
   if (forecastChart) { forecastChart.destroy(); forecastChart = null; }
 

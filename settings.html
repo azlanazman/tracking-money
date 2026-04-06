@@ -12,7 +12,7 @@
   <header>
     <div class="header-inner">
       <h1>Settings</h1>
-      <p class="subtitle">Accounts · Categories · Sub-categories</p>
+      <p class="subtitle">Pay Period · Accounts · Categories</p>
     </div>
   </header>
 
@@ -80,6 +80,58 @@
       </div>
     </section>
 
+    <!-- ── Pay Period ── -->
+    <section class="settings-section">
+      <h2>Pay Period</h2>
+      <p class="settings-hint">Set your default salary day. Your spending periods will be measured from this day each month — e.g. day 25 means 25 Feb → 24 Mar counts as "March".</p>
+
+      <div class="pay-period-default">
+        <label class="pp-label">Default salary day (each month)</label>
+        <div class="pp-day-row">
+          <input type="number" id="defaultDay" min="1" max="28" value="25" style="width:80px"/>
+          <span class="pp-hint">Day 1–28 (use max 28 to avoid month-end issues)</span>
+        </div>
+      </div>
+
+      <div class="pp-divider"></div>
+
+      <div class="pay-period-overrides">
+        <p class="pp-label">Monthly overrides <span class="pp-optional">(for when salary arrives early or late)</span></p>
+        <p class="settings-hint" style="margin-top:4px">If your salary arrives on a different date for a specific month, set it here. This overrides the default for that period only.</p>
+        <div id="overrideList"></div>
+        <div class="add-row pp-add-row">
+          <div class="pp-add-group">
+            <label class="pp-sublabel">Period month</label>
+            <select id="overrideMonth">
+              <option value="01">January</option><option value="02">February</option>
+              <option value="03">March</option><option value="04">April</option>
+              <option value="05">May</option><option value="06">June</option>
+              <option value="07">July</option><option value="08">August</option>
+              <option value="09">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+          <div class="pp-add-group">
+            <label class="pp-sublabel">Period year</label>
+            <select id="overrideYear"></select>
+          </div>
+          <div class="pp-add-group">
+            <label class="pp-sublabel">Actual start date</label>
+            <input type="date" id="overrideDate"/>
+          </div>
+          <button onclick="addOverride()" style="align-self:flex-end">+ Add</button>
+        </div>
+      </div>
+
+      <div class="pp-divider"></div>
+
+      <div class="pp-preview">
+        <p class="pp-label">Current period preview</p>
+        <div id="ppPreview" class="pp-preview-box">—</div>
+      </div>
+
+    </section>
+
     <!-- Save button -->
     <div class="save-bar">
       <button class="save-btn" onclick="saveSettings()">Save All Changes</button>
@@ -91,6 +143,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="payperiod.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>
