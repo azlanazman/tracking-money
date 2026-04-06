@@ -1,129 +1,810 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Finance Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
-  <style>
-  :root {
-    --surface:#fbf9f5;--surface-low:#f5f3ef;--surface-container:#edecea;
-    --surface-high:#e4e2de;--surface-lowest:#ffffff;--primary:#6f4627;
-    --primary-container:#8b5e3c;--secondary:#b8922a;--secondary-dim:#c9a84c;
-    --secondary-fixed:#f0d9a0;--on-surface:#1b1c1a;--on-surface-variant:#51443c;
-    --on-secondary-fixed:#3d2e0a;--outline-variant:#d5c3b8;--error:#ba1a1a;
-    --error-surface:#fdf0f0;--success:#2d6a4f;--success-surface:#f0f7f4;
-    --btn-gradient:linear-gradient(135deg,#6f4627 0%,#8b5e3c 100%);
-    --ambient-shadow:0 8px 40px rgba(27,28,26,0.05);
-    --ambient-shadow-lg:0 16px 56px rgba(27,28,26,0.07);
-    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;
-  }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Aureus — Private Wealth Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="payperiod.js"></script>
+<script id="tailwind-config">
+tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface":"#fbf9f5","surface-dim":"#dbdad6","primary-container":"#8b5e3c","secondary-fixed":"#ffdea5","secondary-container":"#fed488","inverse-surface":"#30312e","on-primary":"#ffffff","outline-variant":"#d5c3b8","surface-variant":"#e4e2de","on-background":"#1b1c1a","on-surface-variant":"#51443c","on-primary-fixed-variant":"#653d1e","inverse-primary":"#f4bb92","on-secondary":"#ffffff","secondary":"#775a19","on-primary-container":"#ffe3d1","error":"#ba1a1a","surface-container-low":"#f5f3ef","primary-fixed-dim":"#f4bb92","surface-container-lowest":"#ffffff","surface-container":"#efeeea","on-secondary-fixed-variant":"#5d4201","background":"#fbf9f5","primary-fixed":"#ffdcc5","outline":"#83746b","error-container":"#ffdad6","on-surface":"#1b1c1a","on-error-container":"#93000a","surface-container-high":"#eae8e4","surface-bright":"#fbf9f5","on-error":"#ffffff","on-secondary-fixed":"#261900","secondary-fixed-dim":"#e9c176","on-secondary-container":"#785a1a","on-primary-fixed":"#301400","primary":"#6f4627","surface-container-highest":"#e4e2de","tertiary-fixed-dim":"#e5beb5","on-tertiary-fixed-variant":"#5c403a"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem","2xl":"1rem",full:"9999px"},fontFamily:{headline:["Manrope"],body:["Manrope"],label:["Manrope"]}}}}
+</script>
+<style>
+*{box-sizing:border-box}
+body{font-family:'Manrope',sans-serif}
+.msym{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;vertical-align:middle;line-height:1}
+.msym-fill{font-variation-settings:'FILL' 1,'wght' 300,'GRAD' 0,'opsz' 24}
+.lux-shadow{box-shadow:32px 0 48px -24px rgba(27,28,26,.06)}
+.glass-nav{background:rgba(245,243,239,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.glass-hdr{background:rgba(251,249,245,.9);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.amb{box-shadow:0 12px 40px rgba(27,28,26,.05)}
+.amb-lg{box-shadow:0 20px 56px rgba(27,28,26,.07)}
+.screen{display:none}.screen.active{display:block}
+.nav-active{color:#8B5E3C!important;background:rgba(228,226,222,.5)!important;border-right:2px solid #8B5E3C!important;font-weight:700!important;transform:translateX(2px)}
+.cat-active{background:#e9c176!important;box-shadow:0 0 0 2px #775a19,0 0 0 5px #fbf9f5}
+.cat-active .cat-icon{color:#261900!important}
+.btrack{height:4px;background:#efeeea;border-radius:2px;overflow:hidden}
+.bfill{height:100%;border-radius:2px;transition:width .8s cubic-bezier(.25,.46,.45,.94)}
+.txrow:hover{background:#f5f3ef}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:#d5c3b8;border-radius:2px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .3s ease forwards}
+@media(max-width:767px){#sidebar{display:none!important}#mob-nav{display:flex!important}#main{margin-left:0!important}}
+</style>
 </head>
-<body>
-  <header>
-    <div class="header-inner">
-      <h1>My Finance Tracker</h1>
-      <p class="subtitle">Track · Categorise · Monitor</p>
-      <div class="header-balance">
-        <div class="header-balance-label">Net Balance</div>
-        <div class="header-balance-amount" id="headerBalance">RM 0.00</div>
-        <div class="header-balance-sub" id="headerBalanceSub">Loading...</div>
-      </div>
-    </div>
-  </header>
-  <nav class="top-nav">
-    <div class="top-nav-inner">
-      <span id="dbStatus" class="db-status connecting">Connecting...</span>
-      <div class="top-nav-tabs">
-        <a href="index.html" class="top-nav-tab active">Tracker</a>
-        <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
-        <a href="charts.html" class="top-nav-tab">Charts</a>
-        <a href="forecast.html" class="top-nav-tab">Forecast</a>
-        <a href="settings.html" class="top-nav-tab">Settings</a>
-      </div>
-    </div>
+<body class="bg-surface text-on-surface min-h-screen selection:bg-secondary-container">
+
+<!-- SIDEBAR -->
+<aside id="sidebar" class="h-screen w-64 left-0 top-0 fixed glass-nav lux-shadow flex flex-col py-10 px-6 z-50">
+  <div class="mb-10 px-2">
+    <h1 class="text-2xl font-black text-primary tracking-tighter">Aureus</h1>
+    <p class="uppercase tracking-widest text-[9px] font-bold text-primary-container opacity-80 mt-0.5">Private Wealth</p>
+  </div>
+  <nav class="flex-1 space-y-1" id="sidebar-nav">
+    <a onclick="nav('dashboard')" id="snav-dashboard" class="nav-active flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-90 transition-all hover:bg-surface-container-high">
+      <span class="material-symbols-outlined msym text-[20px]">dashboard</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Dashboard</span>
+    </a>
+    <a onclick="nav('transactions')" id="snav-transactions" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">receipt_long</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Transactions</span>
+    </a>
+    <a onclick="nav('entry')" id="snav-entry" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">add_circle</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Add Entry</span>
+    </a>
+    <a onclick="nav('budgets')" id="snav-budgets" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">account_balance_wallet</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Budgets</span>
+    </a>
+    <a onclick="nav('insights')" id="snav-insights" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">query_stats</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Insights</span>
+    </a>
+    <a onclick="nav('forecast')" id="snav-forecast" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">auto_graph</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Forecast</span>
+    </a>
+    <a onclick="nav('settings')" id="snav-settings" class="flex items-center gap-3.5 py-3 px-4 rounded-lg cursor-pointer select-none text-on-surface-variant opacity-60 transition-all hover:bg-surface-container-high hover:opacity-90">
+      <span class="material-symbols-outlined msym text-[20px]">settings</span>
+      <span class="uppercase tracking-widest text-[10px] font-bold">Settings</span>
+    </a>
   </nav>
-  <section class="summary">
-    <div class="card green"><p class="card-label">Total Income</p><p class="card-amount" id="totalIncome">RM 0.00</p></div>
-    <div class="card red"><p class="card-label">Total Expenses</p><p class="card-amount" id="totalExpenses">RM 0.00</p></div>
-    <div class="card blue"><p class="card-label">Balance</p><p class="card-amount" id="balance">RM 0.00</p></div>
-    <div class="card teal"><p class="card-label">Savings</p><p class="card-amount" id="totalSavings">RM 0.00</p></div>
-  </section>
-  <section class="form-section">
-    <h2 id="formTitle">Add Transaction</h2>
-    <div class="form-grid">
-      <div class="form-group"><label>Date</label><input type="date" id="date" /></div>
-      <div class="form-group"><label>Amount (RM)</label><input type="number" id="amount" placeholder="0.00" min="0" step="0.01" /></div>
-      <div class="form-group"><label>Account</label><select id="account"><option value="">Loading...</option></select></div>
-      <div class="form-group"><label>Type</label><select id="type" onchange="updateCategories()"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></div>
-      <div class="form-group"><label>Category</label><select id="category" onchange="updateSubcategories()"></select></div>
-      <div class="form-group"><label>Sub-category</label><select id="subcategory"></select></div>
-      <div class="form-group form-group-full"><label>Remarks</label><input type="text" id="description" placeholder="Optional note..." /></div>
-      <div class="form-group form-group-btn" style="display:flex;gap:10px;align-items:flex-end">
-        <button id="submitBtn" onclick="addTransaction()" style="flex:1">+ Add Transaction</button>
-        <button id="cancelEditBtn" onclick="cancelEdit()" style="display:none;flex:0 0 auto;padding:12px 18px;background:var(--surface-container);color:var(--on-surface-variant);border:none;border-radius:var(--radius-md);font-size:13px;font-family:Manrope,sans-serif;font-weight:600;cursor:pointer;margin-top:20px;letter-spacing:0.02em;">Cancel</button>
+  <div class="mt-auto pt-6 border-t border-outline-variant/10">
+    <button onclick="nav('entry')" class="w-full mb-5 bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 px-4 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity amb">
+      + Add Transaction
+    </button>
+    <div class="flex items-center gap-2 px-2">
+      <div id="db-dot" class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
+      <span id="db-lbl" class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 truncate">Connecting…</span>
+    </div>
+  </div>
+</aside>
+
+<!-- TOP BAR -->
+<header class="sticky top-0 z-40 glass-hdr flex justify-between items-center w-full px-6 py-4 md:pl-72 border-b border-outline-variant/10">
+  <div class="flex items-center gap-4">
+    <h2 id="pg-title" class="text-base font-bold tracking-tighter text-on-surface">Overview</h2>
+    <span class="hidden md:block text-on-surface-variant opacity-30">/</span>
+    <span id="pg-bc" class="hidden md:block text-[11px] font-bold uppercase tracking-widest text-primary opacity-70">Dashboard</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-all">
+      <span class="material-symbols-outlined msym text-[20px]">notifications</span>
+    </button>
+    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary text-[11px] font-black">A</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main id="main" class="md:ml-64 min-h-screen pb-24 md:pb-8">
+
+<!-- ── DASHBOARD ── -->
+<div id="sc-dashboard" class="screen active p-8 lg:p-12 max-w-7xl">
+  <section class="mb-14">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+      <div class="lg:col-span-7">
+        <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-3">Total Liquidity · <span id="d-period" class="opacity-50">This Period</span></p>
+        <h3 id="d-bal" class="text-6xl md:text-7xl font-bold tracking-tighter text-on-surface mb-5">RM 0.00</h3>
+        <div class="flex flex-wrap gap-2.5">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container rounded-full text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">
+            <span class="material-symbols-outlined msym text-[14px] text-secondary">trending_up</span>Income: <span id="d-inc">RM 0</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container rounded-full text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">
+            <span class="material-symbols-outlined msym text-[14px] text-error">trending_down</span>Expenses: <span id="d-exp">RM 0</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container rounded-full text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">
+            <span class="material-symbols-outlined msym text-[14px]" style="color:#3a6ea5">savings</span>Saved: <span id="d-sav">RM 0</span>
+          </span>
+        </div>
+      </div>
+      <div class="lg:col-span-5 grid grid-cols-2 gap-4">
+        <div class="p-6 bg-surface-container-low rounded-xl">
+          <p class="uppercase tracking-widest text-[10px] font-bold text-on-surface-variant opacity-60 mb-2">Income</p>
+          <p id="d-inc2" class="text-2xl font-bold text-on-surface tracking-tight">RM 0</p>
+        </div>
+        <div class="p-6 bg-surface-container-low rounded-xl">
+          <p class="uppercase tracking-widest text-[10px] font-bold text-on-surface-variant opacity-60 mb-2">Expenses</p>
+          <p id="d-exp2" class="text-2xl font-bold text-on-surface tracking-tight">RM 0</p>
+        </div>
       </div>
     </div>
   </section>
-  <section class="export-section">
-    <h2>Export to Google Sheets</h2>
-    <div class="export-setup"><div class="form-group"><label>Your Google Sheet Web App URL</label><input type="text" id="sheetUrl" placeholder="Paste your Apps Script URL here..." /></div></div>
-    <div class="export-row">
-      <div class="form-group"><label>Start Date</label><input type="date" id="exportStart" /></div>
-      <div class="form-group"><label>End Date</label><input type="date" id="exportEnd" /></div>
-      <div class="form-group"><label>Type Filter</label><select id="exportType"><option value="all">All Types</option><option value="expense">Expenses only</option><option value="income">Income only</option><option value="savings">Savings only</option></select></div>
-      <div class="form-group form-group-btn"><button class="btn-export" onclick="exportToSheets()">Export to Google Sheets</button></div>
-      <div class="form-group form-group-btn"><button class="btn-csv" onclick="exportCSV()">Download as CSV</button></div>
-    </div>
-    <p id="exportStatus" class="export-status"></p>
-    <div class="setup-guide">
-      <p class="guide-title">How to set up Google Sheets export (one time only)</p>
-      <ol>
-        <li>Open <strong>Google Sheets</strong> and create a new spreadsheet</li>
-        <li>Click <strong>Extensions → Apps Script</strong></li>
-        <li>Delete everything and paste the code from <strong>sheets-script.gs</strong></li>
-        <li>Click <strong>Deploy → New deployment → Web app</strong></li>
-        <li>Set <em>Execute as</em>: <strong>Me</strong> · <em>Who has access</em>: <strong>Anyone</strong></li>
-        <li>Click <strong>Deploy</strong>, copy the Web App URL, and paste it above</li>
-      </ol>
-    </div>
-  </section>
-  <section class="tx-section">
-    <div class="tx-tabs">
-      <button class="tx-tab active" onclick="switchTab(this,'all')">All</button>
-      <button class="tx-tab" onclick="switchTab(this,'expense')">Expenses</button>
-      <button class="tx-tab" onclick="switchTab(this,'income')">Income</button>
-      <button class="tx-tab" onclick="switchTab(this,'savings')">Savings</button>
-    </div>
-    <div class="tx-filters">
-      <input type="hidden" id="filterType" value="all" />
-      <select id="filterAccount" onchange="resetPage();renderTransactions()"><option value="all">All Accounts</option></select>
-      <select id="filterCategory" onchange="resetPage();renderTransactions()"><option value="all">All Categories</option></select>
-      <select id="filterMonth" onchange="resetPage();renderTransactions()">
-        <option value="all">All Months</option>
-        <option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option>
-        <option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option>
-        <option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option>
-      </select>
-      <button class="btn-clear" onclick="clearAll()">Clear All</button>
-    </div>
-    <div id="transactionList"><p class="empty-msg">Loading transactions...</p></div>
-    <div class="tx-pagination">
-      <div class="page-size-row">
-        <span class="page-info" id="pageInfo">Showing 0 – 0 of 0</span>
-        <div class="page-size-picker"><span>Show</span><select id="pageSize" onchange="resetPage();renderTransactions()"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select><span>per page</span></div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <section class="lg:col-span-8">
+      <div class="flex justify-between items-end mb-7">
+        <h4 class="text-2xl font-bold tracking-tight">Recent Ledger</h4>
+        <a onclick="nav('transactions')" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline underline-offset-4 cursor-pointer">View All Activity</a>
       </div>
-      <div class="page-nav-row" id="pageNavRow"></div>
+      <div id="d-ledger" class="space-y-3"><div class="p-6 text-center text-sm text-on-surface-variant opacity-30">Loading…</div></div>
+    </section>
+    <aside class="lg:col-span-4 space-y-5">
+      <div class="p-7 bg-primary rounded-xl text-on-primary relative overflow-hidden amb">
+        <div class="absolute -top-10 -right-10 w-36 h-36 bg-primary-container rounded-full opacity-25 blur-2xl pointer-events-none"></div>
+        <div class="relative z-10">
+          <p class="uppercase tracking-widest text-[10px] font-bold opacity-50 mb-3">Net Growth Trend</p>
+          <div id="d-bars" class="h-24 flex items-end gap-1 mb-4"></div>
+          <p id="d-growth" class="text-xs font-light opacity-75 leading-relaxed">Loading…</p>
+        </div>
+      </div>
+      <div class="p-6 bg-surface-container-low rounded-xl">
+        <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-5">Top Allocations</h4>
+        <ul id="d-alloc" class="space-y-3"><li class="text-sm text-on-surface-variant opacity-30">—</li></ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ── TRANSACTIONS ── -->
+<div id="sc-transactions" class="screen p-8 lg:p-12 max-w-5xl">
+  <div class="flex justify-between items-end mb-10">
+    <div>
+      <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">Complete Record</p>
+      <h3 class="text-3xl font-bold tracking-tight">Transaction Ledger</h3>
     </div>
-  </section>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="payperiod.js"></script>
-  <script src="app.js"></script>
+    <button onclick="nav('entry')" class="bg-gradient-to-br from-primary to-primary-container text-on-primary py-2.5 px-5 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity">+ New Entry</button>
+  </div>
+  <div class="flex flex-wrap gap-3 mb-7 p-5 bg-surface-container-low rounded-xl">
+    <select id="tf-type" onchange="renderTx()" class="bg-surface-container border-none rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-on-surface-variant outline-none focus:ring-1 focus:ring-secondary-fixed-dim">
+      <option value="all">All Types</option><option value="expense">Expenses</option><option value="income">Income</option><option value="savings">Savings</option>
+    </select>
+    <select id="tf-cat" onchange="renderTx()" class="bg-surface-container border-none rounded-lg px-3 py-2 text-xs font-bold text-on-surface-variant outline-none focus:ring-1 focus:ring-secondary-fixed-dim">
+      <option value="all">All Categories</option>
+    </select>
+    <select id="tf-month" onchange="renderTx()" class="bg-surface-container border-none rounded-lg px-3 py-2 text-xs font-bold text-on-surface-variant outline-none focus:ring-1 focus:ring-secondary-fixed-dim">
+      <option value="all">All Months</option>
+      <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option><option value="04">Apr</option>
+      <option value="05">May</option><option value="06">Jun</option><option value="07">Jul</option><option value="08">Aug</option>
+      <option value="09">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+    </select>
+    <span id="tf-count" class="ml-auto self-center text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-30"></span>
+  </div>
+  <div id="tx-list" class="space-y-2.5"><div class="p-8 text-center text-sm text-on-surface-variant opacity-30">Loading…</div></div>
+  <div class="flex justify-between items-center mt-5">
+    <span id="tx-info" class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-30"></span>
+    <div id="tx-pages" class="flex gap-1.5"></div>
+  </div>
+</div>
+
+<!-- ── ENTRY ── -->
+<div id="sc-entry" class="screen p-8 lg:p-16 max-w-2xl mx-auto">
+  <div class="mb-10">
+    <p id="e-mode" class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">New Entry</p>
+    <h3 class="text-3xl font-bold tracking-tight">Log a Transaction</h3>
+  </div>
+  <div class="flex gap-1.5 mb-10 bg-surface-container-low p-1.5 rounded-xl w-fit">
+    <button onclick="setType('expense')" id="tb-expense" class="px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-gradient-to-br from-primary to-primary-container text-on-primary">Expense</button>
+    <button onclick="setType('income')"  id="tb-income"  class="px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container">Income</button>
+    <button onclick="setType('savings')" id="tb-savings" class="px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container">Savings</button>
+  </div>
+  <div class="mb-10 space-y-2">
+    <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Transaction Amount</label>
+    <div class="flex items-center gap-2">
+      <span class="text-4xl font-light text-outline-variant select-none">RM</span>
+      <input id="e-amt" type="number" min="0" step="0.01" placeholder="0.00"
+        class="flex-1 bg-transparent border-none focus:ring-0 text-6xl md:text-7xl font-extrabold tracking-tighter placeholder:text-surface-container-highest text-on-surface outline-none"/>
+    </div>
+    <div class="h-px bg-gradient-to-r from-secondary-fixed-dim/60 via-outline-variant/20 to-transparent mt-1"></div>
+  </div>
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="space-y-1.5">
+      <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Date</label>
+      <div class="bg-surface-container-low rounded-xl px-3 py-2.5 flex items-center gap-2">
+        <span class="material-symbols-outlined msym text-primary text-[16px]">calendar_today</span>
+        <input id="e-date" type="date" class="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-on-surface-variant outline-none"/>
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Account</label>
+      <div class="bg-surface-container-low rounded-xl px-3 py-2.5 flex items-center gap-2">
+        <span class="material-symbols-outlined msym text-primary text-[16px]">credit_card</span>
+        <select id="e-acct" class="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-on-surface-variant outline-none"></select>
+      </div>
+    </div>
+    <div class="space-y-1.5">
+      <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Sub-category</label>
+      <div class="bg-surface-container-low rounded-xl px-3 py-2.5 flex items-center gap-2">
+        <span class="material-symbols-outlined msym text-primary text-[16px]">label</span>
+        <select id="e-sub" class="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-on-surface-variant outline-none"></select>
+      </div>
+    </div>
+  </div>
+  <div class="space-y-4 mb-8">
+    <div class="flex justify-between items-center">
+      <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Assign Category</label>
+      <span id="e-cat-sel" class="text-[10px] font-bold text-secondary uppercase tracking-widest"></span>
+    </div>
+    <div id="e-cat-grid" class="grid grid-cols-4 md:grid-cols-6 gap-2.5"></div>
+  </div>
+  <div class="space-y-1.5 mb-10">
+    <label class="uppercase tracking-widest text-[10px] font-bold text-on-secondary-fixed-variant opacity-60">Memo / Note</label>
+    <div class="bg-surface-container-low rounded-xl px-3 py-2.5 flex items-center gap-2">
+      <span class="material-symbols-outlined msym text-primary text-[16px]">edit_note</span>
+      <input id="e-memo" type="text" placeholder="What was this for?" class="bg-transparent border-none focus:ring-0 text-sm font-medium w-full placeholder:text-outline text-on-surface-variant outline-none"/>
+    </div>
+  </div>
+  <button id="e-submit" onclick="submitEntry()" class="w-full py-5 rounded-xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold tracking-widest uppercase text-sm hover:opacity-95 active:scale-[.99] transition-all amb mb-3">Log Entry</button>
+  <button id="e-cancel" onclick="cancelEdit()" style="display:none" class="w-full py-4 rounded-xl bg-surface-container text-on-surface-variant font-bold tracking-widest uppercase text-sm hover:bg-surface-container-high transition-all">Cancel Edit</button>
+  <p class="text-center mt-5 text-[9px] font-bold uppercase tracking-widest text-outline">Aureus Private Wealth · Secured & Encrypted</p>
+</div>
+
+<!-- ── BUDGETS ── -->
+<div id="sc-budgets" class="screen p-8 lg:p-12 max-w-5xl">
+  <div class="flex justify-between items-end mb-10">
+    <div>
+      <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">Allocation Control</p>
+      <h3 class="text-3xl font-bold tracking-tight">Budget Monitor</h3>
+    </div>
+    <p id="b-period" class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40"></p>
+  </div>
+  <div class="grid grid-cols-3 gap-4 mb-10">
+    <div class="p-6 bg-surface-container-low rounded-xl"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-2">Spent</p><p id="b-spent" class="text-2xl font-bold tracking-tight text-error">RM 0</p></div>
+    <div class="p-6 bg-surface-container-low rounded-xl"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-2">Budgeted</p><p id="b-total" class="text-2xl font-bold tracking-tight">RM 0</p></div>
+    <div class="p-6 bg-surface-container-low rounded-xl"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-2">Remaining</p><p id="b-rem" class="text-2xl font-bold tracking-tight">RM 0</p></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-5">Set Allocations</h4>
+      <div id="b-form" class="space-y-2.5 mb-5"><div class="text-sm text-on-surface-variant opacity-30 text-center py-4">Loading…</div></div>
+      <button onclick="saveBudgets()" class="w-full py-3 rounded-lg bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity">Save Allocations</button>
+      <p id="b-msg" class="text-center mt-3 text-[10px] font-bold text-secondary uppercase tracking-widest h-4"></p>
+    </div>
+    <div>
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-4">Period Progress</h4>
+      <div id="b-prog" class="space-y-3"><div class="p-8 text-center text-sm text-on-surface-variant opacity-30">Set budgets to see progress</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── INSIGHTS ── -->
+<div id="sc-insights" class="screen p-8 lg:p-12 max-w-6xl">
+  <div class="flex flex-wrap justify-between items-end gap-4 mb-10">
+    <div>
+      <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">Data Intelligence</p>
+      <h3 class="text-3xl font-bold tracking-tight">Spending Insights</h3>
+    </div>
+    <div class="flex gap-3 flex-wrap">
+      <div class="space-y-1">
+        <p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40">Period</p>
+        <select id="ch-period" onchange="applyChartPeriod()" class="bg-surface-container-low border-none rounded-lg px-3 py-2 text-xs font-bold text-on-surface-variant outline-none focus:ring-0">
+          <option value="this_period">This Period</option><option value="last_period">Last Period</option><option value="this_month">This Month</option><option value="last_30">Last 30 Days</option><option value="last_90">Last 90 Days</option><option value="all">All Time</option>
+        </select>
+      </div>
+      <div class="space-y-1">
+        <p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40">Type</p>
+        <select id="ch-type" onchange="renderInsights()" class="bg-surface-container-low border-none rounded-lg px-3 py-2 text-xs font-bold text-on-surface-variant outline-none focus:ring-0">
+          <option value="expense">Expenses</option><option value="income">Income</option><option value="savings">Savings</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+    <div class="p-5 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-2">Expenses</p><p id="i-exp" class="text-xl font-bold tracking-tight text-error">RM 0</p></div>
+    <div class="p-5 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-2">Income</p><p id="i-inc" class="text-xl font-bold tracking-tight" style="color:#2d6a4f">RM 0</p></div>
+    <div class="p-5 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-2">Savings</p><p id="i-sav" class="text-xl font-bold tracking-tight text-primary">RM 0</p></div>
+    <div class="p-5 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-2">Top Category</p><p id="i-top" class="text-sm font-bold tracking-tight text-secondary">—</p></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-7 mb-7">
+    <div class="bg-surface-container-lowest p-7 rounded-2xl amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-6">Monthly Breakdown</h4>
+      <div class="relative" style="height:250px"><canvas id="i-bar"></canvas></div>
+    </div>
+    <div class="bg-surface-container-lowest p-7 rounded-2xl amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-6">Category Trends</h4>
+      <div class="relative" style="height:250px"><canvas id="i-line"></canvas></div>
+    </div>
+  </div>
+  <div class="bg-surface-container-lowest p-7 rounded-2xl amb">
+    <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-6">Allocation Breakdown</h4>
+    <div id="i-table"></div>
+  </div>
+</div>
+
+<!-- ── FORECAST ── -->
+<div id="sc-forecast" class="screen p-8 lg:p-12 max-w-6xl">
+  <div class="flex flex-wrap justify-between items-end gap-4 mb-12">
+    <div>
+      <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">Strategic Vision</p>
+      <h3 class="text-3xl font-bold tracking-tight">Financial Forecast</h3>
+      <p class="text-sm text-on-surface-variant opacity-50 mt-1">Trajectory analysis based on your last 3 pay periods</p>
+    </div>
+    <span class="px-4 py-2 bg-secondary-fixed-dim/50 text-on-secondary-fixed-variant rounded-full text-[10px] font-bold tracking-widest uppercase">Active: Wealth Growth</span>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+    <div class="p-6 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Avg Income</p><p id="f-inc" class="text-2xl font-bold tracking-tight">RM 0</p><p class="text-[9px] text-on-surface-variant opacity-30 mt-1">per period</p></div>
+    <div class="p-6 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Avg Expenses</p><p id="f-exp" class="text-2xl font-bold tracking-tight text-error">RM 0</p><p class="text-[9px] text-on-surface-variant opacity-30 mt-1">per period</p></div>
+    <div class="p-6 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Avg Surplus</p><p id="f-surp" class="text-2xl font-bold tracking-tight">RM 0</p><p class="text-[9px] text-on-surface-variant opacity-30 mt-1">per period</p></div>
+    <div class="p-6 bg-surface-container-lowest rounded-xl amb"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Goals On Track</p><p id="f-goals" class="text-2xl font-bold tracking-tight">— / —</p></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 mb-7">
+    <div class="lg:col-span-8 bg-surface-container-lowest p-7 rounded-2xl amb">
+      <h4 class="text-lg font-bold tracking-tight mb-1">Projected Cash Flow</h4>
+      <p class="text-xs text-on-surface-variant opacity-40 mb-7">Solid bars = actual · Faded = forecast</p>
+      <div class="relative" style="height:270px"><canvas id="f-chart"></canvas></div>
+    </div>
+    <div class="lg:col-span-4">
+      <div class="bg-surface-container-lowest p-6 rounded-xl amb h-full">
+        <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-4">Category Forecast</h4>
+        <div id="f-cats" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bg-primary rounded-2xl p-8 text-on-primary relative overflow-hidden amb-lg">
+    <div class="absolute -top-14 -right-14 w-48 h-48 bg-primary-container rounded-full opacity-20 blur-3xl pointer-events-none"></div>
+    <div class="relative z-10">
+      <p class="uppercase tracking-widest text-[10px] font-bold opacity-50 mb-4">Strategic Opportunities</p>
+      <div id="f-ops" class="space-y-2.5 text-sm font-light opacity-85 leading-relaxed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div id="sc-settings" class="screen p-8 lg:p-12 max-w-3xl">
+  <div class="mb-10">
+    <p class="uppercase tracking-widest text-[10px] font-bold text-secondary mb-2">Configuration</p>
+    <h3 class="text-3xl font-bold tracking-tight">Settings</h3>
+  </div>
+  <div class="space-y-5">
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-5">Pay Period</h4>
+      <p class="text-sm text-on-surface-variant opacity-60 mb-5 leading-relaxed">Your salary day sets the start of each tracking period. Day 25 = 25 Feb → 24 Mar is "March".</p>
+      <div class="flex items-center gap-5">
+        <div class="space-y-2">
+          <label class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40">Salary Day</label>
+          <input id="s-day" type="number" min="1" max="28" value="25" class="w-20 text-center bg-surface-container-low border-none rounded-xl px-4 py-3 text-lg font-bold text-on-surface outline-none focus:ring-2 focus:ring-secondary-fixed-dim"/>
+        </div>
+        <div class="flex-1 px-5 py-3 bg-secondary-fixed/40 rounded-xl text-sm font-bold text-on-secondary-fixed-variant" id="s-prev">—</div>
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-5">Accounts</h4>
+      <div id="s-accts" class="flex flex-wrap gap-2 mb-5 min-h-8"></div>
+      <div class="flex gap-3">
+        <input id="s-nacct" type="text" placeholder="e.g. Maybank, TNG…" maxlength="30" class="flex-1 bg-surface-container-low border-none rounded-lg px-4 py-2.5 text-sm font-medium text-on-surface outline-none focus:ring-2 focus:ring-secondary-fixed-dim placeholder:text-outline"/>
+        <button onclick="addAcct()" class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg text-[10px] font-bold uppercase tracking-widest hover:opacity-90">Add</button>
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb">
+      <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-50 mb-5">Categories</h4>
+      <div class="flex gap-1 mb-5 bg-surface-container-low p-1 rounded-lg w-fit">
+        <button onclick="sCatTab('expense')" id="st-expense" class="px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-gradient-to-br from-primary to-primary-container text-on-primary">Expense</button>
+        <button onclick="sCatTab('income')" id="st-income" class="px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container">Income</button>
+        <button onclick="sCatTab('savings')" id="st-savings" class="px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container">Savings</button>
+      </div>
+      <div class="grid grid-cols-2 gap-5">
+        <div>
+          <p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Categories</p>
+          <div id="s-cats" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
+          <div class="flex gap-2">
+            <input id="s-ncat" type="text" placeholder="New category…" maxlength="30" class="flex-1 bg-surface-container-low border-none rounded-lg px-3 py-2 text-xs font-medium text-on-surface outline-none focus:ring-2 focus:ring-secondary-fixed-dim placeholder:text-outline"/>
+            <button onclick="addCat()" class="px-4 py-2 bg-surface-container text-primary rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container-high">Add</button>
+          </div>
+        </div>
+        <div>
+          <p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40 mb-3">Sub-cats of <span id="s-catsel" class="text-primary">—</span></p>
+          <div id="s-subs" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
+          <div id="s-subrow" class="flex gap-2" style="visibility:hidden">
+            <input id="s-nsub" type="text" placeholder="New sub-category…" maxlength="30" class="flex-1 bg-surface-container-low border-none rounded-lg px-3 py-2 text-xs font-medium text-on-surface outline-none focus:ring-2 focus:ring-secondary-fixed-dim placeholder:text-outline"/>
+            <button onclick="addSub()" class="px-4 py-2 bg-surface-container text-primary rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container-high">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 pt-1">
+      <button onclick="saveSettings()" class="px-10 py-3.5 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg font-bold text-[10px] uppercase tracking-widest hover:opacity-90 amb">Save All Changes</button>
+      <p id="s-msg" class="text-[10px] font-bold text-secondary uppercase tracking-widest"></p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- MOBILE NAV -->
+<nav id="mob-nav" style="display:none" class="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center py-3 px-4 z-50 border-t border-outline-variant/10">
+  <a onclick="nav('dashboard')" class="flex flex-col items-center gap-0.5 text-primary cursor-pointer"><span class="material-symbols-outlined msym text-[22px]">dashboard</span><span class="text-[7px] font-bold uppercase tracking-tighter">Dash</span></a>
+  <a onclick="nav('transactions')" class="flex flex-col items-center gap-0.5 text-on-surface-variant opacity-50 cursor-pointer"><span class="material-symbols-outlined msym text-[22px]">receipt_long</span><span class="text-[7px] font-bold uppercase tracking-tighter">Ledger</span></a>
+  <div class="relative -top-4">
+    <button onclick="nav('entry')" class="w-12 h-12 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-full flex items-center justify-center amb">
+      <span class="material-symbols-outlined msym">add</span>
+    </button>
+  </div>
+  <a onclick="nav('insights')" class="flex flex-col items-center gap-0.5 text-on-surface-variant opacity-50 cursor-pointer"><span class="material-symbols-outlined msym text-[22px]">query_stats</span><span class="text-[7px] font-bold uppercase tracking-tighter">Insights</span></a>
+  <a onclick="nav('forecast')" class="flex flex-col items-center gap-0.5 text-on-surface-variant opacity-50 cursor-pointer"><span class="material-symbols-outlined msym text-[22px]">auto_graph</span><span class="text-[7px] font-bold uppercase tracking-tighter">Forecast</span></a>
+</nav>
+
+<script>
+// ═══ STATE ═══════════════════════════════════════════════
+let db=null,txs=[],budgets={},goals=[];
+let curScr='dashboard',editId=null;
+let iBar=null,iLine=null,fChart=null;
+let txPg=1,txPS=20,chStart='',chEnd='';
+let eType='expense',eCat=null,sType='expense',sCat=null;
+
+let CATS={
+  expense:{Loan:['PTPTN','Emas'],Bills:['Unifi','Umobile','TNB','Air Selangor'],Takaful:[],Family:['Abah+Coway','Wife','Aidan'],CC:['Charge'],Subs:['Netflix','Sooka','Google One'],SPay:[],Car:[],Community:['Zakat','Sedekah'],Food:['Family','Work'],Toll:['Family','Work'],Parking:[],Fuel:['Fuel','Charge'],Medical:[],Misc:[]},
+  income:{Salary:[],Freelance:[],Bonus:[],Investment:[],Other:[]},
+  savings:{Saving:[]}
+};
+let ACCTS=['CIMB','Maybank','RHB','AEON','TNG','SETEL','SPay','Cash','Other'];
+
+const ICONS={Loan:'account_balance',Bills:'bolt',Takaful:'shield',Family:'family_restroom',CC:'credit_card',Subs:'subscriptions',SPay:'payments',Car:'directions_car',Community:'mosque',Food:'restaurant',Toll:'toll',Parking:'local_parking',Fuel:'local_gas_station',Medical:'medical_services',Misc:'category',Salary:'attach_money',Freelance:'work',Bonus:'card_giftcard',Investment:'trending_up',Saving:'savings',Other:'more_horiz'};
+const PAL=['#6f4627','#8b5e3c','#775a19','#e9c176','#3a6ea5','#2d6a4f','#ba1a1a','#664943','#51443c','#83746b','#b8922a','#805533'];
+const RM=v=>'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});
+const avg=arr=>{const nz=arr.filter(v=>v>0);return nz.length?nz.reduce((s,v)=>s+v,0)/nz.length:0};
+const TCLR={expense:'text-error',income:'text-[#2d6a4f]',savings:'text-primary'};
+
+// ═══ NAVIGATION ══════════════════════════════════════════
+const TITLES={dashboard:'Overview',transactions:'Transaction Ledger',entry:'Add Entry',budgets:'Budget Monitor',insights:'Spending Insights',forecast:'Financial Forecast',settings:'Settings'};
+const BCS={dashboard:'Dashboard',transactions:'Transactions',entry:'Add Entry',budgets:'Budgets',insights:'Insights',forecast:'Forecast',settings:'Settings'};
+
+function nav(scr){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('[id^="snav-"]').forEach(n=>{n.classList.remove('nav-active');n.className=n.className.replace(/opacity-\d+/,'opacity-60');});
+  const sc=document.getElementById('sc-'+scr); if(sc){sc.classList.add('active');sc.classList.add('fade-up');setTimeout(()=>sc.classList.remove('fade-up'),350);}
+  const sn=document.getElementById('snav-'+scr); if(sn){sn.classList.add('nav-active');}
+  document.getElementById('pg-title').textContent=TITLES[scr]||scr;
+  document.getElementById('pg-bc').textContent=BCS[scr]||scr;
+  curScr=scr;
+  if(scr==='entry'&&!editId) resetEntry();
+  if(scr==='insights') applyChartPeriod();
+  if(scr==='forecast') renderForecast();
+  if(scr==='budgets') renderBudgets();
+  if(scr==='dashboard') renderDashboard();
+  if(scr==='settings') renderSettings();
+  if(scr==='transactions') renderTx();
+  window.scrollTo(0,0);
+}
+
+// ═══ FIREBASE ════════════════════════════════════════════
+function initDB(){
+  try{
+    try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+    db=firebase.firestore();
+    setDB('connecting');
+    PAY_PERIOD.init(db);
+    PAY_PERIOD.onChange(()=>{renderDashboard();renderBudgets();});
+    db.collection('settings').doc('preferences').onSnapshot(doc=>{
+      if(doc.exists){const d=doc.data();if(d.categories)CATS=d.categories;if(d.accounts)ACCTS=d.accounts;}
+      refreshEntry();renderSettings();
+    });
+    db.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
+    db.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
+    db.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
+      txs=snap.docs.map(d=>({id:d.id,...d.data()}));
+      setDB('connected',txs.length+' records');
+      renderDashboard();renderTx();renderBudgets();
+    },()=>setDB('error'));
+  }catch(e){
+    setDB('error');
+    txs=JSON.parse(localStorage.getItem('financeTransactions'))||[];
+    renderDashboard();renderTx();
+  }
+}
+function setDB(st,msg=''){
+  const cl={connected:'bg-green-500',connecting:'bg-amber-400',error:'bg-red-400'};
+  document.getElementById('db-dot').className='w-2 h-2 rounded-full flex-shrink-0 '+cl[st];
+  document.getElementById('db-lbl').textContent=st==='connected'?msg:st;
+}
+
+// ═══ DASHBOARD ═══════════════════════════════════════════
+function renderDashboard(){
+  const p=PAY_PERIOD.currentPeriod();
+  const inP=PAY_PERIOD.filterToPeriod(txs,p);
+  const inc=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=inP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const sav=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const bal=inc-exp-sav;
+  document.getElementById('d-bal').textContent=RM(bal);
+  document.getElementById('d-inc').textContent=RM(inc);
+  document.getElementById('d-exp').textContent=RM(exp);
+  document.getElementById('d-sav').textContent=RM(sav);
+  document.getElementById('d-inc2').textContent=RM(inc);
+  document.getElementById('d-exp2').textContent=RM(exp);
+  document.getElementById('d-period').textContent=p.label;
+  const rec=txs.slice(0,6);
+  document.getElementById('d-ledger').innerHTML=rec.length?rec.map(t=>`
+    <div class="txrow flex items-center justify-between p-4 bg-surface-container-low/60 hover:bg-surface-container rounded-xl transition-colors cursor-pointer gap-4" onclick="editTx('${t.id}')">
+      <div class="w-11 h-11 flex items-center justify-center bg-surface-container rounded-full flex-shrink-0">
+        <span class="material-symbols-outlined msym text-[20px] text-on-surface-variant">${ICONS[t.category]||'payments'}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <h5 class="font-bold text-sm text-on-surface truncate">${t.category}${t.subcategory?' › '+t.subcategory:''}</h5>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40">${t.account||''} · ${fd(t.date)}</p>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <p class="text-base font-bold ${TCLR[t.type]}">${t.type==='income'?'+':'-'}${RM(t.amount)}</p>
+        <p class="text-[9px] font-bold uppercase tracking-widest text-secondary opacity-60">${t.type}</p>
+      </div>
+    </div>`).join(''):'<div class="p-10 text-center text-sm text-on-surface-variant opacity-30">No transactions yet. Add your first entry.</div>';
+  // Mini bars
+  const now=new Date(),mnths=[];
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);mnths.push(d.toISOString().slice(0,7));}
+  const bH=mnths.map(m=>txs.filter(t=>t.type==='expense'&&t.date&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const mx=Math.max(...bH,1);
+  document.getElementById('d-bars').innerHTML=bH.map((h,i)=>{
+    const p=Math.max(Math.round(h/mx*100),8),last=i===bH.length-1;
+    return `<div class="flex-1 rounded-t-sm" style="height:${p}%;background:${last?'#e9c176':'rgba(255,255,255,'+(0.08+i*.09)+')'}"></div>`;
+  }).join('');
+  document.getElementById('d-growth').textContent=`Tracking ${txs.length} entries across your portfolio.`;
+  const ct={};inP.filter(t=>t.type==='expense').forEach(t=>ct[t.category]=(ct[t.category]||0)+t.amount);
+  const tot=Object.values(ct).reduce((s,v)=>s+v,0)||1;
+  const t5=Object.entries(ct).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('d-alloc').innerHTML=t5.length?t5.map(([c,a])=>`<li class="flex justify-between items-center"><span class="text-sm font-medium text-on-surface">${c}</span><span class="text-sm font-bold text-secondary">${Math.round(a/tot*100)}%</span></li>`).join(''):'<li class="text-sm text-on-surface-variant opacity-30">No expense data</li>';
+}
+
+// ═══ TRANSACTIONS ═════════════════════════════════════════
+function renderTx(){
+  const tf=document.getElementById('tf-type')?.value||'all';
+  const cf=document.getElementById('tf-cat')?.value||'all';
+  const mf=document.getElementById('tf-month')?.value||'all';
+  let fil=txs.filter(t=>(tf==='all'||t.type===tf)&&(cf==='all'||t.category===cf)&&(mf==='all'||(t.date&&t.date.slice(5,7)===mf)));
+  const allC=[...new Set(txs.map(t=>t.category))].sort();
+  const csel=document.getElementById('tf-cat');
+  if(csel){const cur=csel.value;csel.innerHTML='<option value="all">All Categories</option>'+allC.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');}
+  const tot=fil.length,pgs=Math.ceil(tot/txPS)||1;
+  if(txPg>pgs)txPg=pgs;
+  const sl=fil.slice((txPg-1)*txPS,txPg*txPS);
+  document.getElementById('tx-list').innerHTML=sl.length?sl.map(t=>`
+    <div class="txrow flex items-center justify-between p-4 rounded-xl bg-surface-container-low/60 transition-colors gap-3">
+      <div class="w-10 h-10 flex items-center justify-center bg-surface-container rounded-full flex-shrink-0">
+        <span class="material-symbols-outlined msym text-[18px] text-on-surface-variant">${ICONS[t.category]||'payments'}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-sm text-on-surface truncate">${t.category}${t.subcategory?' › '+t.subcategory:''}</p>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant opacity-40">${fd(t.date)} · ${t.account||''}</p>
+        ${t.description?`<p class="text-[10px] text-on-surface-variant opacity-30 truncate mt-0.5">${t.description}</p>`:''}
+      </div>
+      <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest bg-surface-container text-on-surface-variant flex-shrink-0">${t.type}</span>
+      <p class="font-bold text-sm ${TCLR[t.type]} whitespace-nowrap flex-shrink-0">${t.type==='income'?'+':'-'}${RM(t.amount)}</p>
+      <div class="flex gap-1 flex-shrink-0">
+        <button onclick="editTx('${t.id}')" class="p-1.5 rounded-lg text-on-surface-variant hover:text-secondary hover:bg-secondary-fixed/20 transition-all" title="Edit"><span class="material-symbols-outlined msym text-[16px]">edit</span></button>
+        <button onclick="delTx('${t.id}')" class="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container transition-all" title="Delete"><span class="material-symbols-outlined msym text-[16px]">delete</span></button>
+      </div>
+    </div>`).join(''):'<div class="p-10 text-center text-sm text-on-surface-variant opacity-30">No transactions match your filters.</div>';
+  document.getElementById('tf-count').textContent=tot+' entries';
+  document.getElementById('tx-info').textContent=tot?`Showing ${(txPg-1)*txPS+1}–${Math.min(txPg*txPS,tot)} of ${tot}`:'';
+  const pn=document.getElementById('tx-pages');
+  pn.innerHTML=pgs>1?`<button onclick="txGo(${txPg-1})" ${txPg===1?'disabled':''} class="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant text-xs font-bold disabled:opacity-30">←</button>${Array.from({length:pgs},(_,i)=>`<button onclick="txGo(${i+1})" class="px-3 py-1.5 rounded-lg text-xs font-bold ${i+1===txPg?'bg-gradient-to-br from-primary to-primary-container text-on-primary':'bg-surface-container text-on-surface-variant'}">${i+1}</button>`).join('')}<button onclick="txGo(${txPg+1})" ${txPg===pgs?'disabled':''} class="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant text-xs font-bold disabled:opacity-30">→</button>`:'';}
+function txGo(n){txPg=n;renderTx();}
+
+// ═══ ENTRY FORM ═══════════════════════════════════════════
+function resetEntry(){editId=null;eType='expense';eCat=null;document.getElementById('e-amt').value='';document.getElementById('e-date').value=new Date().toISOString().slice(0,10);document.getElementById('e-memo').value='';document.getElementById('e-cat-sel').textContent='';document.getElementById('e-mode').textContent='New Entry';document.getElementById('e-submit').textContent='Log Entry';document.getElementById('e-cancel').style.display='none';setType('expense');}
+function setType(t){eType=t;eCat=null;['expense','income','savings'].forEach(x=>{const b=document.getElementById('tb-'+x);b.className=x===t?'px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-gradient-to-br from-primary to-primary-container text-on-primary':'px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container';});refreshEntry();}
+function refreshEntry(){
+  const as=document.getElementById('e-acct');if(as){const c=as.value;as.innerHTML=ACCTS.map(a=>`<option value="${a}"${a===c?' selected':''}>${a}</option>`).join('');}
+  const cats=Object.keys(CATS[eType]||{});
+  document.getElementById('e-cat-grid').innerHTML=cats.map(cat=>`
+    <button onclick="selCat('${cat}')" class="group flex flex-col items-center gap-2 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container-highest transition-all ${cat===eCat?'cat-active':''}">
+      <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center group-hover:scale-105 transition-transform">
+        <span class="material-symbols-outlined msym cat-icon text-[20px] ${cat===eCat?'':'text-secondary'}">${ICONS[cat]||'category'}</span>
+      </div>
+      <span class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant text-center leading-tight">${cat}</span>
+    </button>`).join('');
+  updSub();
+}
+function selCat(c){eCat=c;document.getElementById('e-cat-sel').textContent=c;refreshEntry();}
+function updSub(){const subs=(CATS[eType]&&eCat&&CATS[eType][eCat])||[];const ss=document.getElementById('e-sub');if(ss)ss.innerHTML=subs.length?subs.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">— none —</option>';}
+async function submitEntry(){
+  const amt=parseFloat(document.getElementById('e-amt').value);
+  const date=document.getElementById('e-date').value;
+  const acct=document.getElementById('e-acct').value;
+  const sub=document.getElementById('e-sub').value;
+  const memo=document.getElementById('e-memo').value.trim();
+  const cat=eCat||Object.keys(CATS[eType]||{})[0]||'Misc';
+  if(!amt||amt<=0){alert('Please enter a valid amount.');return;}
+  if(!date){alert('Please select a date.');return;}
+  const t={date,amount:amt,account:acct,type:eType,category:cat,subcategory:sub||'',description:memo,createdAt:Date.now()};
+  if(editId){
+    if(db)await db.collection('transactions').doc(String(editId)).update(t);
+    else{const i=txs.findIndex(x=>String(x.id)===String(editId));if(i!==-1)txs[i]={...txs[i],...t};}
+  }else{
+    if(db)await db.collection('transactions').add(t);
+    else{t.id=Date.now();txs.unshift(t);}
+  }
+  resetEntry();nav('dashboard');
+}
+function editTx(id){
+  const t=txs.find(x=>String(x.id)===String(id));if(!t)return;
+  editId=id;setType(t.type);eCat=t.category;
+  document.getElementById('e-amt').value=t.amount;
+  document.getElementById('e-date').value=t.date;
+  document.getElementById('e-memo').value=t.description||'';
+  document.getElementById('e-cat-sel').textContent=t.category;
+  document.getElementById('e-mode').textContent='Editing Entry';
+  document.getElementById('e-submit').textContent='Update Entry';
+  document.getElementById('e-cancel').style.display='block';
+  refreshEntry();
+  setTimeout(()=>{const s=document.getElementById('e-acct');if(s)s.value=t.account||'';updSub();setTimeout(()=>{const ss=document.getElementById('e-sub');if(ss)ss.value=t.subcategory||'';},50);},50);
+  nav('entry');
+}
+function cancelEdit(){editId=null;resetEntry();nav('transactions');}
+async function delTx(id){if(!confirm('Delete this transaction?'))return;if(db)await db.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
+
+// ═══ BUDGETS ══════════════════════════════════════════════
+function getPeriodTxs(){const p=PAY_PERIOD.currentPeriod();return txs.filter(t=>t.type==='expense'&&t.date&&t.date>=p.start&&t.date<=p.end);}
+function renderBudgets(){
+  if(curScr!=='budgets')return;
+  const p=PAY_PERIOD.currentPeriod();
+  document.getElementById('b-period').textContent=p.label;
+  const ptxs=getPeriodTxs();
+  const spent=ptxs.reduce((s,t)=>s+t.amount,0);
+  const exC=Object.keys(CATS.expense||{});
+  const tot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  const rem=tot-spent;
+  document.getElementById('b-spent').textContent=RM(spent);
+  document.getElementById('b-total').textContent=RM(tot);
+  const re=document.getElementById('b-rem');re.textContent=RM(Math.abs(rem));re.className=`text-2xl font-bold tracking-tight ${spent>tot?'text-error':'text-[#2d6a4f]'}`;
+  document.getElementById('b-form').innerHTML=exC.map(c=>{const b=budgets[c]||{amount:0,threshold:80};return`<div class="flex items-center gap-2.5 py-1.5">
+    <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div>
+    <span class="flex-1 text-xs font-bold text-on-surface truncate">${c}</span>
+    <input type="number" id="bg-${c}" value="${b.amount||''}" placeholder="0" min="0" step="0.01" class="w-20 bg-surface-container-low border-none rounded-lg px-2 py-1.5 text-xs font-bold text-on-surface text-right outline-none focus:ring-2 focus:ring-secondary-fixed-dim"/>
+    <select id="bt-${c}" class="bg-surface-container-low border-none rounded-lg px-2 py-1.5 text-[10px] font-bold text-on-surface-variant outline-none">
+      <option value="70" ${b.threshold==70?'selected':''}>70%</option><option value="80" ${b.threshold==80?'selected':''}>80%</option><option value="90" ${b.threshold==90?'selected':''}>90%</option><option value="100" ${b.threshold==100?'selected':''}>100%</option>
+    </select></div>`;}).join('');
+  const bdgd=exC.filter(c=>budgets[c]&&budgets[c].amount>0);
+  const unb=exC.filter(c=>!budgets[c]||!budgets[c].amount).filter(c=>ptxs.filter(t=>t.category===c).reduce((s,t)=>s+t.amount,0)>0);
+  document.getElementById('b-prog').innerHTML=bdgd.length?bdgd.map(c=>{
+    const sp=ptxs.filter(t=>t.category===c).reduce((s,t)=>s+t.amount,0);
+    const bv=budgets[c].amount,thr=budgets[c].threshold||80;
+    const pct=bv>0?Math.min(sp/bv*100,100):0,raw=bv>0?sp/bv*100:0;
+    const st=raw>=100?'over':raw>=thr?'warning':'ok';
+    const fc=st==='over'?'#ba1a1a':st==='warning'?'#775a19':'#2d6a4f';
+    const clr=PAL[exC.indexOf(c)%PAL.length];
+    return`<div class="p-4 bg-surface-container-low rounded-xl">
+      <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full" style="background:${clr}"></div><span class="text-xs font-bold text-on-surface">${c}</span></div>
+        <span class="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${st==='over'?'bg-error-container text-on-error-container':st==='warning'?'bg-secondary-fixed text-on-secondary-fixed-variant':'bg-surface-container text-on-surface-variant'}">${st==='over'?'Over':st==='warning'?thr+'% Alert':'On Track'}</span>
+      </div>
+      <div class="btrack"><div class="bfill" style="width:${pct}%;background:${fc}"></div></div>
+      <div class="flex justify-between mt-1"><span class="text-[10px] text-on-surface-variant opacity-40">${RM(sp)} / ${RM(bv)}</span><span class="text-[10px] font-bold" style="color:${fc}">${raw.toFixed(0)}%</span></div>
+    </div>`;}).join('')+(unb.length?`<div class="mt-2 pt-2"><p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant opacity-30 mb-2">Unbudgeted</p>${unb.map(c=>{const sp=ptxs.filter(t=>t.category===c).reduce((s,t)=>s+t.amount,0);return`<div class="flex justify-between py-1.5 px-3 bg-surface-container-low rounded-lg mb-1"><span class="text-xs text-on-surface-variant">${c}</span><span class="text-xs font-bold">${RM(sp)}</span></div>`;}).join('')}</div>`:''): '<div class="p-8 text-center text-xs text-on-surface-variant opacity-30">Set budgets and click Save.</div>';
+}
+async function saveBudgets(){
+  const nb={};Object.keys(CATS.expense||{}).forEach(c=>{const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);if(e)nb[c]={amount:parseFloat(e.value)||0,threshold:parseInt(te?.value)||80};});
+  budgets=nb;if(db){try{await db.collection('budgets').doc('settings').set(nb);}catch(e){}}else localStorage.setItem('budgets',JSON.stringify(nb));
+  const m=document.getElementById('b-msg');m.textContent='Saved ✓';setTimeout(()=>m.textContent='',2000);renderBudgets();
+}
+
+// ═══ INSIGHTS ═════════════════════════════════════════════
+function applyChartPeriod(){
+  const v=document.getElementById('ch-period')?.value||'this_period';
+  const now=new Date();
+  if(v==='this_period'){const p=PAY_PERIOD.currentPeriod();chStart=p.start;chEnd=p.end;}
+  else if(v==='last_period'){const p=PAY_PERIOD.lastNPeriods(2)[1];chStart=p.start;chEnd=p.end;}
+  else if(v==='this_month'){chStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);chEnd=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);}
+  else if(v==='last_30'){const s=new Date(now);s.setDate(s.getDate()-30);chStart=s.toISOString().slice(0,10);chEnd=now.toISOString().slice(0,10);}
+  else if(v==='last_90'){const s=new Date(now);s.setDate(s.getDate()-90);chStart=s.toISOString().slice(0,10);chEnd=now.toISOString().slice(0,10);}
+  else{const ds=txs.map(t=>t.date).sort();chStart=ds[0]||'';chEnd=ds[ds.length-1]||'';}
+  renderInsights();
+}
+function renderInsights(){
+  const tp=document.getElementById('ch-type')?.value||'expense';
+  const inR=t=>(!chStart||t.date>=chStart)&&(!chEnd||t.date<=chEnd);
+  const e2=txs.filter(t=>t.type==='expense'&&inR(t)).reduce((s,t)=>s+t.amount,0);
+  const i2=txs.filter(t=>t.type==='income'&&inR(t)).reduce((s,t)=>s+t.amount,0);
+  const s2=txs.filter(t=>t.type==='savings'&&inR(t)).reduce((s,t)=>s+t.amount,0);
+  document.getElementById('i-exp').textContent=RM(e2);document.getElementById('i-inc').textContent=RM(i2);document.getElementById('i-sav').textContent=RM(s2);
+  const ct2={};txs.filter(t=>t.type==='expense'&&inR(t)).forEach(t=>ct2[t.category]=(ct2[t.category]||0)+t.amount);
+  const top2=Object.entries(ct2).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('i-top').textContent=top2?`${top2[0]} (${RM(top2[1])})`:'—';
+  const fil=txs.filter(t=>t.type===tp&&inR(t));
+  const cats=[...new Set(fil.map(t=>t.category))].sort();
+  const ms=[...new Set(fil.map(t=>t.date.slice(0,7)))].sort();
+  const ml=ms.map(m=>{const[y,mo]=m.split('-');return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]+' '+y;});
+  const data={};ms.forEach(m=>{data[m]={};cats.forEach(c=>data[m][c]=0)});fil.forEach(t=>{const m=t.date.slice(0,7);data[m][t.category]=(data[m][t.category]||0)+t.amount;});
+  const ds=cats.map((c,i)=>({label:c,data:ms.map(m=>data[m][c]||0),backgroundColor:PAL[i%PAL.length]+'cc',borderColor:PAL[i%PAL.length],borderWidth:1.5,borderRadius:3}));
+  if(iBar){iBar.destroy();iBar=null;}if(iLine){iLine.destroy();iLine=null;}
+  const bc=document.getElementById('i-bar')?.getContext('2d');
+  if(bc)iBar=new Chart(bc,{type:'bar',data:{labels:ml,datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>'RM'+v.toLocaleString()},grid:{color:'#f5f3ef'}}}}});
+  const lc=document.getElementById('i-line')?.getContext('2d');
+  if(lc)iLine=new Chart(lc,{type:'line',data:{labels:ml,datasets:cats.map((c,i)=>({label:c,data:ms.map(m=>data[m][c]||0),borderColor:PAL[i%PAL.length],backgroundColor:PAL[i%PAL.length]+'22',borderWidth:1.5,pointRadius:3,tension:.3,fill:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}}},scales:{x:{grid:{color:'#f5f3ef'}},y:{ticks:{callback:v=>'RM'+v.toLocaleString()},grid:{color:'#f5f3ef'}}}}});
+  const tots={};fil.forEach(t=>tots[t.category]=(tots[t.category]||0)+t.amount);
+  const grand=Object.values(tots).reduce((s,v)=>s+v,0)||1;
+  const srt=Object.entries(tots).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('i-table').innerHTML=srt.length?`<div class="space-y-2">${srt.map(([c,a],i)=>{const p=a/grand*100;return`<div class="flex items-center gap-4 py-1.5"><div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${PAL[i%PAL.length]}"></div><span class="flex-1 text-sm font-medium text-on-surface">${c}</span><span class="text-sm font-bold">${RM(a)}</span><div class="w-20 bg-surface-container-low rounded-full overflow-hidden h-1.5"><div style="width:${p}%;background:${PAL[i%PAL.length]}" class="h-full rounded-full"></div></div><span class="text-[10px] text-on-surface-variant opacity-40 w-8 text-right">${p.toFixed(0)}%</span></div>`;}).join('')}</div>`:'<p class="text-sm text-on-surface-variant opacity-30 text-center py-6">No data for selected period.</p>';
+}
+
+// ═══ FORECAST ═════════════════════════════════════════════
+function renderForecast(){
+  if(curScr!=='forecast')return;
+  const p3=PAY_PERIOD.lastNPeriods(4).slice(1);
+  const n3=PAY_PERIOD.lastNPeriods(3).reverse();
+  const mtt=(tp,ps)=>ps.map(p=>txs.filter(t=>t.type===tp&&t.date&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));
+  const aI=avg(mtt('income',p3)),aE=avg(mtt('expense',p3)),aS=avg(mtt('savings',p3));
+  const tG=goals.reduce((s,g)=>s+(g.monthly||0),0),surp=aI-aE-tG;
+  document.getElementById('f-inc').textContent=RM(aI);
+  document.getElementById('f-exp').textContent=RM(aE);
+  const se=document.getElementById('f-surp');se.textContent=RM(Math.abs(surp));se.className=`text-2xl font-bold tracking-tight ${surp>=0?'text-[#2d6a4f]':'text-error'}`;
+  const oT=goals.filter(g=>(g.monthly||0)<=Math.max(surp,0)).length;
+  document.getElementById('f-goals').textContent=goals.length?`${oT} / ${goals.length}`:'— / —';
+  const allP=[...p3,...n3];
+  const plbls=allP.map(p=>{const pts=p.label.split(' – ');return pts[pts.length-1];});
+  const aInc=p3.map(p=>mtt('income',[p])[0]),aExp=p3.map(p=>mtt('expense',[p])[0]),aSav=p3.map(p=>mtt('savings',[p])[0]);
+  if(fChart){fChart.destroy();fChart=null;}
+  const fc=document.getElementById('f-chart')?.getContext('2d');
+  if(fc)fChart=new Chart(fc,{type:'bar',data:{labels:plbls,datasets:[{label:'Income',data:[...aInc,...n3.map(()=>aI)],backgroundColor:[...p3.map(()=>'#2d6a4fcc'),...n3.map(()=>'#2d6a4f44')],borderColor:[...p3.map(()=>'#2d6a4f'),...n3.map(()=>'#2d6a4f77')],borderWidth:1.5,borderRadius:4},{label:'Expenses',data:[...aExp,...n3.map(()=>aE)],backgroundColor:[...p3.map(()=>'#ba1a1acc'),...n3.map(()=>'#ba1a1a44')],borderColor:[...p3.map(()=>'#ba1a1a'),...n3.map(()=>'#ba1a1a77')],borderWidth:1.5,borderRadius:4},{label:'Savings',data:[...aSav,...n3.map(()=>tG||aS)],backgroundColor:[...p3.map(()=>'#775a19cc'),...n3.map(()=>'#775a1944')],borderColor:[...p3.map(()=>'#775a19'),...n3.map(()=>'#775a1977')],borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:8}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>'RM'+v.toLocaleString()},grid:{color:'#f5f3ef'}}}}});
+  const exC=Object.keys(CATS.expense||{});
+  const cr=exC.map(c=>{const monthly=p3.map(p=>txs.filter(t=>t.type==='expense'&&t.category===c&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));const av=avg(monthly);if(!av)return null;const rc=monthly[monthly.length-1],pr=avg(monthly.slice(0,-1)),df=pr>0?(rc-pr)/pr*100:0;const tc=Math.abs(df)<5?'text-on-surface-variant':df>0?'text-error':'text-[#2d6a4f]',tt=Math.abs(df)<5?'Stable':df>0?`+${df.toFixed(0)}%`:`${df.toFixed(0)}%`;return`<div class="flex items-center gap-2.5 py-1.5"><div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div><span class="flex-1 text-xs font-medium text-on-surface">${c}</span><span class="text-xs font-bold text-on-surface-variant">${RM(av)}</span><span class="text-[10px] font-bold ${tc}">${tt}</span></div>`;}).filter(Boolean);
+  document.getElementById('f-cats').innerHTML=cr.length?cr.join(''):'<p class="text-xs text-on-surface-variant opacity-30">Add more data for category forecast.</p>';
+  const ops=[];
+  if(surp<0)ops.push(`Your projected monthly shortfall is ${RM(Math.abs(surp))}. Reviewing top expense categories could restore balance.`);
+  else ops.push(`Your projected surplus of ${RM(surp)} per period is a strong foundation. Directing even a portion to long-term savings compounds meaningfully.`);
+  const tpC=exC.reduce((acc,c)=>{acc[c]=avg(p3.map(p=>txs.filter(t=>t.type==='expense'&&t.category===c&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0)));return acc;},{});
+  const tpE=Object.entries(tpC).sort((a,b)=>b[1]-a[1])[0];
+  if(tpE&&tpE[1]>0)ops.push(`${tpE[0]} is your largest spend category at ${RM(tpE[1])} per period. A 10% reduction frees up ${RM(tpE[1]*.1)} monthly.`);
+  if(aI>0)ops.push(`Current savings rate: ${((aS/aI)*100).toFixed(1)}%. Wealth management benchmarks recommend 20–30% for accelerated accumulation.`);
+  document.getElementById('f-ops').innerHTML=ops.map(o=>`<p class="border-l-2 border-on-primary/20 pl-3">· ${o}</p>`).join('');
+}
+
+// ═══ SETTINGS ═════════════════════════════════════════════
+let ppOvrd={};
+function renderSettings(){
+  if(curScr!=='settings')return;
+  const p=PAY_PERIOD.currentPeriod();
+  document.getElementById('s-prev').textContent='Current: '+p.label;
+  document.getElementById('s-accts').innerHTML=(ACCTS||[]).map((a,i)=>`<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low rounded-full text-[10px] font-bold text-on-surface-variant">${a}<button onclick="delAcct(${i})" class="text-outline hover:text-error ml-1">✕</button></span>`).join('');
+  renderCatS();
+}
+function sCatTab(t){sType=t;sCat=null;['expense','income','savings'].forEach(x=>{const b=document.getElementById('st-'+x);b.className=x===t?'px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-gradient-to-br from-primary to-primary-container text-on-primary':'px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container';});renderCatS();}
+function renderCatS(){
+  const cats=Object.keys(CATS[sType]||{});
+  document.getElementById('s-cats').innerHTML=cats.map(c=>`<span onclick="sSelCat('${c}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold cursor-pointer ${c===sCat?'bg-secondary-fixed text-on-secondary-fixed-variant':'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'}">${c}<button onclick="event.stopPropagation();delCat('${c}')" class="text-outline hover:text-error ml-1">✕</button></span>`).join('');
+  document.getElementById('s-catsel').textContent=sCat||'—';
+  const sbs=(sCat&&CATS[sType][sCat])||[];
+  document.getElementById('s-subs').innerHTML=sbs.map((s,i)=>`<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low rounded-full text-[10px] font-bold text-on-surface-variant">${s}<button onclick="delSub(${i})" class="text-outline hover:text-error ml-1">✕</button></span>`).join('');
+  document.getElementById('s-subrow').style.visibility=sCat?'visible':'hidden';
+}
+function sSelCat(c){sCat=c;renderCatS();}
+function addAcct(){const v=document.getElementById('s-nacct').value.trim();if(!v||ACCTS.includes(v))return;ACCTS.push(v);document.getElementById('s-nacct').value='';renderSettings();}
+function delAcct(i){ACCTS.splice(i,1);renderSettings();}
+function addCat(){const v=document.getElementById('s-ncat').value.trim();if(!v||CATS[sType][v]!==undefined)return;CATS[sType][v]=[];document.getElementById('s-ncat').value='';renderCatS();}
+function delCat(c){if(!confirm(`Delete "${c}"?`))return;delete CATS[sType][c];if(sCat===c)sCat=null;renderCatS();}
+function addSub(){if(!sCat)return;const v=document.getElementById('s-nsub').value.trim();if(!v)return;CATS[sType][sCat].push(v);document.getElementById('s-nsub').value='';renderCatS();}
+function delSub(i){if(!sCat)return;CATS[sType][sCat].splice(i,1);renderCatS();}
+async function saveSettings(){
+  const day=parseInt(document.getElementById('s-day').value)||25;
+  const ns={accounts:ACCTS,categories:CATS,payperiod:{defaultDay:day,overrides:ppOvrd}};
+  if(db){try{await db.collection('settings').doc('preferences').set(ns);await PAY_PERIOD.save(day,ppOvrd);}catch(e){}}
+  else localStorage.setItem('userSettings',JSON.stringify(ns));
+  const m=document.getElementById('s-msg');m.textContent='Saved ✓';setTimeout(()=>m.textContent='',2000);
+}
+
+// ═══ BOOT ═════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('s-day').addEventListener('input',()=>{const p=PAY_PERIOD.currentPeriod();document.getElementById('s-prev').textContent='Current: '+p.label;});
+  initDB();
+});
+</script>
 </body>
 </html>
