@@ -11,6 +11,19 @@ function initChartsFirebase() {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     const db = firebase.firestore();
     setStatus('connecting', 'Loading...');
+
+    // Init pay period
+    PAY_PERIOD.init(db);
+    PAY_PERIOD.onChange(() => {
+      // If user has "this period" selected, re-apply it
+      if (document.getElementById('quickSelect').value === 'this_period') {
+        applyPeriodRange(PAY_PERIOD.currentPeriod());
+        renderAll();
+      }
+      // Re-populate the period quick-select options
+      populatePeriodOptions();
+    });
+
     db.collection('transactions')
       .orderBy('createdAt', 'desc')
       .onSnapshot(snapshot => {
@@ -40,29 +53,91 @@ const PALETTE = [
 let barChartInstance  = null;
 let lineChartInstance = null;
 
-// ── Set default date range (this month) on load ──
+// ── Set default date range (this period) on load ──
 function initDates() {
-  const now   = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const period = PAY_PERIOD.currentPeriod
+    ? PAY_PERIOD.currentPeriod()
+    : null;
 
-  document.getElementById('startDate').value = toInputDate(start);
-  document.getElementById('endDate').value   = toInputDate(end);
+  if (period) {
+    document.getElementById('startDate').value = period.start;
+    document.getElementById('endDate').value   = period.end;
+    document.getElementById('quickSelect').value = 'this_period';
+  } else {
+    // Fallback: this calendar month
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    document.getElementById('startDate').value = toInputDate(start);
+    document.getElementById('endDate').value   = toInputDate(end);
+  }
+}
+
+// ── Populate period quick-select dropdown with last 6 pay periods ──
+function populatePeriodOptions() {
+  const select  = document.getElementById('quickSelect');
+  // Remove any existing period options (keep the static ones)
+  [...select.options].forEach(o => {
+    if (o.dataset.period) o.remove();
+  });
+
+  const periods = PAY_PERIOD.lastNPeriods(6);
+  const divider = document.createElement('option');
+  divider.disabled = true;
+  divider.text = '── Pay periods ──';
+  select.appendChild(divider);
+
+  periods.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = 'period_' + i;
+    opt.text  = p.label;
+    opt.dataset.period = JSON.stringify(p);
+    select.appendChild(opt);
+  });
 }
 
 function toInputDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
+function applyPeriodRange(period) {
+  document.getElementById('startDate').value = period.start;
+  document.getElementById('endDate').value   = period.end;
+}
+
 // ── Quick select shortcuts ──
 function applyQuickSelect() {
-  const val = document.getElementById('quickSelect').value;
+  const val    = document.getElementById('quickSelect').value;
+  const select = document.getElementById('quickSelect');
   if (!val) return;
 
-  const now   = new Date();
+  // Check if it's a stored period option
+  const selectedOpt = [...select.options].find(o => o.value === val);
+  if (selectedOpt && selectedOpt.dataset.period) {
+    const p = JSON.parse(selectedOpt.dataset.period);
+    applyPeriodRange(p);
+    renderAll();
+    return;
+  }
+
+  const now = new Date();
   let start, end;
 
-  if (val === 'this_month') {
+  if (val === 'this_period') {
+    const p = PAY_PERIOD.currentPeriod();
+    applyPeriodRange(p);
+    renderAll();
+    return;
+
+  } else if (val === 'last_period') {
+    const periods = PAY_PERIOD.lastNPeriods(2);
+    if (periods.length >= 2) {
+      applyPeriodRange(periods[1]);
+    }
+    renderAll();
+    return;
+
+  } else if (val === 'this_month') {
     start = new Date(now.getFullYear(), now.getMonth(), 1);
     end   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
@@ -91,8 +166,10 @@ function applyQuickSelect() {
     end   = new Date(dates[dates.length - 1] + 'T00:00:00');
   }
 
-  document.getElementById('startDate').value = toInputDate(start);
-  document.getElementById('endDate').value   = toInputDate(end);
+  if (start && end) {
+    document.getElementById('startDate').value = toInputDate(start);
+    document.getElementById('endDate').value   = toInputDate(end);
+  }
   renderAll();
 }
 
@@ -124,18 +201,15 @@ function getDateLabel() {
 function buildChartData(filtered) {
   const cats = [...new Set(filtered.map(t => t.category))].sort();
 
-  // Group by month (YYYY-MM) and get sorted unique months
   const monthSet = new Set(filtered.map(t => t.date.slice(0, 7)));
   const months   = [...monthSet].sort();
 
-  // month labels for display: "Mar 2026"
   const monthLabels = months.map(m => {
     const [y, mo] = m.split('-');
     const names   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return names[parseInt(mo) - 1] + ' ' + y;
   });
 
-  // data[monthKey][category] = total
   const data = {};
   months.forEach(m => {
     data[m] = {};
@@ -180,7 +254,6 @@ function renderSummaryCards() {
   document.getElementById('thisMonthInc').textContent = 'RM ' + inc.toFixed(2);
   document.getElementById('thisMonthSav').textContent = 'RM ' + sav.toFixed(2);
 
-  // Top expense category in range
   const expOnly   = transactions.filter(t => t.type === 'expense' && inRange(t));
   const catTotals = {};
   expOnly.forEach(t => catTotals[t.category] = (catTotals[t.category] || 0) + t.amount);
@@ -324,5 +397,22 @@ function renderTable() {
 }
 
 // ── Init ──
-initDates();
+// Wait for DOM + PAY_PERIOD to be ready before setting dates
+document.addEventListener('DOMContentLoaded', () => {
+  // PAY_PERIOD.onChange will fire once settings load — set dates then
+  PAY_PERIOD.onChange(() => {
+    const sel = document.getElementById('quickSelect');
+    if (!sel.dataset.userChanged) {
+      initDates();
+      populatePeriodOptions();
+    }
+  });
+});
+
+// Track if user has manually changed the dropdown
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('quickSelect');
+  if (sel) sel.addEventListener('change', () => sel.dataset.userChanged = '1');
+});
+
 initChartsFirebase();

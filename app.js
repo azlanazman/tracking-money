@@ -1,5 +1,4 @@
 // ── Categories and accounts — loaded dynamically from Firebase settings ──
-// Fallback defaults used if settings not yet saved
 let CATEGORIES = {
   expense: {
     'Loan':['PTPTN','Emas'], 'Bills':['Unifi','Umobile','TNB','Air Selangor'],
@@ -14,7 +13,9 @@ let CATEGORIES = {
 };
 let ACCOUNTS = ['CIMB','Maybank','RHB','AEON','TNG','SETEL','SPay','Cash','Other'];
 
-// Load user settings from Firebase and refresh dropdowns
+// ── Edit state ──
+let editingId = null; // null = adding new; string = editing existing transaction ID
+
 function loadUserSettings() {
   if (!db) return;
   db.collection('settings').doc('preferences').onSnapshot(doc => {
@@ -40,11 +41,9 @@ function refreshAccountDropdowns() {
     } else {
       el.innerHTML = opts;
     }
-    // Restore previous selection if still valid
     if ([...el.options].some(o => o.value === cur)) el.value = cur;
   });
 }
-
 
 // ── Category icons ──
 const ICONS = {
@@ -58,7 +57,7 @@ const ICONS = {
 
 // ── Firebase init ──
 let db = null;
-let transactions = []; // in-memory cache
+let transactions = [];
 
 function initFirebase() {
   try {
@@ -76,14 +75,12 @@ function initFirebase() {
   }
 }
 
-// ── Connection status indicator ──
 function setStatus(state, msg) {
   const el = document.getElementById('dbStatus');
   el.textContent = msg;
   el.className = 'db-status ' + state;
 }
 
-// ── One-time migration: move localStorage data → Firebase ──
 async function migrateFromLocalStorage() {
   const local = JSON.parse(localStorage.getItem('financeTransactions')) || [];
   if (local.length === 0) return;
@@ -105,14 +102,13 @@ async function migrateFromLocalStorage() {
       });
     });
     await batch.commit();
-    localStorage.removeItem('financeTransactions'); // clear old data
+    localStorage.removeItem('financeTransactions');
     setStatus('connected', 'Migration done — data is now in Firebase');
   } catch (err) {
     setStatus('error', 'Migration failed: ' + err.message);
   }
 }
 
-// ── Load all transactions from Firestore ──
 function loadTransactions() {
   setStatus('connecting', 'Loading...');
   db.collection('transactions')
@@ -128,7 +124,6 @@ function loadTransactions() {
     });
 }
 
-// ── Fallback: use localStorage if Firebase not set up yet ──
 function fallbackToLocal() {
   transactions = JSON.parse(localStorage.getItem('financeTransactions')) || [];
   renderTransactions();
@@ -140,7 +135,7 @@ function saveLocal() {
   localStorage.setItem('financeTransactions', JSON.stringify(transactions));
 }
 
-// ── Add a new transaction ──
+// ── Add OR Update a transaction ──
 async function addTransaction() {
   const description = document.getElementById('description').value.trim();
   const amount      = parseFloat(document.getElementById('amount').value);
@@ -157,25 +152,90 @@ async function addTransaction() {
     date, amount, account, type, category,
     subcategory: subcategory || '',
     description: description || '',
-    createdAt: Date.now()
   };
 
-  if (db) {
-    try {
-      await db.collection('transactions').add(t);
-      // onSnapshot will update the UI automatically
-    } catch (err) {
-      alert('Save failed: ' + err.message);
+  if (editingId) {
+    // ── Update existing ──
+    if (db) {
+      try {
+        await db.collection('transactions').doc(String(editingId)).update(t);
+      } catch (err) {
+        alert('Update failed: ' + err.message);
+        return;
+      }
+    } else {
+      const idx = transactions.findIndex(tx => String(tx.id) === String(editingId));
+      if (idx !== -1) transactions[idx] = { ...transactions[idx], ...t };
+      saveLocal();
+      renderTransactions();
+      updateSummary();
     }
+    cancelEdit();
   } else {
-    // Fallback
-    t.id = Date.now();
-    transactions.unshift(t);
-    saveLocal();
-    renderTransactions();
-    updateSummary();
+    // ── Add new ──
+    t.createdAt = Date.now();
+    if (db) {
+      try {
+        await db.collection('transactions').add(t);
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+        return;
+      }
+    } else {
+      t.id = Date.now();
+      transactions.unshift(t);
+      saveLocal();
+      renderTransactions();
+      updateSummary();
+    }
+    clearForm();
   }
+}
 
+// ── Populate form for editing ──
+function editTransaction(id) {
+  const t = transactions.find(tx => String(tx.id) === String(id));
+  if (!t) return;
+
+  editingId = id;
+
+  document.getElementById('date').value        = t.date;
+  document.getElementById('amount').value      = t.amount;
+  document.getElementById('type').value        = t.type;
+  document.getElementById('description').value = t.description || '';
+
+  // Update categories first, then set values
+  updateCategories();
+  document.getElementById('account').value   = t.account   || '';
+  document.getElementById('category').value  = t.category  || '';
+  updateSubcategories();
+  document.getElementById('subcategory').value = t.subcategory || '';
+
+  // Update UI to edit mode
+  const btn       = document.getElementById('submitBtn');
+  const cancelBtn = document.getElementById('cancelEditBtn');
+  const formTitle = document.getElementById('formTitle');
+
+  btn.textContent       = '✎ Update Transaction';
+  btn.style.background  = '#185fa5';
+  cancelBtn.style.display = 'inline-block';
+  formTitle.textContent = 'Edit Transaction';
+
+  // Scroll to form
+  document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Cancel editing ──
+function cancelEdit() {
+  editingId = null;
+  const btn       = document.getElementById('submitBtn');
+  const cancelBtn = document.getElementById('cancelEditBtn');
+  const formTitle = document.getElementById('formTitle');
+
+  btn.textContent       = '+ Add Transaction';
+  btn.style.background  = '';
+  cancelBtn.style.display = 'none';
+  formTitle.textContent = 'Add Transaction';
   clearForm();
 }
 
@@ -183,10 +243,12 @@ async function addTransaction() {
 async function deleteTransaction(id) {
   if (!confirm('Delete this transaction?')) return;
 
+  // If currently editing this transaction, cancel edit
+  if (editingId === id) cancelEdit();
+
   if (db) {
     try {
       await db.collection('transactions').doc(String(id)).delete();
-      // onSnapshot will update UI
     } catch (err) {
       alert('Delete failed: ' + err.message);
     }
@@ -202,6 +264,8 @@ async function deleteTransaction(id) {
 async function clearAll() {
   if (transactions.length === 0) return;
   if (!confirm('Delete ALL transactions? This cannot be undone.')) return;
+
+  cancelEdit();
 
   if (db) {
     try {
@@ -317,28 +381,26 @@ function renderTransactions() {
     return;
   }
 
-  // Clamp currentPage
   const totalPages = Math.ceil(filtered.length / pageSize);
   if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
-  const start   = (currentPage - 1) * pageSize;
-  const end     = Math.min(start + pageSize, filtered.length);
-  const paged   = filtered.slice(start, end);
+  const start = (currentPage - 1) * pageSize;
+  const end   = Math.min(start + pageSize, filtered.length);
+  const paged = filtered.slice(start, end);
 
-  // Page info
   document.getElementById('pageInfo').textContent =
     `Showing ${filtered.length === 0 ? 0 : start + 1} – ${end} of ${filtered.length}`;
 
-  // Render rows
   list.innerHTML = paged.map(t => {
     const sign        = t.type === 'income' ? '+' : '-';
     const subLabel    = t.subcategory ? ` › ${t.subcategory}` : '';
     const remarkLabel = t.description ? ` · ${t.description}` : '';
     const icon        = ICONS[t.category] || '💳';
+    const isEditing   = String(t.id) === String(editingId);
 
     return `
-      <div class="transaction-item ${t.type}">
+      <div class="transaction-item ${t.type} ${isEditing ? 'tx-editing' : ''}">
         <div class="tx-icon ${t.type}">${icon}</div>
         <div class="tx-left">
           <span class="tx-desc">${t.category}${subLabel}</span>
@@ -346,12 +408,13 @@ function renderTransactions() {
         </div>
         <span class="tx-badge ${t.type}">${t.type}</span>
         <span class="tx-amount ${t.type}">${sign} ${formatRM(t.amount)}</span>
+        <button class="tx-edit" onclick="editTransaction('${t.id}')" title="Edit">✎</button>
         <button class="tx-delete" onclick="deleteTransaction('${t.id}')" title="Delete">&#x2715;</button>
       </div>
     `;
   }).join('');
 
-  // Render pagination buttons
+  // Pagination buttons
   const navRow = document.getElementById('pageNavRow');
   if (totalPages <= 1) { navRow.innerHTML = ''; return; }
 
@@ -399,16 +462,13 @@ function updateSummary() {
   balEl.textContent = formatRM(balance);
   balEl.style.color = balance >= 0 ? '#27ae60' : '#e74c3c';
 
-  // Update header balance + period label
   const hBal = document.getElementById('headerBalance');
   const hSub = document.getElementById('headerBalanceSub');
   if (hBal) {
     hBal.textContent = formatRM(Math.abs(balance));
     hBal.style.color = balance >= 0 ? '#9fe1cb' : '#f1948a';
   }
-  if (hSub) {
-    hSub.textContent = period.label;
-  }
+  if (hSub) hSub.textContent = period.label;
 }
 
 // ── Export helpers ──
@@ -421,7 +481,7 @@ function getExportData() {
   if (start > end)    { alert('Start Date must be before End Date.'); return null; }
 
   return transactions.filter(t => {
-    const inRange  = t.date >= start && t.date <= end;
+    const inRange   = t.date >= start && t.date <= end;
     const matchType = exportType === 'all' || t.type === exportType;
     return inRange && matchType;
   }).sort((a, b) => a.date.localeCompare(b.date));

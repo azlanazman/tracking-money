@@ -16,7 +16,7 @@
       <p class="subtitle">Spending by category</p>
     </div>
   </header>
-    <nav class="top-nav">
+  <nav class="top-nav">
     <div class="top-nav-inner">
       <span id="dbStatus" class="db-status connecting">Connecting...</span>
       <div class="top-nav-tabs">
@@ -28,9 +28,6 @@
       </div>
     </div>
   </nav>
-
-  <!-- Nav -->
-  
 
   <!-- Summary Cards -->
   <section class="summary">
@@ -75,12 +72,15 @@
         <label>Quick select</label>
         <select id="quickSelect" onchange="applyQuickSelect()">
           <option value="">— custom —</option>
-          <option value="this_month">This month</option>
-          <option value="last_month">Last month</option>
+          <option value="this_period">This pay period</option>
+          <option value="last_period">Last pay period</option>
+          <option value="this_month">This calendar month</option>
+          <option value="last_month">Last calendar month</option>
           <option value="this_year">This year</option>
           <option value="last_30">Last 30 days</option>
           <option value="last_90">Last 90 days</option>
           <option value="all">All time</option>
+          <!-- Pay period options injected dynamically by charts.js -->
         </select>
       </div>
       <div class="form-group form-group-btn">

@@ -19,7 +19,7 @@
       </div>
     </div>
   </header>
-    <nav class="top-nav">
+  <nav class="top-nav">
     <div class="top-nav-inner">
       <span id="dbStatus" class="db-status connecting">Connecting...</span>
       <div class="top-nav-tabs">
@@ -31,8 +31,6 @@
       </div>
     </div>
   </nav>
-
-  
 
   <!-- Summary Cards -->
   <section class="summary">
@@ -54,9 +52,9 @@
     </div>
   </section>
 
-  <!-- Add Transaction Form -->
+  <!-- Add / Edit Transaction Form -->
   <section class="form-section">
-    <h2>Add Transaction</h2>
+    <h2 id="formTitle">Add Transaction</h2>
     <div class="form-grid">
 
       <div class="form-group">
@@ -98,8 +96,12 @@
         <input type="text" id="description" placeholder="Optional note..." />
       </div>
 
-      <div class="form-group form-group-btn">
-        <button onclick="addTransaction()">+ Add Transaction</button>
+      <div class="form-group form-group-btn" style="display:flex;gap:10px;align-items:flex-end">
+        <button id="submitBtn" onclick="addTransaction()" style="flex:1">+ Add Transaction</button>
+        <button id="cancelEditBtn" onclick="cancelEdit()"
+          style="display:none;flex:0 0 auto;padding:11px 18px;background:#888;color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+          Cancel
+        </button>
       </div>
 
     </div>
@@ -156,7 +158,6 @@
   <!-- Transactions: tabbed panel -->
   <section class="tx-section">
 
-    <!-- Tab bar -->
     <div class="tx-tabs">
       <button class="tx-tab active" onclick="switchTab(this,'all')" data-type="all">All</button>
       <button class="tx-tab" onclick="switchTab(this,'expense')" data-type="expense">Expenses</button>
@@ -164,7 +165,6 @@
       <button class="tx-tab" onclick="switchTab(this,'savings')" data-type="savings">Savings</button>
     </div>
 
-    <!-- Filters row -->
     <div class="tx-filters">
       <input type="hidden" id="filterType" value="all" />
       <select id="filterAccount" onchange="resetPage();renderTransactions()"><option value="all">All Accounts</option></select>
@@ -189,12 +189,10 @@
       <button class="btn-clear" onclick="clearAll()">Clear All</button>
     </div>
 
-    <!-- Transaction list -->
     <div id="transactionList">
       <p class="empty-msg">Loading transactions...</p>
     </div>
 
-    <!-- Pagination -->
     <div class="tx-pagination">
       <div class="page-size-row">
         <span class="page-info" id="pageInfo">Showing 0 – 0 of 0</span>
@@ -213,11 +211,8 @@
 
   </section>
 
-  <!-- Firebase SDK (v9 compat mode — works without a build tool) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-  <!-- Your config + app -->
   <script src="firebase-config.js"></script>
   <script src="payperiod.js"></script>
   <script src="app.js"></script>
