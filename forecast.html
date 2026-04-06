@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Forecast — My Finance Tracker</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="forecast.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="forecast.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
-
 <body>
 
   <header>
@@ -18,20 +16,20 @@
       <p class="subtitle">Monthly targets · 3-month outlook</p>
     </div>
   </header>
-  <nav class="top-nav">
+    <nav class="top-nav">
     <div class="top-nav-inner">
       <span id="dbStatus" class="db-status connecting">Connecting...</span>
       <div class="top-nav-tabs">
-        <a href="index.html" class="top-nav-tab ">Tracker</a>
-        <a href="budget.html" class="top-nav-tab ">Budget Monitor</a>
-        <a href="charts.html" class="top-nav-tab ">Charts</a>
+        <a href="index.html" class="top-nav-tab">Tracker</a>
+        <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
+        <a href="charts.html" class="top-nav-tab">Charts</a>
         <a href="forecast.html" class="top-nav-tab active">Forecast</a>
         <a href="settings.html" class="top-nav-tab">Settings</a>
       </div>
     </div>
   </nav>
 
-
+  
 
   <!-- Summary cards -->
   <section class="summary">
@@ -56,16 +54,15 @@
   <!-- Savings goals -->
   <section class="form-section">
     <h2>My Savings Goals</h2>
-    <p class="section-hint">Set how much you want to save per month for each goal. The forecast will tell you if you can
-      afford it based on your last 3 months.</p>
+    <p class="section-hint">Set how much you want to save per month for each goal. The forecast will tell you if you can afford it based on your last 3 months.</p>
 
     <div id="goalsList"></div>
 
     <!-- Add new goal -->
     <div class="add-goal-row">
-      <input type="text" id="newGoalName" placeholder="Goal name e.g. Holiday, New Car..." />
-      <input type="number" id="newGoalTarget" placeholder="RM / month" min="0" step="0.01" />
-      <input type="text" id="newGoalEmoji" placeholder="Icon" maxlength="2" style="width:60px;text-align:center" />
+      <input type="text"   id="newGoalName"   placeholder="Goal name e.g. Holiday, New Car..." />
+      <input type="number" id="newGoalTarget"  placeholder="RM / month" min="0" step="0.01" />
+      <input type="text"   id="newGoalEmoji"   placeholder="Icon" maxlength="2" style="width:60px;text-align:center"/>
       <button onclick="addGoal()">+ Add Goal</button>
     </div>
     <div class="save-row">
@@ -77,8 +74,7 @@
   <!-- Forecast -->
   <section class="form-section">
     <h2>3-Month Spending Forecast</h2>
-    <p class="section-hint">Based on your average spending over the last 3 months, here's what the next 3 months may
-      look like.</p>
+    <p class="section-hint">Based on your average spending over the last 3 months, here's what the next 3 months may look like.</p>
     <div id="forecastSummary" class="forecast-summary"></div>
     <div class="chart-wrap" style="margin-top:20px">
       <canvas id="forecastChart"></canvas>
@@ -98,5 +94,4 @@
   <script src="firebase-config.js"></script>
   <script src="forecast.js"></script>
 </body>
-
 </html>

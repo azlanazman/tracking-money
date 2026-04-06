@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Budget Monitor — My Finance Tracker</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="budget.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="budget.css"/>
 </head>
-
 <body>
 
   <header>
@@ -17,19 +15,20 @@
       <p class="subtitle">Current month · Per category</p>
     </div>
   </header>
-  <nav class="top-nav">
+    <nav class="top-nav">
     <div class="top-nav-inner">
       <span id="dbStatus" class="db-status connecting">Connecting...</span>
       <div class="top-nav-tabs">
-        <a href="index.html" class="top-nav-tab ">Tracker</a>
+        <a href="index.html" class="top-nav-tab">Tracker</a>
         <a href="budget.html" class="top-nav-tab active">Budget Monitor</a>
-        <a href="charts.html" class="top-nav-tab ">Charts</a>
-        <a href="forecast.html" class="top-nav-tab ">Forecast</a>
+        <a href="charts.html" class="top-nav-tab">Charts</a>
+        <a href="forecast.html" class="top-nav-tab">Forecast</a>
+        <a href="settings.html" class="top-nav-tab">Settings</a>
       </div>
     </div>
   </nav>
 
-
+  
 
   <!-- Month summary -->
   <section class="summary">
@@ -54,8 +53,7 @@
   <!-- Budget settings -->
   <section class="form-section">
     <h2>Set Category Budgets</h2>
-    <p class="section-hint">Set a monthly budget and alert threshold for each expense category. Leave amount as 0 to
-      skip that category.</p>
+    <p class="section-hint">Set a monthly budget and alert threshold for each expense category. Leave amount as 0 to skip that category.</p>
     <div id="budgetForm"></div>
     <div class="save-row">
       <button onclick="saveBudgets()">Save Budgets</button>
@@ -77,5 +75,4 @@
   <script src="firebase-config.js"></script>
   <script src="budget.js"></script>
 </body>
-
 </html>

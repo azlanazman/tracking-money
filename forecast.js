@@ -30,10 +30,16 @@ function monthLabel(prefix) {
 }
 
 // ── Firebase init ──
+function setStatus(state, msg) {
+  const el = document.getElementById('dbStatus');
+  if (el) { el.textContent = msg; el.className = 'db-status ' + state; }
+}
+
 function init() {
   try {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
+    setStatus('connecting', 'Loading...');
 
     // Load goals
     db.collection('goals').doc('list').get().then(doc => {
@@ -46,7 +52,10 @@ function init() {
       .orderBy('date', 'desc')
       .onSnapshot(snap => {
         transactions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setStatus('connected', 'Firebase connected · ' + transactions.length + ' records');
         renderAll();
+      }, err => {
+        setStatus('error', 'Load error: ' + err.message);
       });
 
   } catch(err) {
