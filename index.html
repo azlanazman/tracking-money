@@ -4,10 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Finance Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <style>
+  :root {
+    --surface:#fbf9f5;--surface-low:#f5f3ef;--surface-container:#edecea;
+    --surface-high:#e4e2de;--surface-lowest:#ffffff;--primary:#6f4627;
+    --primary-container:#8b5e3c;--secondary:#b8922a;--secondary-dim:#c9a84c;
+    --secondary-fixed:#f0d9a0;--on-surface:#1b1c1a;--on-surface-variant:#51443c;
+    --on-secondary-fixed:#3d2e0a;--outline-variant:#d5c3b8;--error:#ba1a1a;
+    --error-surface:#fdf0f0;--success:#2d6a4f;--success-surface:#f0f7f4;
+    --btn-gradient:linear-gradient(135deg,#6f4627 0%,#8b5e3c 100%);
+    --ambient-shadow:0 8px 40px rgba(27,28,26,0.05);
+    --ambient-shadow-lg:0 16px 56px rgba(27,28,26,0.07);
+    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;
+  }
+  </style>
 </head>
 <body>
-
   <header>
     <div class="header-inner">
       <h1>My Finance Tracker</h1>
@@ -31,115 +47,37 @@
       </div>
     </div>
   </nav>
-
-  <!-- Summary Cards -->
   <section class="summary">
-    <div class="card green">
-      <p class="card-label">Total Income</p>
-      <p class="card-amount" id="totalIncome">RM 0.00</p>
-    </div>
-    <div class="card red">
-      <p class="card-label">Total Expenses</p>
-      <p class="card-amount" id="totalExpenses">RM 0.00</p>
-    </div>
-    <div class="card blue">
-      <p class="card-label">Balance</p>
-      <p class="card-amount" id="balance">RM 0.00</p>
-    </div>
-    <div class="card teal">
-      <p class="card-label">Savings</p>
-      <p class="card-amount" id="totalSavings">RM 0.00</p>
-    </div>
+    <div class="card green"><p class="card-label">Total Income</p><p class="card-amount" id="totalIncome">RM 0.00</p></div>
+    <div class="card red"><p class="card-label">Total Expenses</p><p class="card-amount" id="totalExpenses">RM 0.00</p></div>
+    <div class="card blue"><p class="card-label">Balance</p><p class="card-amount" id="balance">RM 0.00</p></div>
+    <div class="card teal"><p class="card-label">Savings</p><p class="card-amount" id="totalSavings">RM 0.00</p></div>
   </section>
-
-  <!-- Add / Edit Transaction Form -->
   <section class="form-section">
     <h2 id="formTitle">Add Transaction</h2>
     <div class="form-grid">
-
-      <div class="form-group">
-        <label>Date</label>
-        <input type="date" id="date" />
-      </div>
-
-      <div class="form-group">
-        <label>Amount (RM)</label>
-        <input type="number" id="amount" placeholder="0.00" min="0" step="0.01" />
-      </div>
-
-      <div class="form-group">
-        <label>Account</label>
-        <select id="account"><option value="">Loading...</option></select>
-      </div>
-
-      <div class="form-group">
-        <label>Type</label>
-        <select id="type" onchange="updateCategories()">
-          <option value="expense">Expense</option>
-          <option value="income">Income</option>
-          <option value="savings">Savings</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>Category</label>
-        <select id="category" onchange="updateSubcategories()"></select>
-      </div>
-
-      <div class="form-group">
-        <label>Sub-category</label>
-        <select id="subcategory"></select>
-      </div>
-
-      <div class="form-group form-group-full">
-        <label>Remarks</label>
-        <input type="text" id="description" placeholder="Optional note..." />
-      </div>
-
+      <div class="form-group"><label>Date</label><input type="date" id="date" /></div>
+      <div class="form-group"><label>Amount (RM)</label><input type="number" id="amount" placeholder="0.00" min="0" step="0.01" /></div>
+      <div class="form-group"><label>Account</label><select id="account"><option value="">Loading...</option></select></div>
+      <div class="form-group"><label>Type</label><select id="type" onchange="updateCategories()"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></div>
+      <div class="form-group"><label>Category</label><select id="category" onchange="updateSubcategories()"></select></div>
+      <div class="form-group"><label>Sub-category</label><select id="subcategory"></select></div>
+      <div class="form-group form-group-full"><label>Remarks</label><input type="text" id="description" placeholder="Optional note..." /></div>
       <div class="form-group form-group-btn" style="display:flex;gap:10px;align-items:flex-end">
         <button id="submitBtn" onclick="addTransaction()" style="flex:1">+ Add Transaction</button>
-        <button id="cancelEditBtn" onclick="cancelEdit()"
-          style="display:none;flex:0 0 auto;padding:11px 18px;background:#888;color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-          Cancel
-        </button>
+        <button id="cancelEditBtn" onclick="cancelEdit()" style="display:none;flex:0 0 auto;padding:12px 18px;background:var(--surface-container);color:var(--on-surface-variant);border:none;border-radius:var(--radius-md);font-size:13px;font-family:Manrope,sans-serif;font-weight:600;cursor:pointer;margin-top:20px;letter-spacing:0.02em;">Cancel</button>
       </div>
-
     </div>
   </section>
-
-  <!-- Export to Google Sheets -->
   <section class="export-section">
     <h2>Export to Google Sheets</h2>
-    <div class="export-setup">
-      <div class="form-group">
-        <label>Your Google Sheet Web App URL</label>
-        <input type="text" id="sheetUrl" placeholder="Paste your Apps Script URL here..." />
-      </div>
-    </div>
+    <div class="export-setup"><div class="form-group"><label>Your Google Sheet Web App URL</label><input type="text" id="sheetUrl" placeholder="Paste your Apps Script URL here..." /></div></div>
     <div class="export-row">
-      <div class="form-group">
-        <label>Start Date</label>
-        <input type="date" id="exportStart" />
-      </div>
-      <div class="form-group">
-        <label>End Date</label>
-        <input type="date" id="exportEnd" />
-      </div>
-      <div class="form-group">
-        <label>Type Filter</label>
-        <select id="exportType">
-          <option value="all">All Types</option>
-          <option value="expense">Expenses only</option>
-          <option value="income">Income only</option>
-          <option value="savings">Savings only</option>
-        </select>
-      </div>
-      <div class="form-group form-group-btn">
-        <button class="btn-export" onclick="exportToSheets()">Export to Google Sheets</button>
-      </div>
-      <div class="form-group form-group-btn">
-        <button class="btn-csv" onclick="exportCSV()">Download as CSV</button>
-      </div>
+      <div class="form-group"><label>Start Date</label><input type="date" id="exportStart" /></div>
+      <div class="form-group"><label>End Date</label><input type="date" id="exportEnd" /></div>
+      <div class="form-group"><label>Type Filter</label><select id="exportType"><option value="all">All Types</option><option value="expense">Expenses only</option><option value="income">Income only</option><option value="savings">Savings only</option></select></div>
+      <div class="form-group form-group-btn"><button class="btn-export" onclick="exportToSheets()">Export to Google Sheets</button></div>
+      <div class="form-group form-group-btn"><button class="btn-csv" onclick="exportCSV()">Download as CSV</button></div>
     </div>
     <p id="exportStatus" class="export-status"></p>
     <div class="setup-guide">
@@ -154,63 +92,34 @@
       </ol>
     </div>
   </section>
-
-  <!-- Transactions: tabbed panel -->
   <section class="tx-section">
-
     <div class="tx-tabs">
-      <button class="tx-tab active" onclick="switchTab(this,'all')" data-type="all">All</button>
-      <button class="tx-tab" onclick="switchTab(this,'expense')" data-type="expense">Expenses</button>
-      <button class="tx-tab" onclick="switchTab(this,'income')" data-type="income">Income</button>
-      <button class="tx-tab" onclick="switchTab(this,'savings')" data-type="savings">Savings</button>
+      <button class="tx-tab active" onclick="switchTab(this,'all')">All</button>
+      <button class="tx-tab" onclick="switchTab(this,'expense')">Expenses</button>
+      <button class="tx-tab" onclick="switchTab(this,'income')">Income</button>
+      <button class="tx-tab" onclick="switchTab(this,'savings')">Savings</button>
     </div>
-
     <div class="tx-filters">
       <input type="hidden" id="filterType" value="all" />
       <select id="filterAccount" onchange="resetPage();renderTransactions()"><option value="all">All Accounts</option></select>
-      <select id="filterCategory" onchange="resetPage();renderTransactions()">
-        <option value="all">All Categories</option>
-      </select>
+      <select id="filterCategory" onchange="resetPage();renderTransactions()"><option value="all">All Categories</option></select>
       <select id="filterMonth" onchange="resetPage();renderTransactions()">
         <option value="all">All Months</option>
-        <option value="01">January</option>
-        <option value="02">February</option>
-        <option value="03">March</option>
-        <option value="04">April</option>
-        <option value="05">May</option>
-        <option value="06">June</option>
-        <option value="07">July</option>
-        <option value="08">August</option>
-        <option value="09">September</option>
-        <option value="10">October</option>
-        <option value="11">November</option>
-        <option value="12">December</option>
+        <option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option>
+        <option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option>
+        <option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option>
       </select>
       <button class="btn-clear" onclick="clearAll()">Clear All</button>
     </div>
-
-    <div id="transactionList">
-      <p class="empty-msg">Loading transactions...</p>
-    </div>
-
+    <div id="transactionList"><p class="empty-msg">Loading transactions...</p></div>
     <div class="tx-pagination">
       <div class="page-size-row">
         <span class="page-info" id="pageInfo">Showing 0 – 0 of 0</span>
-        <div class="page-size-picker">
-          <span>Show</span>
-          <select id="pageSize" onchange="resetPage();renderTransactions()">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-          </select>
-          <span>per page</span>
-        </div>
+        <div class="page-size-picker"><span>Show</span><select id="pageSize" onchange="resetPage();renderTransactions()"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select><span>per page</span></div>
       </div>
       <div class="page-nav-row" id="pageNavRow"></div>
     </div>
-
   </section>
-
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>

@@ -1,23 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
+
 .section-hint {
   font-size: 13px;
-  color: #888;
-  margin-bottom: 16px;
-  margin-top: -8px;
-  line-height: 1.5;
+  color: var(--on-surface-variant);
+  margin-bottom: 20px;
+  margin-top: -16px;
+  line-height: 1.6;
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 /* ── Goals list ── */
 .goal-card {
   display: grid;
-  grid-template-columns: 40px 1fr 160px 130px 36px;
+  grid-template-columns: 40px 1fr 160px 130px 32px;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #f9fafb;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  border-left: 4px solid #1abc9c;
+  gap: 14px;
+  padding: 16px 20px;
+  background: var(--surface-low);
+  border-radius: var(--radius-lg);
+  margin-bottom: 6px;
+  transition: background 0.15s;
 }
+.goal-card:hover { background: var(--surface-container); }
 
 .goal-emoji {
   font-size: 22px;
@@ -28,155 +33,147 @@
 .goal-info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
-
 .goal-name {
   font-size: 14px;
-  font-weight: 600;
-  color: #2d2d2d;
+  font-weight: 700;
+  color: var(--on-surface);
 }
-
 .goal-sub {
   font-size: 11px;
-  color: #999;
+  color: var(--on-surface-variant);
+  opacity: 0.5;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .goal-input {
-  padding: 7px 10px;
-  border: 1.5px solid #ddd;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-md);
   font-size: 13px;
-  color: #333;
-  background: white;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  color: var(--on-surface);
+  background: var(--surface-container);
   width: 100%;
-}
-
-.goal-input:focus {
   outline: none;
-  border-color: #1abc9c;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.goal-input:focus {
+  background: var(--surface-high);
+  box-shadow: inset 0 0 0 1.5px rgba(184,146,42,0.35);
 }
 
+/* Gold-embossed status chips */
 .goal-status {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 12px;
   border-radius: 20px;
   text-align: center;
   white-space: nowrap;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-
-.goal-status.ok {
-  background: #eafaf1;
-  color: #27ae60;
-}
-
-.goal-status.tight {
-  background: #fef9e7;
-  color: #d68910;
-}
-
-.goal-status.over {
-  background: #fdecea;
-  color: #c0392b;
-}
-
-.goal-status.unknown {
-  background: #f0f0f0;
-  color: #999;
-}
+.goal-status.ok      { background: var(--success-surface); color: var(--success); }
+.goal-status.tight   { background: var(--secondary-fixed); color: var(--on-secondary-fixed); }
+.goal-status.over    { background: var(--error-surface); color: var(--error); }
+.goal-status.unknown { background: var(--surface-container); color: var(--on-surface-variant); }
 
 .goal-delete {
   background: none;
   border: none;
-  color: #ddd;
-  font-size: 18px;
+  color: var(--outline-variant);
+  font-size: 16px;
   cursor: pointer;
-  padding: 0;
-  transition: color 0.2s;
-  line-height: 1;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
 }
-
-.goal-delete:hover {
-  color: #e74c3c;
-}
+.goal-delete:hover { color: var(--error); background: var(--error-surface); }
 
 /* ── Add goal row ── */
 .add-goal-row {
   display: grid;
   grid-template-columns: 1fr 140px 64px auto;
   gap: 10px;
-  margin-top: 12px;
-  padding-top: 14px;
-  border-top: 1px solid #eee;
+  margin-top: 16px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(213,195,184,0.25);
 }
 
 .add-goal-row input {
-  padding: 9px 12px;
-  border: 1.5px solid #ddd;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-md);
   font-size: 13px;
-  color: #333;
-  background: #fafafa;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  color: var(--on-surface);
+  background: var(--surface-container);
   width: 100%;
-}
-
-.add-goal-row input:focus {
   outline: none;
-  border-color: #1abc9c;
-  background: white;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.add-goal-row input::placeholder { color: var(--outline-variant); font-weight: 400; }
+.add-goal-row input:focus {
+  background: var(--surface-high);
+  box-shadow: inset 0 0 0 1.5px rgba(184,146,42,0.35);
 }
 
 .add-goal-row button {
-  padding: 9px 16px;
-  background: #1a7a5e;
-  color: white;
+  padding: 10px 18px;
+  background: var(--btn-gradient);
+  color: var(--surface-lowest);
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
+  letter-spacing: 0.04em;
+  box-shadow: 0 3px 10px rgba(111,70,39,0.2);
+  transition: opacity 0.2s;
 }
-
-.add-goal-row button:hover {
-  background: #155f49;
-}
+.add-goal-row button:hover { opacity: 0.88; }
 
 /* ── Save row ── */
 .save-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #eee;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(213,195,184,0.2);
 }
 
 .save-row button {
-  padding: 10px 28px;
-  background: #1a7a5e;
-  color: white;
+  padding: 11px 28px;
+  background: var(--btn-gradient);
+  color: var(--surface-lowest);
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 14px rgba(111,70,39,0.2);
+  transition: opacity 0.2s;
 }
-
-.save-row button:hover {
-  background: #155f49;
-}
+.save-row button:hover { opacity: 0.88; }
 
 .save-status {
-  font-size: 13px;
-  color: #1a7a5e;
-  font-weight: 500;
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 600;
 }
 
-/* ── Forecast summary ── */
+/* ── Forecast summary cards ── */
 .forecast-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -185,43 +182,47 @@
 }
 
 .fc-card {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 14px;
-  text-align: center;
-  border-top: 3px solid #ddd;
+  background: var(--surface-low);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
 }
-
-.fc-card.income {
-  border-top-color: #2ecc71;
+.fc-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
 }
-
-.fc-card.expense {
-  border-top-color: #e74c3c;
-}
-
-.fc-card.saving {
-  border-top-color: #1abc9c;
-}
+.fc-card.income::after  { background: var(--success); }
+.fc-card.expense::after { background: var(--error); }
+.fc-card.saving::after  { background: var(--secondary); }
 
 .fc-label {
-  font-size: 11px;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
-
-.fc-amount {
-  font-size: 18px;
+  font-size: 10px;
   font-weight: 700;
-  color: #2d2d2d;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  opacity: 0.6;
 }
-
+.fc-amount {
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--on-surface);
+  letter-spacing: -0.02em;
+}
 .fc-note {
   font-size: 11px;
-  color: #bbb;
+  color: var(--on-surface-variant);
   margin-top: 4px;
+  opacity: 0.5;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* ── Chart ── */
@@ -231,90 +232,74 @@
   height: 280px;
 }
 
-/* ── Category forecast table ── */
+/* ── Category forecast — no dividers ── */
 .cat-fc-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #f5f5f5;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  background: var(--surface-low);
+  transition: background 0.15s;
 }
-
-.cat-fc-row:last-child {
-  border-bottom: none;
-}
+.cat-fc-row:hover { background: var(--surface-container); }
 
 .cat-fc-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-
 .cat-fc-name {
   flex: 1;
   font-size: 13px;
-  color: #333;
-  font-weight: 500;
+  color: var(--on-surface);
+  font-weight: 600;
 }
-
 .cat-fc-avg {
   font-size: 13px;
-  color: #555;
-  font-weight: 600;
+  color: var(--on-surface-variant);
+  font-weight: 300;
+  letter-spacing: -0.01em;
   min-width: 90px;
   text-align: right;
 }
 
+/* Trend pills — gold-embossed label language */
 .cat-fc-trend {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  min-width: 70px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  min-width: 60px;
   text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-
-.trend-up {
-  background: #fdecea;
-  color: #c0392b;
-}
-
-.trend-down {
-  background: #eafaf1;
-  color: #27ae60;
-}
-
-.trend-flat {
-  background: #f0f0f0;
-  color: #888;
-}
+.trend-up   { background: var(--error-surface);   color: var(--error); }
+.trend-down { background: var(--success-surface);  color: var(--success); }
+.trend-flat { background: var(--secondary-fixed);  color: var(--on-secondary-fixed); }
 
 .no-data {
   text-align: center;
-  color: #aaa;
+  color: var(--outline-variant);
   font-size: 14px;
-  padding: 30px 0;
+  padding: 36px 0;
+  font-weight: 400;
 }
 
 @media (max-width: 520px) {
   .goal-card {
-    grid-template-columns: 36px 1fr 36px;
+    grid-template-columns: 36px 1fr 32px;
   }
-
   .goal-card .goal-input,
-  .goal-card .goal-status {
-    display: none;
-  }
+  .goal-card .goal-status { display: none; }
 
   .add-goal-row {
     grid-template-columns: 1fr 110px;
   }
+  .add-goal-row input:nth-child(3) { display: none; }
 
-  .add-goal-row input:nth-child(3) {
-    display: none;
-  }
-
-  .forecast-summary {
-    grid-template-columns: 1fr;
-  }
+  .forecast-summary { grid-template-columns: 1fr; }
 }

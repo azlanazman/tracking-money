@@ -4,72 +4,38 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Charts — My Finance Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
   <link rel="stylesheet" href="charts.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>:root{--surface:#fbf9f5;--surface-low:#f5f3ef;--surface-container:#edecea;--surface-high:#e4e2de;--surface-lowest:#ffffff;--primary:#6f4627;--primary-container:#8b5e3c;--secondary:#b8922a;--secondary-dim:#c9a84c;--secondary-fixed:#f0d9a0;--on-surface:#1b1c1a;--on-surface-variant:#51443c;--on-secondary-fixed:#3d2e0a;--outline-variant:#d5c3b8;--error:#ba1a1a;--error-surface:#fdf0f0;--success:#2d6a4f;--success-surface:#f0f7f4;--btn-gradient:linear-gradient(135deg,#6f4627 0%,#8b5e3c 100%);--ambient-shadow:0 8px 40px rgba(27,28,26,0.05);--ambient-shadow-lg:0 16px 56px rgba(27,28,26,0.07);--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;}</style>
 </head>
 <body>
-
-  <header>
-    <div class="header-inner">
-      <h1>Monthly Trends</h1>
-      <p class="subtitle">Spending by category</p>
+  <header><div class="header-inner"><h1>Monthly Trends</h1><p class="subtitle">Spending by category</p></div></header>
+  <nav class="top-nav"><div class="top-nav-inner">
+    <span id="dbStatus" class="db-status connecting">Connecting...</span>
+    <div class="top-nav-tabs">
+      <a href="index.html" class="top-nav-tab">Tracker</a>
+      <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
+      <a href="charts.html" class="top-nav-tab active">Charts</a>
+      <a href="forecast.html" class="top-nav-tab">Forecast</a>
+      <a href="settings.html" class="top-nav-tab">Settings</a>
     </div>
-  </header>
-  <nav class="top-nav">
-    <div class="top-nav-inner">
-      <span id="dbStatus" class="db-status connecting">Connecting...</span>
-      <div class="top-nav-tabs">
-        <a href="index.html" class="top-nav-tab">Tracker</a>
-        <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
-        <a href="charts.html" class="top-nav-tab active">Charts</a>
-        <a href="forecast.html" class="top-nav-tab">Forecast</a>
-        <a href="settings.html" class="top-nav-tab">Settings</a>
-      </div>
-    </div>
-  </nav>
-
-  <!-- Summary Cards -->
+  </div></nav>
   <section class="summary">
-    <div class="card red">
-      <p class="card-label">Expenses in range</p>
-      <p class="card-amount" id="thisMonthExp">RM 0.00</p>
-    </div>
-    <div class="card green">
-      <p class="card-label">Income in range</p>
-      <p class="card-amount" id="thisMonthInc">RM 0.00</p>
-    </div>
-    <div class="card teal">
-      <p class="card-label">Savings in range</p>
-      <p class="card-amount" id="thisMonthSav">RM 0.00</p>
-    </div>
-    <div class="card blue">
-      <p class="card-label">Top category</p>
-      <p class="card-amount" id="topCategory" style="font-size:15px">—</p>
-    </div>
+    <div class="card red"><p class="card-label">Expenses in range</p><p class="card-amount" id="thisMonthExp">RM 0.00</p></div>
+    <div class="card green"><p class="card-label">Income in range</p><p class="card-amount" id="thisMonthInc">RM 0.00</p></div>
+    <div class="card teal"><p class="card-label">Savings in range</p><p class="card-amount" id="thisMonthSav">RM 0.00</p></div>
+    <div class="card blue"><p class="card-label">Top category</p><p class="card-amount" id="topCategory" style="font-size:14px;font-weight:500">—</p></div>
   </section>
-
-  <!-- Controls -->
   <section class="chart-controls">
     <div class="control-row">
-      <div class="form-group">
-        <label>Start Date</label>
-        <input type="date" id="startDate" onchange="renderAll()" />
-      </div>
-      <div class="form-group">
-        <label>End Date</label>
-        <input type="date" id="endDate" onchange="renderAll()" />
-      </div>
-      <div class="form-group">
-        <label>Type</label>
-        <select id="typeSelect" onchange="renderAll()">
-          <option value="expense">Expenses</option>
-          <option value="income">Income</option>
-          <option value="savings">Savings</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Quick select</label>
+      <div class="form-group"><label>Start Date</label><input type="date" id="startDate" onchange="renderAll()" /></div>
+      <div class="form-group"><label>End Date</label><input type="date" id="endDate" onchange="renderAll()" /></div>
+      <div class="form-group"><label>Type</label><select id="typeSelect" onchange="renderAll()"><option value="expense">Expenses</option><option value="income">Income</option><option value="savings">Savings</option></select></div>
+      <div class="form-group"><label>Quick select</label>
         <select id="quickSelect" onchange="applyQuickSelect()">
           <option value="">— custom —</option>
           <option value="this_period">This pay period</option>
@@ -80,37 +46,14 @@
           <option value="last_30">Last 30 days</option>
           <option value="last_90">Last 90 days</option>
           <option value="all">All time</option>
-          <!-- Pay period options injected dynamically by charts.js -->
         </select>
       </div>
-      <div class="form-group form-group-btn">
-        <button onclick="renderAll()">Apply</button>
-      </div>
+      <div class="form-group form-group-btn"><button onclick="renderAll()">Apply</button></div>
     </div>
   </section>
-
-  <!-- Bar Chart -->
-  <section class="chart-section">
-    <h2 id="barTitle">Monthly expenses by category</h2>
-    <div class="chart-wrap">
-      <canvas id="barChart"></canvas>
-    </div>
-  </section>
-
-  <!-- Line Chart -->
-  <section class="chart-section">
-    <h2 id="lineTitle">Category trends over months</h2>
-    <div class="chart-wrap">
-      <canvas id="lineChart"></canvas>
-    </div>
-  </section>
-
-  <!-- Category Breakdown Table -->
-  <section class="chart-section">
-    <h2 id="tableTitle">Category breakdown</h2>
-    <div id="categoryTable"></div>
-  </section>
-
+  <section class="chart-section"><h2 id="barTitle">Monthly expenses by category</h2><div class="chart-wrap"><canvas id="barChart"></canvas></div></section>
+  <section class="chart-section"><h2 id="lineTitle">Category trends over months</h2><div class="chart-wrap"><canvas id="lineChart"></canvas></div></section>
+  <section class="chart-section"><h2 id="tableTitle">Category breakdown</h2><div id="categoryTable"></div></section>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>

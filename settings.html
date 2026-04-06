@@ -4,19 +4,34 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Settings — My Finance Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css"/>
   <link rel="stylesheet" href="settings.css"/>
+  <style>
+  :root {
+    --surface:#fbf9f5;--surface-low:#f5f3ef;--surface-container:#edecea;
+    --surface-high:#e4e2de;--surface-lowest:#ffffff;--primary:#6f4627;
+    --primary-container:#8b5e3c;--secondary:#b8922a;--secondary-dim:#c9a84c;
+    --secondary-fixed:#f0d9a0;--on-surface:#1b1c1a;--on-surface-variant:#51443c;
+    --on-secondary-fixed:#3d2e0a;--outline-variant:#d5c3b8;--error:#ba1a1a;
+    --error-surface:#fdf0f0;--success:#2d6a4f;--success-surface:#f0f7f4;
+    --btn-gradient:linear-gradient(135deg,#6f4627 0%,#8b5e3c 100%);
+    --ambient-shadow:0 8px 40px rgba(27,28,26,0.05);
+    --ambient-shadow-lg:0 16px 56px rgba(27,28,26,0.07);
+    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;
+  }
+  </style>
 </head>
 <body>
-
   <header>
     <div class="header-inner">
       <h1>Settings</h1>
       <p class="subtitle">Pay Period · Accounts · Categories</p>
     </div>
   </header>
-
-    <nav class="top-nav">
+  <nav class="top-nav">
     <div class="top-nav-inner">
       <span id="dbStatus" class="db-status connecting">Connecting...</span>
       <div class="top-nav-tabs">
@@ -31,7 +46,6 @@
 
   <div class="settings-wrap">
 
-    <!-- ── Accounts ── -->
     <section class="settings-section">
       <h2>Accounts</h2>
       <p class="settings-hint">These appear in the Account dropdown when adding a transaction.</p>
@@ -42,22 +56,15 @@
       </div>
     </section>
 
-    <!-- ── Categories ── -->
     <section class="settings-section">
       <h2>Categories &amp; Sub-categories</h2>
       <p class="settings-hint">Choose a type to manage its categories. Click a category to edit its sub-categories.</p>
-
-      <!-- Type switcher -->
       <div class="type-tabs">
         <button class="type-tab active" onclick="switchType(this,'expense')">Expense</button>
         <button class="type-tab" onclick="switchType(this,'income')">Income</button>
         <button class="type-tab" onclick="switchType(this,'savings')">Savings</button>
       </div>
-
-      <!-- Category list -->
       <div class="cat-columns">
-
-        <!-- Left: categories -->
         <div class="cat-col">
           <p class="col-label">Categories</p>
           <div id="categoryList" class="tag-list"></div>
@@ -66,8 +73,6 @@
             <button onclick="addCategory()">+ Add</button>
           </div>
         </div>
-
-        <!-- Right: sub-categories for selected category -->
         <div class="cat-col" id="subCol">
           <p class="col-label" id="subColLabel">Select a category →</p>
           <div id="subcategoryList" class="tag-list"></div>
@@ -76,25 +81,20 @@
             <button onclick="addSubcategory()">+ Add</button>
           </div>
         </div>
-
       </div>
     </section>
 
-    <!-- ── Pay Period ── -->
     <section class="settings-section">
       <h2>Pay Period</h2>
       <p class="settings-hint">Set your default salary day. Your spending periods will be measured from this day each month — e.g. day 25 means 25 Feb → 24 Mar counts as "March".</p>
-
       <div class="pay-period-default">
         <label class="pp-label">Default salary day (each month)</label>
         <div class="pp-day-row">
-          <input type="number" id="defaultDay" min="1" max="28" value="25" style="width:80px"/>
+          <input type="number" id="defaultDay" min="1" max="28" value="25"/>
           <span class="pp-hint">Day 1–28 (use max 28 to avoid month-end issues)</span>
         </div>
       </div>
-
       <div class="pp-divider"></div>
-
       <div class="pay-period-overrides">
         <p class="pp-label">Monthly overrides <span class="pp-optional">(for when salary arrives early or late)</span></p>
         <p class="settings-hint" style="margin-top:4px">If your salary arrives on a different date for a specific month, set it here. This overrides the default for that period only.</p>
@@ -122,17 +122,13 @@
           <button onclick="addOverride()" style="align-self:flex-end">+ Add</button>
         </div>
       </div>
-
       <div class="pp-divider"></div>
-
       <div class="pp-preview">
         <p class="pp-label">Current period preview</p>
         <div id="ppPreview" class="pp-preview-box">—</div>
       </div>
-
     </section>
 
-    <!-- Save button -->
     <div class="save-bar">
       <button class="save-btn" onclick="saveSettings()">Save All Changes</button>
       <span id="saveStatus" class="save-msg"></span>

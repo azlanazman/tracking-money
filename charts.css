@@ -1,61 +1,40 @@
-.page-nav {
-  max-width: 760px;
-  margin: 14px auto 0;
-  padding: 0 16px;
-}
-
-.page-nav a {
-  font-size: 13px;
-  color: #1a7a5e;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.page-nav a:hover {
-  text-decoration: underline;
-}
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap');
 
 /* ── Controls ── */
 .chart-controls {
-  background: white;
-  border-radius: 14px;
-  padding: 16px 20px;
-  margin: 14px 16px;
+  background: var(--surface-lowest);
+  border-radius: var(--radius-xl);
+  padding: 20px 24px;
+  margin: 12px 20px;
   max-width: 760px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  box-shadow: var(--ambient-shadow);
 }
-
-@media (min-width: 792px) {
-  .chart-controls {
-    margin: 14px auto;
-  }
+@media (min-width: 800px) {
+  .chart-controls { margin: 12px auto; }
 }
 
 .control-row {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .control-row .form-group {
-  min-width: 120px;
+  min-width: 110px;
   flex: 1;
 }
 
 /* ── Chart sections ── */
 .chart-section {
-  background: white;
-  border-radius: 14px;
-  padding: 20px;
-  margin: 14px 16px;
+  background: var(--surface-lowest);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  margin: 12px 20px;
   max-width: 760px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  box-shadow: var(--ambient-shadow);
 }
-
-@media (min-width: 792px) {
-  .chart-section {
-    margin: 14px auto;
-  }
+@media (min-width: 800px) {
+  .chart-section { margin: 12px auto; }
 }
 
 .chart-wrap {
@@ -64,64 +43,67 @@
   height: 300px;
 }
 
-/* ── Category Table ── */
+/* ── Category Table — no dividers ── */
 .cat-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  font-family: 'Manrope', sans-serif;
 }
 
 .cat-table th {
   text-align: left;
-  padding: 8px 12px;
-  background: #f0f4f8;
-  color: #555;
-  font-size: 11px;
+  padding: 10px 14px;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
 }
+.cat-table th:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.cat-table th:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
 .cat-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #333;
+  padding: 12px 14px;
+  color: var(--on-surface);
+  font-weight: 400;
 }
 
-.cat-table tr:last-child td {
-  border-bottom: none;
-}
+/* Replace dividers with background alternation */
+.cat-table tbody tr:nth-child(odd) td { background: var(--surface-low); }
+.cat-table tbody tr:hover td { background: var(--surface-container); }
 
-.cat-table tr:hover td {
-  background: #fafafa;
-}
+.cat-table tbody tr:last-child td:first-child { border-radius: 0 0 0 var(--radius-sm); }
+.cat-table tbody tr:last-child td:last-child  { border-radius: 0 0 var(--radius-sm) 0; }
 
-.bar-cell {
-  width: 40%;
-}
+.bar-cell { width: 40%; }
 
 .bar-track {
-  background: #eee;
-  border-radius: 4px;
-  height: 8px;
+  background: var(--surface-high);
+  border-radius: 3px;
+  height: 6px;
   width: 100%;
 }
-
 .bar-fill {
-  height: 8px;
-  border-radius: 4px;
-  background: #1a7a5e;
-  transition: width 0.4s ease;
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .pct-cell {
-  color: #888;
+  color: var(--on-surface-variant);
   font-size: 12px;
   text-align: right;
+  font-weight: 500;
+  opacity: 0.6;
 }
 
 .no-data {
   text-align: center;
-  color: #aaa;
+  color: var(--outline-variant);
   font-size: 14px;
-  padding: 30px 0;
+  padding: 36px 0;
+  font-weight: 400;
 }
