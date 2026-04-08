@@ -14,6 +14,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="payperiod.js"></script>
 
@@ -100,8 +101,8 @@
     }
 
     input[type=number] {
-      -moz-appearance: textfield;
-      appearance: textfield
+      appearance: textfield;
+      -moz-appearance: textfield
     }
 
     .btrack {
@@ -164,736 +165,988 @@
         width: 100% !important
       }
     }
+
+    /* Auth layer */
+    #auth-wall {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #f7f9fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px
+    }
+
+    #app-shell {
+      display: none
+    }
+
+    @keyframes authFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .auth-fade {
+      animation: authFadeIn .4s ease forwards
+    }
+
+    .auth-input-wrap {
+      position: relative
+    }
+
+    .auth-input-wrap .msym {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 18px;
+      pointer-events: none
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      background: #f2f4f6;
+      border: 1.5px solid transparent;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: Inter, sans-serif;
+      color: #191c1e;
+      outline: none;
+      transition: all .2s
+    }
+
+    .auth-input:focus {
+      background: #fff;
+      border-color: rgba(53, 37, 205, .35);
+      box-shadow: 0 0 0 4px rgba(53, 37, 205, .08)
+    }
+
+    .auth-input.error {
+      border-color: #ba1a1a;
+      background: #fdf0f0
+    }
+
+    .auth-btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #3525cd, #4f46e5);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: Manrope, sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      letter-spacing: .02em
+    }
+
+    .auth-btn-primary:hover {
+      opacity: .92
+    }
+
+    .auth-btn-primary:active {
+      transform: scale(.98)
+    }
+
+    .auth-btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    .auth-btn-google {
+      width: 100%;
+      padding: 11px;
+      background: #fff;
+      color: #1b1c1a;
+      border: 1.5px solid #e0e3e5;
+      border-radius: 12px;
+      font-size: 13px;
+      font-family: Inter, sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px
+    }
+
+    .auth-btn-google:hover {
+      background: #f8fafc;
+      border-color: #c7c4d8
+    }
+
+    .auth-error {
+      background: #fdf0f0;
+      border: 1px solid #ffdad6;
+      color: #ba1a1a;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none
+    }
+
+    .auth-error.show {
+      display: block
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #94a3b8;
+      font-size: 12px
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e0e3e5
+    }
   </style>
 </head>
 
 <body class="bg-background text-on-background antialiased min-h-screen">
 
-  <!-- ══════ SIDEBAR ══════ -->
-  <aside id="sidebar"
-    class="fixed left-0 top-0 h-screen w-64 bg-slate-50 flex flex-col p-4 z-50 border-r border-slate-100">
-    <!-- Brand -->
-    <div class="flex items-center gap-3 mb-10 px-2 pt-2">
-      <div
-        class="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-lg flex items-center justify-center flex-shrink-0">
-        <span class="material-symbols-outlined msym text-white text-[18px]">account_balance_wallet</span>
-      </div>
-      <div>
-        <div class="text-base font-bold tracking-tight text-slate-900 font-headline leading-tight">Lumina</div>
-        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Financial</div>
-      </div>
-    </div>
+  <!-- ══════ AUTH WALL ══════ -->
+  <div id="auth-wall">
+    <div class="w-full max-w-md auth-fade">
 
-    <!-- Navigation -->
-    <nav class="flex-1 space-y-1">
-      <a onclick="nav('dashboard')" id="snav-dashboard"
-        class="nav-active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">dashboard</span>
-        <span class="text-sm font-medium">Dashboard</span>
-      </a>
-      <a onclick="nav('analytics')" id="snav-analytics"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">insights</span>
-        <span class="text-sm font-medium">Analytics</span>
-      </a>
-      <a onclick="nav('transactions')" id="snav-transactions"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">receipt_long</span>
-        <span class="text-sm font-medium">Transactions</span>
-      </a>
-      <a onclick="nav('entry')" id="snav-entry"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">add_circle</span>
-        <span class="text-sm font-medium">Log Transaction</span>
-      </a>
-      <a onclick="nav('budgets')" id="snav-budgets"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">account_balance_wallet</span>
-        <span class="text-sm font-medium">Budgets</span>
-      </a>
-      <a onclick="nav('forecast')" id="snav-forecast"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">query_stats</span>
-        <span class="text-sm font-medium">Forecast</span>
-      </a>
-      <a onclick="nav('settings')" id="snav-settings"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
-        <span class="material-symbols-outlined msym">settings</span>
-        <span class="text-sm font-medium">Settings</span>
-      </a>
-    </nav>
-
-    <!-- Footer -->
-    <div class="mt-auto space-y-4">
-      <button onclick="nav('entry')"
-        class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2">
-        <span class="material-symbols-outlined msym text-[18px]">add</span>
-        New Transfer
-      </button>
-      <div class="pt-4 border-t border-slate-200 space-y-1">
-        <a
-          class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors duration-200 cursor-pointer">
-          <span class="material-symbols-outlined msym text-[20px]">help_outline</span>
-          <span class="text-sm font-medium">Support</span>
-        </a>
-        <a
-          class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-error transition-colors duration-200 cursor-pointer">
-          <span class="material-symbols-outlined msym text-[20px]">logout</span>
-          <span class="text-sm font-medium">Sign Out</span>
-        </a>
-      </div>
-      <!-- DB Status -->
-      <div class="flex items-center gap-2 px-2 pb-1">
-        <div id="db-dot" class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
-        <span id="db-lbl" class="text-[10px] text-slate-400 font-semibold truncate">Connecting…</span>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ══════ TOP BAR ══════ -->
-  <header
-    class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 glass-nav z-40 flex items-center justify-between px-8 border-b border-slate-100/50">
-    <div class="flex items-center gap-6">
-      <!-- Page title -->
-      <h2 id="pg-title" class="text-base font-bold tracking-tight text-slate-900 font-headline hidden md:block">
-        Financial Intelligence</h2>
-      <!-- Search -->
-      <div class="relative group">
-        <span
-          class="material-symbols-outlined msym absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] group-focus-within:text-indigo-600 transition-colors">search</span>
-        <input placeholder="Search transactions…"
-          class="bg-surface-container border-none rounded-full pl-9 pr-4 py-2 text-sm w-60 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-          type="text" />
-      </div>
-      <!-- Top nav links -->
-      <nav class="hidden md:flex gap-5 text-sm font-medium font-headline">
-        <a class="text-indigo-600 font-semibold" href="#">Overview</a>
-        <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Market</a>
-        <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Reports</a>
-      </nav>
-    </div>
-    <div class="flex items-center gap-3">
-      <button
-        class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all duration-200">
-        <span class="material-symbols-outlined msym">notifications</span>
-      </button>
-      <button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-all duration-200">
-        <span class="material-symbols-outlined msym">dark_mode</span>
-      </button>
-      <div
-        class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-xs font-bold cursor-pointer">
-        A</div>
-    </div>
-  </header>
-
-  <!-- ══════ MAIN CONTENT ══════ -->
-  <main id="main" class="ml-64 pt-16 min-h-screen pb-12">
-
-    <!-- ── DASHBOARD ── -->
-    <div id="sc-dashboard" class="screen active p-8 lg:p-10 max-w-7xl slide-in">
-
-      <!-- Hero Bento -->
-      <section class="grid grid-cols-12 gap-5 mb-8">
-        <!-- Liquidity Card -->
+      <!-- Brand -->
+      <div class="flex items-center gap-3 mb-10 justify-center">
         <div
-          class="col-span-12 lg:col-span-5 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl text-white relative overflow-hidden amb-lg">
-          <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-3xl pointer-events-none">
-          </div>
-          <div class="absolute -left-4 -top-4 w-28 h-28 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none">
-          </div>
-          <div class="relative z-10">
-            <p class="text-indigo-100/70 font-medium text-sm mb-1">Total Liquidity</p>
-            <h2 id="d-bal" class="text-5xl font-bold tracking-tight mb-7 font-headline">RM 0.00</h2>
-            <div class="flex items-center gap-4 flex-wrap">
-              <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl flex items-center gap-2">
-                <span class="material-symbols-outlined msym text-[16px]">trending_up</span>
-                <span class="text-sm font-bold">This Period</span>
-              </div>
-              <p id="d-period" class="text-sm text-indigo-100/60">Loading period…</p>
-            </div>
-          </div>
+          class="w-10 h-10 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-md shadow-indigo-200">
+          <span class="material-symbols-outlined msym text-white text-[22px]">account_balance_wallet</span>
         </div>
-        <!-- Income Card -->
-        <div
-          class="col-span-12 md:col-span-6 lg:col-span-3 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
-          <div>
-            <div class="w-11 h-11 bg-primary-fixed rounded-2xl flex items-center justify-center text-primary mb-5">
-              <span class="material-symbols-outlined msym">account_balance</span>
-            </div>
-            <p class="text-slate-500 font-medium text-sm mb-1">Monthly Income</p>
-            <h3 id="d-inc" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
-          </div>
-          <div class="mt-4 pt-4 border-t border-slate-50">
-            <p class="text-xs text-slate-400"><span id="d-inc-sub" class="text-primary font-bold">Period</span> income
-            </p>
-          </div>
-        </div>
-        <!-- Expenses Card -->
-        <div
-          class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
-          <div>
-            <div class="w-11 h-11 bg-tertiary-fixed rounded-2xl flex items-center justify-center text-tertiary mb-5">
-              <span class="material-symbols-outlined msym">shopping_cart</span>
-            </div>
-            <p class="text-slate-500 font-medium text-sm mb-1">Monthly Expenses</p>
-            <h3 id="d-exp" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
-          </div>
-          <div>
-            <div id="d-exp-bar" class="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div id="d-exp-fill" class="h-full bg-tertiary rounded-full transition-all" style="width:0%"></div>
-            </div>
-            <p id="d-exp-pct" class="mt-1.5 text-xs text-slate-400">0% of period income</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Lower Grid -->
-      <div class="grid grid-cols-12 gap-7">
-        <!-- Recent Transactions -->
-        <section class="col-span-12 lg:col-span-7">
-          <div class="flex items-center justify-between mb-5">
-            <h2 class="text-xl font-bold text-slate-900 font-headline tracking-tight">Recent Transactions</h2>
-            <button onclick="nav('transactions')"
-              class="text-indigo-600 font-semibold text-sm hover:underline underline-offset-2 transition-all">View all
-              history</button>
-          </div>
-          <div id="d-ledger" class="space-y-2.5">
-            <div class="p-5 text-center text-sm text-slate-400">Loading…</div>
-          </div>
-        </section>
-
-        <!-- Right Column -->
-        <section class="col-span-12 lg:col-span-5 space-y-5">
-          <!-- Net Gain Card -->
-          <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-            <div class="flex items-start justify-between mb-6">
-              <div>
-                <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight">Net Gain YTD</h3>
-                <p class="text-xs text-slate-400 mt-0.5">Portfolio performance</p>
-              </div>
-              <div class="text-right">
-                <p id="d-ytd" class="text-xl font-bold text-primary font-headline">RM 0</p>
-                <span id="d-ytd-badge"
-                  class="text-[10px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full inline-block mt-0.5">—</span>
-              </div>
-            </div>
-            <div id="d-bars" class="h-36 w-full flex items-end gap-1.5 mb-3"></div>
-            <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-              <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
-            </div>
-          </div>
-          <!-- Top Allocations -->
-          <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-            <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight mb-5">Top Allocations</h3>
-            <div id="d-alloc" class="space-y-3.5 mb-6">
-              <div class="text-sm text-slate-400">—</div>
-            </div>
-            <div id="d-alloc-bar" class="flex gap-0.5 h-2.5 w-full rounded-full overflow-hidden"></div>
-          </div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ── ANALYTICS ── -->
-    <div id="sc-analytics" class="screen p-8 lg:p-10 max-w-6xl slide-in">
-      <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
         <div>
-          <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Data Intelligence</p>
-          <h2 class="text-3xl font-bold tracking-tight font-headline">Spending Analytics</h2>
+          <div class="text-xl font-bold tracking-tight text-slate-900 font-headline">Lumina</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Financial Intelligence</div>
         </div>
-        <div class="flex gap-3 flex-wrap">
-          <select id="an-period" onchange="applyAnalyticsPeriod()"
-            class="bg-white border border-slate-100 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 amb-card">
-            <option value="this_period">This Period</option>
-            <option value="last_period">Last Period</option>
-            <option value="this_month">This Month</option>
-            <option value="last_30">Last 30 Days</option>
-            <option value="last_90">Last 90 Days</option>
-            <option value="all">All Time</option>
-          </select>
-          <select id="an-type" onchange="renderAnalytics()"
-            class="bg-white border border-slate-100 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 amb-card">
+      </div>
+
+      <!-- Card -->
+      <div class="bg-white rounded-3xl p-8 shadow-[0_20px_60px_rgba(25,28,30,.1)]">
+
+        <!-- Tabs: Sign In / Sign Up -->
+        <div class="flex gap-1 bg-surface-container-low p-1 rounded-xl mb-7">
+          <button id="tab-signin" onclick="authTab('signin')"
+            class="flex-1 py-2 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all">Sign
+            In</button>
+          <button id="tab-signup" onclick="authTab('signup')"
+            class="flex-1 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all">Create
+            Account</button>
+        </div>
+
+        <!-- Error message -->
+        <div id="auth-error" class="auth-error mb-4"></div>
+
+        <!-- Email / Password form -->
+        <form id="auth-form" onsubmit="handleEmailAuth(event)" class="space-y-3 mb-5" novalidate>
+          <div class="auth-input-wrap">
+            <span class="material-symbols-outlined msym">mail</span>
+            <input id="auth-email" type="email" placeholder="Email address" class="auth-input" autocomplete="email"
+              required />
+          </div>
+          <div class="auth-input-wrap">
+            <span class="material-symbols-outlined msym">lock</span>
+            <input id="auth-password" type="password" placeholder="Password" class="auth-input"
+              autocomplete="current-password" required minlength="6" />
+          </div>
+          <!-- Confirm password — sign-up only -->
+          <div id="auth-confirm-wrap" class="auth-input-wrap hidden">
+            <span class="material-symbols-outlined msym">lock_reset</span>
+            <input id="auth-confirm" type="password" placeholder="Confirm password" class="auth-input"
+              autocomplete="new-password" />
+          </div>
+          <button type="submit" id="auth-submit-btn" class="auth-btn-primary mt-1">
+            Sign In
+          </button>
+        </form>
+
+        <!-- Forgot password — sign-in mode only -->
+        <div id="auth-forgot-row" class="text-center mb-5">
+          <button onclick="handleForgotPassword()"
+            class="text-xs text-slate-400 hover:text-primary transition-colors">Forgot password?</button>
+        </div>
+
+        <!-- Divider -->
+        <div class="auth-divider mb-5">or continue with</div>
+
+        <!-- Google Sign-In -->
+        <button onclick="handleGoogleAuth()" class="auth-btn-google">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path
+              d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+              fill="#4285F4" />
+            <path
+              d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+              fill="#34A853" />
+            <path
+              d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"
+              fill="#FBBC05" />
+            <path
+              d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"
+              fill="#EA4335" />
+          </svg>
+          Continue with Google
+        </button>
+
+        <!-- Reset password success msg -->
+        <p id="auth-reset-msg" class="text-center text-xs text-slate-400 mt-4 hidden"></p>
+      </div>
+
+      <p class="text-center text-[11px] text-slate-400 mt-6">
+        Your data is encrypted and stored securely on Firebase.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════ APP SHELL (hidden until authenticated) ══════ -->
+  <div id="app-shell">
+
+    <!-- ══════ SIDEBAR ══════ -->
+    <aside id="sidebar"
+      class="fixed left-0 top-0 h-screen w-64 bg-slate-50 flex flex-col p-4 z-50 border-r border-slate-100">
+      <!-- Brand -->
+      <div class="flex items-center gap-3 mb-10 px-2 pt-2">
+        <div
+          class="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-lg flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined msym text-white text-[18px]">account_balance_wallet</span>
+        </div>
+        <div>
+          <div class="text-base font-bold tracking-tight text-slate-900 font-headline leading-tight">Lumina</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Financial</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 space-y-1">
+        <a onclick="nav('dashboard')" id="snav-dashboard"
+          class="nav-active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">dashboard</span>
+          <span class="text-sm font-medium">Dashboard</span>
+        </a>
+        <a onclick="nav('analytics')" id="snav-analytics"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">insights</span>
+          <span class="text-sm font-medium">Analytics</span>
+        </a>
+        <a onclick="nav('transactions')" id="snav-transactions"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">receipt_long</span>
+          <span class="text-sm font-medium">Transactions</span>
+        </a>
+        <a onclick="nav('entry')" id="snav-entry"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">add_circle</span>
+          <span class="text-sm font-medium">Log Transaction</span>
+        </a>
+        <a onclick="nav('budgets')" id="snav-budgets"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">account_balance_wallet</span>
+          <span class="text-sm font-medium">Budgets</span>
+        </a>
+        <a onclick="nav('forecast')" id="snav-forecast"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">query_stats</span>
+          <span class="text-sm font-medium">Forecast</span>
+        </a>
+        <a onclick="nav('settings')" id="snav-settings"
+          class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+          <span class="material-symbols-outlined msym">settings</span>
+          <span class="text-sm font-medium">Settings</span>
+        </a>
+      </nav>
+
+      <!-- Footer -->
+      <div class="mt-auto space-y-4">
+        <button onclick="nav('entry')"
+          class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined msym text-[18px]">add</span>
+          New Transfer
+        </button>
+        <div class="pt-4 border-t border-slate-200 space-y-1">
+          <a
+            class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors duration-200 cursor-pointer">
+            <span class="material-symbols-outlined msym text-[20px]">help_outline</span>
+            <span class="text-sm font-medium">Support</span>
+          </a>
+          <a onclick="signOut()"
+            class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-error transition-colors duration-200 cursor-pointer">
+            <span class="material-symbols-outlined msym text-[20px]">logout</span>
+            <span class="text-sm font-medium">Sign Out</span>
+          </a>
+        </div>
+        <!-- DB Status -->
+        <div class="flex items-center gap-2 px-2 pb-1">
+          <div id="db-dot" class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
+          <span id="db-lbl" class="text-[10px] text-slate-400 font-semibold truncate">Connecting…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══════ TOP BAR ══════ -->
+    <header
+      class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 glass-nav z-40 flex items-center justify-between px-8 border-b border-slate-100/50">
+      <div class="flex items-center gap-6">
+        <!-- Page title -->
+        <h2 id="pg-title" class="text-base font-bold tracking-tight text-slate-900 font-headline hidden md:block">
+          Financial Intelligence</h2>
+        <!-- Search -->
+        <div class="relative group">
+          <span
+            class="material-symbols-outlined msym absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] group-focus-within:text-indigo-600 transition-colors">search</span>
+          <input placeholder="Search transactions…"
+            class="bg-surface-container border-none rounded-full pl-9 pr-4 py-2 text-sm w-60 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+            type="text" />
+        </div>
+        <!-- Top nav links -->
+        <nav class="hidden md:flex gap-5 text-sm font-medium font-headline">
+          <a class="text-indigo-600 font-semibold" href="#">Overview</a>
+          <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Market</a>
+          <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Reports</a>
+        </nav>
+      </div>
+      <div class="flex items-center gap-3">
+        <button
+          class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all duration-200">
+          <span class="material-symbols-outlined msym">notifications</span>
+        </button>
+        <button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-all duration-200">
+          <span class="material-symbols-outlined msym">dark_mode</span>
+        </button>
+        <div id="top-avatar" onclick="nav('settings')"
+          class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-xs font-bold cursor-pointer"
+          title="">A</div>
+      </div>
+    </header>
+
+    <!-- ══════ MAIN CONTENT ══════ -->
+    <main id="main" class="ml-64 pt-16 min-h-screen pb-12">
+
+      <!-- ── DASHBOARD ── -->
+      <div id="sc-dashboard" class="screen active p-8 lg:p-10 max-w-7xl slide-in">
+
+        <!-- Hero Bento -->
+        <section class="grid grid-cols-12 gap-5 mb-8">
+          <!-- Liquidity Card -->
+          <div
+            class="col-span-12 lg:col-span-5 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl text-white relative overflow-hidden amb-lg">
+            <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-3xl pointer-events-none">
+            </div>
+            <div class="absolute -left-4 -top-4 w-28 h-28 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none">
+            </div>
+            <div class="relative z-10">
+              <p class="text-indigo-100/70 font-medium text-sm mb-1">Total Liquidity</p>
+              <h2 id="d-bal" class="text-5xl font-bold tracking-tight mb-7 font-headline">RM 0.00</h2>
+              <div class="flex items-center gap-4 flex-wrap">
+                <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl flex items-center gap-2">
+                  <span class="material-symbols-outlined msym text-[16px]">trending_up</span>
+                  <span class="text-sm font-bold">This Period</span>
+                </div>
+                <p id="d-period" class="text-sm text-indigo-100/60">Loading period…</p>
+              </div>
+            </div>
+          </div>
+          <!-- Income Card -->
+          <div
+            class="col-span-12 md:col-span-6 lg:col-span-3 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
+            <div>
+              <div class="w-11 h-11 bg-primary-fixed rounded-2xl flex items-center justify-center text-primary mb-5">
+                <span class="material-symbols-outlined msym">account_balance</span>
+              </div>
+              <p class="text-slate-500 font-medium text-sm mb-1">Monthly Income</p>
+              <h3 id="d-inc" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-50">
+              <p class="text-xs text-slate-400"><span id="d-inc-sub" class="text-primary font-bold">Period</span> income
+              </p>
+            </div>
+          </div>
+          <!-- Expenses Card -->
+          <div
+            class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
+            <div>
+              <div class="w-11 h-11 bg-tertiary-fixed rounded-2xl flex items-center justify-center text-tertiary mb-5">
+                <span class="material-symbols-outlined msym">shopping_cart</span>
+              </div>
+              <p class="text-slate-500 font-medium text-sm mb-1">Monthly Expenses</p>
+              <h3 id="d-exp" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
+            </div>
+            <div>
+              <div id="d-exp-bar" class="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div id="d-exp-fill" class="h-full bg-tertiary rounded-full transition-all" style="width:0%"></div>
+              </div>
+              <p id="d-exp-pct" class="mt-1.5 text-xs text-slate-400">0% of period income</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Lower Grid -->
+        <div class="grid grid-cols-12 gap-7">
+          <!-- Recent Transactions -->
+          <section class="col-span-12 lg:col-span-7">
+            <div class="flex items-center justify-between mb-5">
+              <h2 class="text-xl font-bold text-slate-900 font-headline tracking-tight">Recent Transactions</h2>
+              <button onclick="nav('transactions')"
+                class="text-indigo-600 font-semibold text-sm hover:underline underline-offset-2 transition-all">View all
+                history</button>
+            </div>
+            <div id="d-ledger" class="space-y-2.5">
+              <div class="p-5 text-center text-sm text-slate-400">Loading…</div>
+            </div>
+          </section>
+
+          <!-- Right Column -->
+          <section class="col-span-12 lg:col-span-5 space-y-5">
+            <!-- Net Gain Card -->
+            <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+              <div class="flex items-start justify-between mb-6">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight">Net Gain YTD</h3>
+                  <p class="text-xs text-slate-400 mt-0.5">Portfolio performance</p>
+                </div>
+                <div class="text-right">
+                  <p id="d-ytd" class="text-xl font-bold text-primary font-headline">RM 0</p>
+                  <span id="d-ytd-badge"
+                    class="text-[10px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full inline-block mt-0.5">—</span>
+                </div>
+              </div>
+              <div id="d-bars" class="h-36 w-full flex items-end gap-1.5 mb-3"></div>
+              <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+              </div>
+            </div>
+            <!-- Top Allocations -->
+            <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+              <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight mb-5">Top Allocations</h3>
+              <div id="d-alloc" class="space-y-3.5 mb-6">
+                <div class="text-sm text-slate-400">—</div>
+              </div>
+              <div id="d-alloc-bar" class="flex gap-0.5 h-2.5 w-full rounded-full overflow-hidden"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS ── -->
+      <div id="sc-analytics" class="screen p-8 lg:p-10 max-w-6xl slide-in">
+        <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Data Intelligence</p>
+            <h2 class="text-3xl font-bold tracking-tight font-headline">Spending Analytics</h2>
+          </div>
+          <div class="flex gap-3 flex-wrap">
+            <select id="an-period" onchange="applyAnalyticsPeriod()"
+              class="bg-white border border-slate-100 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 amb-card">
+              <option value="this_period">This Period</option>
+              <option value="last_period">Last Period</option>
+              <option value="this_month">This Month</option>
+              <option value="last_30">Last 30 Days</option>
+              <option value="last_90">Last 90 Days</option>
+              <option value="all">All Time</option>
+            </select>
+            <select id="an-type" onchange="renderAnalytics()"
+              class="bg-white border border-slate-100 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-primary/20 amb-card">
+              <option value="expense">Expenses</option>
+              <option value="income">Income</option>
+              <option value="savings">Savings</option>
+            </select>
+          </div>
+        </div>
+        <!-- Summary chips -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Expenses</p>
+            <p id="an-exp" class="text-xl font-bold tracking-tight text-tertiary font-headline">RM 0</p>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Income</p>
+            <p id="an-inc" class="text-xl font-bold tracking-tight text-primary font-headline">RM 0</p>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Savings</p>
+            <p id="an-sav" class="text-xl font-bold tracking-tight text-secondary font-headline">RM 0</p>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Top Category</p>
+            <p id="an-top" class="text-sm font-bold text-on-surface">—</p>
+          </div>
+        </div>
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+            <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Monthly Breakdown</h3>
+            <div class="relative" style="height:240px"><canvas id="an-bar"></canvas></div>
+          </div>
+          <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+            <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Category Trends</h3>
+            <div class="relative" style="height:240px"><canvas id="an-line"></canvas></div>
+          </div>
+        </div>
+        <!-- Allocation breakdown -->
+        <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+          <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Allocation Breakdown</h3>
+          <div id="an-table"></div>
+        </div>
+      </div>
+
+      <!-- ── TRANSACTIONS ── -->
+      <div id="sc-transactions" class="screen p-8 lg:p-10 max-w-5xl slide-in">
+        <div class="flex justify-between items-end mb-8">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Full Record</p>
+            <h2 class="text-3xl font-bold tracking-tight font-headline">Transaction Ledger</h2>
+          </div>
+          <button onclick="nav('entry')"
+            class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">
+            <span class="material-symbols-outlined msym text-[16px]">add</span> New Entry
+          </button>
+        </div>
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-6 p-5 bg-surface-container-lowest rounded-2xl amb-card">
+          <select id="tf-type" onchange="renderTx()"
+            class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="all">All Types</option>
             <option value="expense">Expenses</option>
             <option value="income">Income</option>
             <option value="savings">Savings</option>
           </select>
+          <select id="tf-cat" onchange="renderTx()"
+            class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="all">All Categories</option>
+          </select>
+          <select id="tf-month" onchange="renderTx()"
+            class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="all">All Months</option>
+            <option value="01">Jan</option>
+            <option value="02">Feb</option>
+            <option value="03">Mar</option>
+            <option value="04">Apr</option>
+            <option value="05">May</option>
+            <option value="06">Jun</option>
+            <option value="07">Jul</option>
+            <option value="08">Aug</option>
+            <option value="09">Sep</option>
+            <option value="10">Oct</option>
+            <option value="11">Nov</option>
+            <option value="12">Dec</option>
+          </select>
+          <span id="tx-cnt"
+            class="ml-auto self-center text-xs font-bold text-slate-400 uppercase tracking-wider"></span>
         </div>
-      </div>
-      <!-- Summary chips -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Expenses</p>
-          <p id="an-exp" class="text-xl font-bold tracking-tight text-tertiary font-headline">RM 0</p>
+        <div id="tx-list" class="space-y-2.5">
+          <div class="p-8 text-center text-sm text-slate-400">Loading…</div>
         </div>
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Income</p>
-          <p id="an-inc" class="text-xl font-bold tracking-tight text-primary font-headline">RM 0</p>
+        <div class="flex justify-between items-center mt-5">
+          <span id="tx-info" class="text-xs text-slate-400 font-semibold"></span>
+          <div id="tx-pages" class="flex gap-1.5"></div>
         </div>
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Savings</p>
-          <p id="an-sav" class="text-xl font-bold tracking-tight text-secondary font-headline">RM 0</p>
-        </div>
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Top Category</p>
-          <p id="an-top" class="text-sm font-bold text-on-surface">—</p>
-        </div>
-      </div>
-      <!-- Charts -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-          <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Monthly Breakdown</h3>
-          <div class="relative" style="height:240px"><canvas id="an-bar"></canvas></div>
-        </div>
-        <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-          <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Category Trends</h3>
-          <div class="relative" style="height:240px"><canvas id="an-line"></canvas></div>
-        </div>
-      </div>
-      <!-- Allocation breakdown -->
-      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-        <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Allocation Breakdown</h3>
-        <div id="an-table"></div>
-      </div>
-    </div>
-
-    <!-- ── TRANSACTIONS ── -->
-    <div id="sc-transactions" class="screen p-8 lg:p-10 max-w-5xl slide-in">
-      <div class="flex justify-between items-end mb-8">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Full Record</p>
-          <h2 class="text-3xl font-bold tracking-tight font-headline">Transaction Ledger</h2>
-        </div>
-        <button onclick="nav('entry')"
-          class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">
-          <span class="material-symbols-outlined msym text-[16px]">add</span> New Entry
-        </button>
-      </div>
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 mb-6 p-5 bg-surface-container-lowest rounded-2xl amb-card">
-        <select id="tf-type" onchange="renderTx()"
-          class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
-          <option value="all">All Types</option>
-          <option value="expense">Expenses</option>
-          <option value="income">Income</option>
-          <option value="savings">Savings</option>
-        </select>
-        <select id="tf-cat" onchange="renderTx()"
-          class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
-          <option value="all">All Categories</option>
-        </select>
-        <select id="tf-month" onchange="renderTx()"
-          class="bg-surface-container border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20">
-          <option value="all">All Months</option>
-          <option value="01">Jan</option>
-          <option value="02">Feb</option>
-          <option value="03">Mar</option>
-          <option value="04">Apr</option>
-          <option value="05">May</option>
-          <option value="06">Jun</option>
-          <option value="07">Jul</option>
-          <option value="08">Aug</option>
-          <option value="09">Sep</option>
-          <option value="10">Oct</option>
-          <option value="11">Nov</option>
-          <option value="12">Dec</option>
-        </select>
-        <span id="tx-cnt" class="ml-auto self-center text-xs font-bold text-slate-400 uppercase tracking-wider"></span>
-      </div>
-      <div id="tx-list" class="space-y-2.5">
-        <div class="p-8 text-center text-sm text-slate-400">Loading…</div>
-      </div>
-      <div class="flex justify-between items-center mt-5">
-        <span id="tx-info" class="text-xs text-slate-400 font-semibold"></span>
-        <div id="tx-pages" class="flex gap-1.5"></div>
-      </div>
-    </div>
-
-    <!-- ── ENTRY ── -->
-    <div id="sc-entry" class="screen p-8 lg:p-10 max-w-6xl slide-in">
-      <div class="mb-8">
-        <p id="e-mode" class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">New Entry</p>
-        <h2 class="text-3xl font-bold tracking-tight font-headline">Log Transaction</h2>
-        <p class="text-slate-500 text-sm mt-1">Add a new entry to your financial records with precision.</p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-        <!-- Left: main form -->
-        <div class="lg:col-span-8 space-y-6">
-          <!-- Amount + Type -->
-          <div class="bg-surface-container-lowest rounded-2xl p-9 amb-card relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-1 h-full bg-primary-container rounded-l-2xl"></div>
-            <!-- Type toggle -->
-            <div class="flex gap-2 mb-8 bg-surface-container p-1.5 rounded-xl w-fit">
-              <button onclick="setType('expense')" id="tb-expense"
-                class="px-5 py-2 rounded-lg text-sm font-semibold bg-gradient-to-br from-primary to-primary-container text-white transition-all duration-200 shadow-sm shadow-indigo-200">Expense</button>
-              <button onclick="setType('income')" id="tb-income"
-                class="px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white transition-all duration-200">Income</button>
-              <button onclick="setType('savings')" id="tb-savings"
-                class="px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white transition-all duration-200">Savings</button>
-            </div>
-            <!-- Amount input -->
-            <div class="mb-10">
-              <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Amount</label>
-              <div class="flex items-baseline gap-3">
-                <span class="text-4xl font-medium text-slate-300 font-headline select-none">RM</span>
-                <input id="e-amt" type="number" min="0" step="0.01" placeholder="0.00"
-                  class="flex-1 text-6xl font-bold tracking-tight text-on-surface bg-transparent border-none p-0 focus:ring-0 outline-none placeholder:text-slate-200 font-headline" />
+      <!-- ── ENTRY ── -->
+      <div id="sc-entry" class="screen p-8 lg:p-10 max-w-6xl slide-in">
+        <div class="mb-8">
+          <p id="e-mode" class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">New Entry</p>
+          <h2 class="text-3xl font-bold tracking-tight font-headline">Log Transaction</h2>
+          <p class="text-slate-500 text-sm mt-1">Add a new entry to your financial records with precision.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+          <!-- Left: main form -->
+          <div class="lg:col-span-8 space-y-6">
+            <!-- Amount + Type -->
+            <div class="bg-surface-container-lowest rounded-2xl p-9 amb-card relative overflow-hidden">
+              <div class="absolute top-0 left-0 w-1 h-full bg-primary-container rounded-l-2xl"></div>
+              <!-- Type toggle -->
+              <div class="flex gap-2 mb-8 bg-surface-container p-1.5 rounded-xl w-fit">
+                <button onclick="setType('expense')" id="tb-expense"
+                  class="px-5 py-2 rounded-lg text-sm font-semibold bg-gradient-to-br from-primary to-primary-container text-white transition-all duration-200 shadow-sm shadow-indigo-200">Expense</button>
+                <button onclick="setType('income')" id="tb-income"
+                  class="px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white transition-all duration-200">Income</button>
+                <button onclick="setType('savings')" id="tb-savings"
+                  class="px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white transition-all duration-200">Savings</button>
               </div>
-              <div class="mt-3 h-px bg-gradient-to-r from-indigo-500/40 via-slate-200 to-transparent"></div>
-            </div>
-            <!-- Category Grid -->
-            <div>
-              <div class="flex justify-between items-center mb-5">
-                <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Select Category</label>
-                <span id="e-cat-sel" class="text-xs font-bold text-indigo-600 uppercase tracking-widest"></span>
+              <!-- Amount input -->
+              <div class="mb-10">
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Amount</label>
+                <div class="flex items-baseline gap-3">
+                  <span class="text-4xl font-medium text-slate-300 font-headline select-none">RM</span>
+                  <input id="e-amt" type="number" min="0" step="0.01" placeholder="0.00"
+                    class="flex-1 text-6xl font-bold tracking-tight text-on-surface bg-transparent border-none p-0 focus:ring-0 outline-none placeholder:text-slate-200 font-headline" />
+                </div>
+                <div class="mt-3 h-px bg-gradient-to-r from-indigo-500/40 via-slate-200 to-transparent"></div>
               </div>
-              <div id="e-cat-grid" class="grid grid-cols-3 md:grid-cols-4 gap-3.5"></div>
+              <!-- Category Grid -->
+              <div>
+                <div class="flex justify-between items-center mb-5">
+                  <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Select Category</label>
+                  <span id="e-cat-sel" class="text-xs font-bold text-indigo-600 uppercase tracking-widest"></span>
+                </div>
+                <div id="e-cat-grid" class="grid grid-cols-3 md:grid-cols-4 gap-3.5"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: details -->
+          <div class="lg:col-span-4 space-y-4">
+            <div class="bg-surface-container-lowest rounded-2xl p-6 amb-card space-y-5">
+              <h3 class="text-sm font-bold text-slate-900 font-headline">Transaction Details</h3>
+              <!-- Date -->
+              <div>
+                <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Date of
+                  Record</label>
+                <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
+                  <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">calendar_today</span>
+                  <input id="e-date" type="date"
+                    class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full" />
+                </div>
+              </div>
+              <!-- Account -->
+              <div>
+                <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Account</label>
+                <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
+                  <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">credit_card</span>
+                  <select id="e-acct"
+                    class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full"></select>
+                </div>
+              </div>
+              <!-- Sub-category -->
+              <div>
+                <label
+                  class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Sub-category</label>
+                <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
+                  <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">label</span>
+                  <select id="e-sub"
+                    class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full"></select>
+                </div>
+              </div>
+              <!-- Memo -->
+              <div>
+                <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Memo / Note</label>
+                <div class="flex items-start gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
+                  <span class="material-symbols-outlined msym text-indigo-500 text-[18px] mt-0.5">edit_note</span>
+                  <input id="e-memo" type="text" placeholder="What was this for?"
+                    class="bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-slate-400 text-slate-700 outline-none w-full" />
+                </div>
+              </div>
+              <!-- Submit -->
+              <button id="e-submit" onclick="submitEntry()"
+                class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">
+                Log Entry
+              </button>
+              <button id="e-cancel" onclick="cancelEdit()" style="display:none"
+                class="w-full py-3 bg-surface-container text-slate-600 rounded-xl font-semibold text-sm hover:bg-surface-container-high transition-all duration-200">
+                Cancel Edit
+              </button>
+              <p class="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Lumina Financial
+                · Encrypted</p>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Right: details -->
-        <div class="lg:col-span-4 space-y-4">
-          <div class="bg-surface-container-lowest rounded-2xl p-6 amb-card space-y-5">
-            <h3 class="text-sm font-bold text-slate-900 font-headline">Transaction Details</h3>
-            <!-- Date -->
-            <div>
-              <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Date of
-                Record</label>
-              <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">calendar_today</span>
-                <input id="e-date" type="date"
-                  class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full" />
+      <!-- ── BUDGETS ── -->
+      <div id="sc-budgets" class="screen p-8 lg:p-10 max-w-6xl slide-in">
+        <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Oversight</p>
+            <h2 class="text-3xl font-bold tracking-tight font-headline">Budget Monitor</h2>
+            <p id="b-period-note" class="text-slate-500 text-sm mt-1">Loading period…</p>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="saveBudgets()"
+              class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 transition-all">Save
+              Allocations</button>
+          </div>
+        </div>
+
+        <!-- Top Stats Bento -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <!-- Gauge Card -->
+          <div
+            class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-3xl amb-card flex flex-col md:flex-row items-center gap-10">
+            <div class="relative w-44 h-44 flex-shrink-0">
+              <svg class="w-full h-full gauge-ring" viewBox="0 0 192 192">
+                <circle class="text-surface-container" cx="96" cy="96" fill="transparent" r="80" stroke="currentColor"
+                  stroke-width="14" />
+                <circle id="gauge-fill" class="text-primary" cx="96" cy="96" fill="transparent" r="80"
+                  stroke="currentColor" stroke-dasharray="502.65" stroke-dashoffset="502.65" stroke-width="14"
+                  stroke-linecap="round" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="gauge-pct" class="text-3xl font-bold text-on-surface font-headline tracking-tight">0%</span>
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Used</span>
               </div>
             </div>
-            <!-- Account -->
-            <div>
-              <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Account</label>
-              <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">credit_card</span>
-                <select id="e-acct"
-                  class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full"></select>
+            <div class="flex-1 space-y-4">
+              <span
+                class="px-3 py-1 bg-primary-fixed-dim text-on-primary-fixed-variant text-xs font-bold rounded-full uppercase tracking-wider">Total
+                Monthly Budget</span>
+              <div>
+                <div id="b-spent-big" class="text-4xl font-bold text-on-surface tracking-tight font-headline">RM 0</div>
+                <p id="b-total-note" class="text-slate-500 text-sm mt-1">of RM 0 limit reached</p>
+              </div>
+              <div id="b-warn" class="hidden pt-2 flex items-center gap-2 text-tertiary">
+                <span class="material-symbols-outlined msym-fill text-[18px]">warning</span>
+                <span class="text-sm font-semibold">Approaching your threshold.</span>
               </div>
             </div>
-            <!-- Sub-category -->
-            <div>
-              <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Sub-category</label>
-              <div class="flex items-center gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined msym text-indigo-500 text-[18px]">label</span>
-                <select id="e-sub"
-                  class="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 outline-none w-full"></select>
-              </div>
+          </div>
+          <!-- Insight Card -->
+          <div
+            class="bg-gradient-to-br from-primary to-primary-container text-white p-8 rounded-3xl amb-lg flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none">
             </div>
-            <!-- Memo -->
-            <div>
-              <label class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2 block">Memo / Note</label>
-              <div class="flex items-start gap-2.5 bg-surface-container-low rounded-xl px-4 py-3">
-                <span class="material-symbols-outlined msym text-indigo-500 text-[18px] mt-0.5">edit_note</span>
-                <input id="e-memo" type="text" placeholder="What was this for?"
-                  class="bg-transparent border-none focus:ring-0 text-sm font-medium placeholder:text-slate-400 text-slate-700 outline-none w-full" />
-              </div>
+            <div class="relative z-10">
+              <span class="material-symbols-outlined msym text-3xl mb-4">auto_awesome</span>
+              <h3 class="text-lg font-bold mb-2 font-headline leading-tight">Smart Insight</h3>
+              <p id="b-insight" class="text-on-primary-container text-sm leading-relaxed">Loading…</p>
             </div>
-            <!-- Submit -->
-            <button id="e-submit" onclick="submitEntry()"
-              class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">
-              Log Entry
-            </button>
-            <button id="e-cancel" onclick="cancelEdit()" style="display:none"
-              class="w-full py-3 bg-surface-container text-slate-600 rounded-xl font-semibold text-sm hover:bg-surface-container-high transition-all duration-200">
-              Cancel Edit
-            </button>
-            <p class="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Lumina Financial ·
-              Encrypted</p>
+            <p id="b-save-msg" class="relative z-10 mt-5 text-sm font-bold text-white/80"></p>
+          </div>
+        </div>
+
+        <!-- Summary Row -->
+        <div class="grid grid-cols-3 gap-4 mb-8">
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Spent</p>
+            <p id="b-spent" class="text-xl font-bold text-tertiary font-headline">RM 0</p>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Budgeted</p>
+            <p id="b-total" class="text-xl font-bold text-on-surface font-headline">RM 0</p>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Remaining</p>
+            <p id="b-rem" class="text-xl font-bold font-headline">RM 0</p>
+          </div>
+        </div>
+
+        <!-- Budget Form + Progress -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
+          <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+            <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Set Category Limits</h3>
+            <div id="b-form" class="space-y-3">
+              <div class="text-sm text-slate-400 text-center py-4">Loading…</div>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Progress</h3>
+            <div id="b-prog" class="space-y-3.5">
+              <div class="p-8 text-center text-sm text-slate-400">Set budgets to see progress</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ── BUDGETS ── -->
-    <div id="sc-budgets" class="screen p-8 lg:p-10 max-w-6xl slide-in">
-      <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Oversight</p>
-          <h2 class="text-3xl font-bold tracking-tight font-headline">Budget Monitor</h2>
-          <p id="b-period-note" class="text-slate-500 text-sm mt-1">Loading period…</p>
+      <!-- ── FORECAST ── -->
+      <div id="sc-forecast" class="screen p-8 lg:p-10 max-w-6xl slide-in">
+        <div class="flex flex-wrap justify-between items-end gap-4 mb-10">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Strategic Vision</p>
+            <h2 class="text-3xl font-bold tracking-tight font-headline">Financial Forecast</h2>
+            <p class="text-slate-500 text-sm mt-1">Trajectory analysis based on your last 3 pay periods</p>
+          </div>
+          <span
+            class="px-4 py-2 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-xs font-bold uppercase tracking-wider">Active
+            Strategy: Growth</span>
         </div>
-        <div class="flex gap-3">
-          <button onclick="saveBudgets()"
-            class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 transition-all">Save
-            Allocations</button>
-        </div>
-      </div>
 
-      <!-- Top Stats Bento -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Gauge Card -->
+        <!-- KPI Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Income</p>
+            <p id="f-inc" class="text-2xl font-bold text-primary font-headline">RM 0</p>
+            <p class="text-[10px] text-slate-400 mt-1">per period</p>
+          </div>
+          <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Expenses</p>
+            <p id="f-exp" class="text-2xl font-bold text-tertiary font-headline">RM 0</p>
+            <p class="text-[10px] text-slate-400 mt-1">per period</p>
+          </div>
+          <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Surplus</p>
+            <p id="f-surp" class="text-2xl font-bold font-headline">RM 0</p>
+            <p class="text-[10px] text-slate-400 mt-1">per period</p>
+          </div>
+          <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
+            <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Goals On Track</p>
+            <p id="f-goals" class="text-2xl font-bold font-headline">— / —</p>
+          </div>
+        </div>
+
+        <!-- Main chart + breakdown -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 mb-7">
+          <div class="lg:col-span-8 bg-surface-container-lowest p-7 rounded-3xl amb-card">
+            <div class="flex items-start justify-between mb-6">
+              <div>
+                <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight">Projected Cash Flow</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Solid = actual · Faded = forecast</p>
+              </div>
+            </div>
+            <div class="relative" style="height:260px"><canvas id="f-chart"></canvas></div>
+          </div>
+          <div class="lg:col-span-4 bg-surface-container-lowest p-6 rounded-2xl amb-card">
+            <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Forecast</h3>
+            <div id="f-cats" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <!-- Strategic opportunities -->
         <div
-          class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-3xl amb-card flex flex-col md:flex-row items-center gap-10">
-          <div class="relative w-44 h-44 flex-shrink-0">
-            <svg class="w-full h-full gauge-ring" viewBox="0 0 192 192">
-              <circle class="text-surface-container" cx="96" cy="96" fill="transparent" r="80" stroke="currentColor"
-                stroke-width="14" />
-              <circle id="gauge-fill" class="text-primary" cx="96" cy="96" fill="transparent" r="80"
-                stroke="currentColor" stroke-dasharray="502.65" stroke-dashoffset="502.65" stroke-width="14"
-                stroke-linecap="round" />
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span id="gauge-pct" class="text-3xl font-bold text-on-surface font-headline tracking-tight">0%</span>
-              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Used</span>
-            </div>
-          </div>
-          <div class="flex-1 space-y-4">
-            <span
-              class="px-3 py-1 bg-primary-fixed-dim text-on-primary-fixed-variant text-xs font-bold rounded-full uppercase tracking-wider">Total
-              Monthly Budget</span>
-            <div>
-              <div id="b-spent-big" class="text-4xl font-bold text-on-surface tracking-tight font-headline">RM 0</div>
-              <p id="b-total-note" class="text-slate-500 text-sm mt-1">of RM 0 limit reached</p>
-            </div>
-            <div id="b-warn" class="hidden pt-2 flex items-center gap-2 text-tertiary">
-              <span class="material-symbols-outlined msym-fill text-[18px]">warning</span>
-              <span class="text-sm font-semibold">Approaching your threshold.</span>
-            </div>
-          </div>
-        </div>
-        <!-- Insight Card -->
-        <div
-          class="bg-gradient-to-br from-primary to-primary-container text-white p-8 rounded-3xl amb-lg flex flex-col justify-between relative overflow-hidden">
-          <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none">
+          class="bg-gradient-to-br from-primary to-primary-container text-white p-8 rounded-3xl relative overflow-hidden amb-lg">
+          <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none">
           </div>
           <div class="relative z-10">
-            <span class="material-symbols-outlined msym text-3xl mb-4">auto_awesome</span>
-            <h3 class="text-lg font-bold mb-2 font-headline leading-tight">Smart Insight</h3>
-            <p id="b-insight" class="text-on-primary-container text-sm leading-relaxed">Loading…</p>
-          </div>
-          <p id="b-save-msg" class="relative z-10 mt-5 text-sm font-bold text-white/80"></p>
-        </div>
-      </div>
-
-      <!-- Summary Row -->
-      <div class="grid grid-cols-3 gap-4 mb-8">
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Spent</p>
-          <p id="b-spent" class="text-xl font-bold text-tertiary font-headline">RM 0</p>
-        </div>
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Budgeted</p>
-          <p id="b-total" class="text-xl font-bold text-on-surface font-headline">RM 0</p>
-        </div>
-        <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Remaining</p>
-          <p id="b-rem" class="text-xl font-bold font-headline">RM 0</p>
-        </div>
-      </div>
-
-      <!-- Budget Form + Progress -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
-        <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-          <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Set Category Limits</h3>
-          <div id="b-form" class="space-y-3">
-            <div class="text-sm text-slate-400 text-center py-4">Loading…</div>
-          </div>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Progress</h3>
-          <div id="b-prog" class="space-y-3.5">
-            <div class="p-8 text-center text-sm text-slate-400">Set budgets to see progress</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── FORECAST ── -->
-    <div id="sc-forecast" class="screen p-8 lg:p-10 max-w-6xl slide-in">
-      <div class="flex flex-wrap justify-between items-end gap-4 mb-10">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Strategic Vision</p>
-          <h2 class="text-3xl font-bold tracking-tight font-headline">Financial Forecast</h2>
-          <p class="text-slate-500 text-sm mt-1">Trajectory analysis based on your last 3 pay periods</p>
-        </div>
-        <span
-          class="px-4 py-2 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-xs font-bold uppercase tracking-wider">Active
-          Strategy: Growth</span>
-      </div>
-
-      <!-- KPI Row -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Income</p>
-          <p id="f-inc" class="text-2xl font-bold text-primary font-headline">RM 0</p>
-          <p class="text-[10px] text-slate-400 mt-1">per period</p>
-        </div>
-        <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Expenses</p>
-          <p id="f-exp" class="text-2xl font-bold text-tertiary font-headline">RM 0</p>
-          <p class="text-[10px] text-slate-400 mt-1">per period</p>
-        </div>
-        <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Avg Surplus</p>
-          <p id="f-surp" class="text-2xl font-bold font-headline">RM 0</p>
-          <p class="text-[10px] text-slate-400 mt-1">per period</p>
-        </div>
-        <div class="bg-surface-container-lowest p-6 rounded-2xl amb-card">
-          <p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Goals On Track</p>
-          <p id="f-goals" class="text-2xl font-bold font-headline">— / —</p>
-        </div>
-      </div>
-
-      <!-- Main chart + breakdown -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 mb-7">
-        <div class="lg:col-span-8 bg-surface-container-lowest p-7 rounded-3xl amb-card">
-          <div class="flex items-start justify-between mb-6">
-            <div>
-              <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight">Projected Cash Flow</h3>
-              <p class="text-xs text-slate-400 mt-0.5">Solid = actual · Faded = forecast</p>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="material-symbols-outlined msym text-3xl">auto_awesome</span>
+              <h3 class="text-xl font-bold font-headline">Strategic Opportunities</h3>
             </div>
+            <div id="f-ops" class="space-y-3 text-sm text-on-primary-container leading-relaxed"></div>
           </div>
-          <div class="relative" style="height:260px"><canvas id="f-chart"></canvas></div>
-        </div>
-        <div class="lg:col-span-4 bg-surface-container-lowest p-6 rounded-2xl amb-card">
-          <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Forecast</h3>
-          <div id="f-cats" class="space-y-3"></div>
         </div>
       </div>
 
-      <!-- Strategic opportunities -->
-      <div
-        class="bg-gradient-to-br from-primary to-primary-container text-white p-8 rounded-3xl relative overflow-hidden amb-lg">
-        <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none">
+      <!-- ── SETTINGS ── -->
+      <div id="sc-settings" class="screen p-8 lg:p-10 max-w-3xl slide-in">
+        <div class="mb-8">
+          <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Configuration</p>
+          <h2 class="text-3xl font-bold tracking-tight font-headline">Settings</h2>
         </div>
-        <div class="relative z-10">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="material-symbols-outlined msym text-3xl">auto_awesome</span>
-            <h3 class="text-xl font-bold font-headline">Strategic Opportunities</h3>
-          </div>
-          <div id="f-ops" class="space-y-3 text-sm text-on-primary-container leading-relaxed"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SETTINGS ── -->
-    <div id="sc-settings" class="screen p-8 lg:p-10 max-w-3xl slide-in">
-      <div class="mb-8">
-        <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Configuration</p>
-        <h2 class="text-3xl font-bold tracking-tight font-headline">Settings</h2>
-      </div>
-      <div class="space-y-5">
-        <!-- Pay Period -->
-        <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-          <div class="flex items-start justify-between mb-5">
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 font-headline">Pay Period</h3>
-              <p class="text-xs text-slate-400 mt-1 leading-relaxed">Set the day salary arrives each month. Override
-                specific months when it arrives early or late.</p>
+        <div class="space-y-5">
+          <!-- Pay Period -->
+          <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+            <div class="flex items-start justify-between mb-5">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 font-headline">Pay Period</h3>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">Set the day salary arrives each month. Override
+                  specific months when it arrives early or late.</p>
+              </div>
+              <span id="s-pp-badge"
+                class="px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-xs font-bold ml-4 flex-shrink-0 whitespace-nowrap"></span>
             </div>
-            <span id="s-pp-badge"
-              class="px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-xs font-bold ml-4 flex-shrink-0 whitespace-nowrap"></span>
-          </div>
-          <!-- Default salary day -->
-          <div class="flex items-center gap-4 mb-6 p-4 bg-surface-container-low rounded-xl">
-            <div class="flex-shrink-0">
-              <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block">Default salary
-                day</label>
-              <div class="flex items-center gap-2">
-                <input id="s-day" type="number" min="1" max="28" value="25"
-                  class="w-14 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-base font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
-                  oninput="refreshPpPreview();renderPpGrid()" />
-                <span class="text-xs text-slate-400">of each month</span>
+            <!-- Default salary day -->
+            <div class="flex items-center gap-4 mb-6 p-4 bg-surface-container-low rounded-xl">
+              <div class="flex-shrink-0">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block">Default
+                  salary day</label>
+                <div class="flex items-center gap-2">
+                  <input id="s-day" type="number" min="1" max="28" value="25"
+                    class="w-14 text-center bg-white border border-slate-200 rounded-lg px-2 py-2 text-base font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
+                    oninput="refreshPpPreview();renderPpGrid()" />
+                  <span class="text-xs text-slate-400">of each month</span>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Current period</p>
+                <p id="s-prev" class="text-sm font-bold text-on-primary-fixed-variant truncate">—</p>
               </div>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Current period</p>
-              <p id="s-prev" class="text-sm font-bold text-on-primary-fixed-variant truncate">—</p>
+            <!-- Per-month override grid -->
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Per-month overrides <span
+                  class="normal-case font-normal text-slate-400">— tap a month to set a custom salary day</span></p>
+              <div id="s-pp-grid" class="grid grid-cols-3 md:grid-cols-4 gap-2.5 mb-4"></div>
+              <div id="s-pp-overrides" class="space-y-2"></div>
             </div>
           </div>
-          <!-- Per-month override grid -->
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Per-month overrides <span
-                class="normal-case font-normal text-slate-400">— tap a month to set a custom salary day</span></p>
-            <div id="s-pp-grid" class="grid grid-cols-3 md:grid-cols-4 gap-2.5 mb-4"></div>
-            <div id="s-pp-overrides" class="space-y-2"></div>
+          <!-- Accounts -->
+          <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+            <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Accounts</h3>
+            <div id="s-accts" class="flex flex-wrap gap-2 mb-5 min-h-8"></div>
+            <div class="flex gap-3">
+              <input id="s-nacct" type="text" placeholder="e.g. Maybank, TNG…" maxlength="30"
+                class="flex-1 bg-surface-container-low border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
+              <button onclick="addAcct()"
+                class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-200 hover:opacity-90 transition-all">Add</button>
+            </div>
           </div>
-        </div>
-        <!-- Accounts -->
-        <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-          <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Accounts</h3>
-          <div id="s-accts" class="flex flex-wrap gap-2 mb-5 min-h-8"></div>
-          <div class="flex gap-3">
-            <input id="s-nacct" type="text" placeholder="e.g. Maybank, TNG…" maxlength="30"
-              class="flex-1 bg-surface-container-low border border-slate-100 rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
-            <button onclick="addAcct()"
-              class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-200 hover:opacity-90 transition-all">Add</button>
-          </div>
-        </div>
-        <!-- Categories -->
-        <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-          <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Categories</h3>
-          <div class="flex gap-1.5 mb-5 bg-surface-container-low p-1 rounded-xl w-fit">
-            <button onclick="sCatTab('expense')" id="st-expense"
-              class="px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-br from-primary to-primary-container text-white transition-all">Expense</button>
-            <button onclick="sCatTab('income')" id="st-income"
-              class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">Income</button>
-            <button onclick="sCatTab('savings')" id="st-savings"
-              class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">Savings</button>
-          </div>
-          <div class="grid grid-cols-2 gap-5">
-            <div>
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Categories</p>
-              <div id="s-cats" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
-              <div class="flex gap-2">
-                <input id="s-ncat" type="text" placeholder="New category…" maxlength="30"
-                  class="flex-1 bg-surface-container-low border border-slate-100 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
-                <button onclick="addCat()"
-                  class="px-4 py-2 bg-surface-container-high text-primary rounded-lg text-xs font-bold hover:bg-surface-container-highest transition-all">Add</button>
+          <!-- Categories -->
+          <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+            <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Categories</h3>
+            <div class="flex gap-1.5 mb-5 bg-surface-container-low p-1 rounded-xl w-fit">
+              <button onclick="sCatTab('expense')" id="st-expense"
+                class="px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-br from-primary to-primary-container text-white transition-all">Expense</button>
+              <button onclick="sCatTab('income')" id="st-income"
+                class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">Income</button>
+              <button onclick="sCatTab('savings')" id="st-savings"
+                class="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all">Savings</button>
+            </div>
+            <div class="grid grid-cols-2 gap-5">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Categories</p>
+                <div id="s-cats" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
+                <div class="flex gap-2">
+                  <input id="s-ncat" type="text" placeholder="New category…" maxlength="30"
+                    class="flex-1 bg-surface-container-low border border-slate-100 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
+                  <button onclick="addCat()"
+                    class="px-4 py-2 bg-surface-container-high text-primary rounded-lg text-xs font-bold hover:bg-surface-container-highest transition-all">Add</button>
+                </div>
               </div>
-            </div>
-            <div>
-              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Sub-cats of <span id="s-catsel"
-                  class="text-primary">—</span></p>
-              <div id="s-subs" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
-              <div id="s-subrow" class="flex gap-2" style="visibility:hidden">
-                <input id="s-nsub" type="text" placeholder="New sub-category…" maxlength="30"
-                  class="flex-1 bg-surface-container-low border border-slate-100 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
-                <button onclick="addSub()"
-                  class="px-4 py-2 bg-surface-container-high text-primary rounded-lg text-xs font-bold hover:bg-surface-container-highest transition-all">Add</button>
+              <div>
+                <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Sub-cats of <span
+                    id="s-catsel" class="text-primary">—</span></p>
+                <div id="s-subs" class="flex flex-wrap gap-2 mb-4 min-h-8"></div>
+                <div id="s-subrow" class="flex gap-2" style="visibility:hidden">
+                  <input id="s-nsub" type="text" placeholder="New sub-category…" maxlength="30"
+                    class="flex-1 bg-surface-container-low border border-slate-100 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400" />
+                  <button onclick="addSub()"
+                    class="px-4 py-2 bg-surface-container-high text-primary rounded-lg text-xs font-bold hover:bg-surface-container-highest transition-all">Add</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <!-- Save -->
-        <div class="flex items-center gap-4">
-          <button onclick="saveSettings()"
-            class="px-10 py-3.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">Save
-            All Changes</button>
-          <p id="s-msg" class="text-sm font-bold text-primary"></p>
+          <!-- Save -->
+          <div class="flex items-center gap-4">
+            <button onclick="saveSettings()"
+              class="px-10 py-3.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200">Save
+              All Changes</button>
+            <p id="s-msg" class="text-sm font-bold text-primary"></p>
+          </div>
         </div>
       </div>
-    </div>
 
-  </main>
+    </main>
 
-  <!-- Mobile bottom nav -->
-  <nav id="mob-nav" style="display:none"
-    class="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center py-3 px-4 z-50 border-t border-slate-100">
-    <a onclick="nav('dashboard')" class="flex flex-col items-center gap-0.5 text-indigo-600 cursor-pointer"><span
-        class="material-symbols-outlined msym text-[22px]">dashboard</span><span
-        class="text-[8px] font-bold uppercase tracking-tight">Dash</span></a>
-    <a onclick="nav('transactions')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
-        class="material-symbols-outlined msym text-[22px]">receipt_long</span><span
-        class="text-[8px] font-bold uppercase tracking-tight">Ledger</span></a>
-    <div class="relative -top-3">
-      <button onclick="nav('entry')"
-        class="w-12 h-12 bg-gradient-to-br from-primary to-primary-container text-white rounded-full flex items-center justify-center shadow-md shadow-indigo-200">
-        <span class="material-symbols-outlined msym">add</span>
-      </button>
-    </div>
-    <a onclick="nav('analytics')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
-        class="material-symbols-outlined msym text-[22px]">insights</span><span
-        class="text-[8px] font-bold uppercase tracking-tight">Analytics</span></a>
-    <a onclick="nav('forecast')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
-        class="material-symbols-outlined msym text-[22px]">query_stats</span><span
-        class="text-[8px] font-bold uppercase tracking-tight">Forecast</span></a>
-  </nav>
+    <!-- Mobile bottom nav -->
+    <nav id="mob-nav" style="display:none"
+      class="fixed bottom-0 left-0 right-0 glass-nav flex justify-around items-center py-3 px-4 z-50 border-t border-slate-100">
+      <a onclick="nav('dashboard')" class="flex flex-col items-center gap-0.5 text-indigo-600 cursor-pointer"><span
+          class="material-symbols-outlined msym text-[22px]">dashboard</span><span
+          class="text-[8px] font-bold uppercase tracking-tight">Dash</span></a>
+      <a onclick="nav('transactions')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
+          class="material-symbols-outlined msym text-[22px]">receipt_long</span><span
+          class="text-[8px] font-bold uppercase tracking-tight">Ledger</span></a>
+      <div class="relative -top-3">
+        <button onclick="nav('entry')"
+          class="w-12 h-12 bg-gradient-to-br from-primary to-primary-container text-white rounded-full flex items-center justify-center shadow-md shadow-indigo-200">
+          <span class="material-symbols-outlined msym">add</span>
+        </button>
+      </div>
+      <a onclick="nav('analytics')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
+          class="material-symbols-outlined msym text-[22px]">insights</span><span
+          class="text-[8px] font-bold uppercase tracking-tight">Analytics</span></a>
+      <a onclick="nav('forecast')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer"><span
+          class="material-symbols-outlined msym text-[22px]">query_stats</span><span
+          class="text-[8px] font-bold uppercase tracking-tight">Forecast</span></a>
+    </nav>
+
+  </div><!-- end #app-shell -->
 
   <!-- ════ APP LOGIC ════════════════════════════════════════════ -->
   <script>
@@ -944,11 +1197,47 @@
       window.scrollTo(0, 0);
     }
 
-    // ── Firebase ────────────────────────────────────────────────────
+    // ── Firebase & Auth ─────────────────────────────────────────────
+    let auth = null;
+    let currentUser = null;
+
+    function initFirebase() {
+      try { firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { }
+      db = firebase.firestore();
+      auth = firebase.auth();
+
+      // Auth state observer — the single source of truth for show/hide
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          currentUser = user;
+          showApp(user);
+          initDB();
+        } else {
+          currentUser = null;
+          showAuthWall();
+        }
+      });
+    }
+
+    function showApp(user) {
+      document.getElementById('auth-wall').style.display = 'none';
+      document.getElementById('app-shell').style.display = 'block';
+      // Populate avatar + tooltip with user initials / display name
+      const name = user.displayName || user.email || '';
+      const initials = name.split(/\s+|@/).filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('');
+      const av = document.getElementById('top-avatar');
+      av.textContent = initials || 'U';
+      av.title = user.email || '';
+    }
+
+    function showAuthWall() {
+      document.getElementById('auth-wall').style.display = 'flex';
+      document.getElementById('app-shell').style.display = 'none';
+    }
+
     function initDB() {
       try {
-        try { firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { }
-        db = firebase.firestore(); setDB('connecting');
+        setDB('connecting');
         PAY_PERIOD.init(db);
         PAY_PERIOD.onChange(() => { renderDashboard(); renderBudgets(); if (curScr === 'analytics') applyAnalyticsPeriod(); if (curScr === 'forecast') renderForecast(); });
         db.collection('settings').doc('preferences').onSnapshot(doc => {
@@ -970,8 +1259,11 @@
           txs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           setDB('connected', txs.length + ' records');
           renderDashboard(); renderTx(); renderBudgets();
-        }, () => setDB('error'));
-      } catch (e) { setDB('error'); txs = JSON.parse(localStorage.getItem('financeTransactions')) || []; renderDashboard(); renderTx(); }
+        }, err => { setDB('error'); console.error(err); });
+      } catch (e) {
+        setDB('error');
+        console.error(e);
+      }
     }
     function setDB(st, msg = '') {
       const cl = { connected: 'bg-emerald-400', connecting: 'bg-amber-400', error: 'bg-red-400' };
@@ -1526,10 +1818,119 @@
       setTimeout(() => m.textContent = '', 3000);
     }
 
+    // ── Auth UI ───────────────────────────────────────────────────────
+    let authMode = 'signin'; // 'signin' | 'signup'
+
+    function authTab(mode) {
+      authMode = mode;
+      const isSU = (mode === 'signup');
+      document.getElementById('tab-signin').className = !isSU
+        ? 'flex-1 py-2 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all'
+        : 'flex-1 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all';
+      document.getElementById('tab-signup').className = isSU
+        ? 'flex-1 py-2 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all'
+        : 'flex-1 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all';
+      document.getElementById('auth-confirm-wrap').classList.toggle('hidden', !isSU);
+      document.getElementById('auth-forgot-row').classList.toggle('hidden', isSU);
+      document.getElementById('auth-submit-btn').textContent = isSU ? 'Create Account' : 'Sign In';
+      document.getElementById('auth-password').autocomplete = isSU ? 'new-password' : 'current-password';
+      clearAuthError();
+    }
+
+    function showAuthError(msg) {
+      const el = document.getElementById('auth-error');
+      el.textContent = msg; el.classList.add('show');
+    }
+    function clearAuthError() {
+      const el = document.getElementById('auth-error');
+      el.textContent = ''; el.classList.remove('show');
+      ['auth-email', 'auth-password', 'auth-confirm'].forEach(id => {
+        document.getElementById(id)?.classList.remove('error');
+      });
+    }
+
+    async function handleEmailAuth(e) {
+      e.preventDefault();
+      clearAuthError();
+      const email = document.getElementById('auth-email').value.trim();
+      const pw = document.getElementById('auth-password').value;
+      const btn = document.getElementById('auth-submit-btn');
+
+      if (!email) { showAuthError('Please enter your email address.'); document.getElementById('auth-email').classList.add('error'); return; }
+      if (pw.length < 6) { showAuthError('Password must be at least 6 characters.'); document.getElementById('auth-password').classList.add('error'); return; }
+
+      if (authMode === 'signup') {
+        const pw2 = document.getElementById('auth-confirm').value;
+        if (pw !== pw2) { showAuthError('Passwords do not match.'); document.getElementById('auth-confirm').classList.add('error'); return; }
+      }
+
+      btn.disabled = true;
+      btn.textContent = authMode === 'signup' ? 'Creating account…' : 'Signing in…';
+
+      try {
+        if (authMode === 'signup') {
+          await auth.createUserWithEmailAndPassword(email, pw);
+        } else {
+          await auth.signInWithEmailAndPassword(email, pw);
+        }
+        // onAuthStateChanged will handle showing the app
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+        const msgs = {
+          'auth/user-not-found': 'No account found with this email.',
+          'auth/wrong-password': 'Incorrect password. Please try again.',
+          'auth/invalid-email': 'Please enter a valid email address.',
+          'auth/email-already-in-use': 'An account already exists with this email.',
+          'auth/weak-password': 'Password must be at least 6 characters.',
+          'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+          'auth/invalid-credential': 'Incorrect email or password.',
+        };
+        showAuthError(msgs[err.code] || 'Sign in failed. Please try again.');
+        document.getElementById('auth-email').classList.add('error');
+        document.getElementById('auth-password').classList.add('error');
+      }
+    }
+
+    async function handleGoogleAuth() {
+      clearAuthError();
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+        // onAuthStateChanged handles the rest
+      } catch (err) {
+        if (err.code === 'auth/popup-closed-by-user') return;
+        showAuthError('Google sign-in failed. Please try again.');
+      }
+    }
+
+    async function handleForgotPassword() {
+      clearAuthError();
+      const email = document.getElementById('auth-email').value.trim();
+      if (!email) { showAuthError('Enter your email address first, then click Forgot password.'); document.getElementById('auth-email').classList.add('error'); return; }
+      try {
+        await auth.sendPasswordResetEmail(email);
+        const msg = document.getElementById('auth-reset-msg');
+        msg.textContent = 'Reset email sent — check your inbox.';
+        msg.classList.remove('hidden');
+        setTimeout(() => msg.classList.add('hidden'), 5000);
+      } catch (err) {
+        showAuthError('Could not send reset email. Check the address and try again.');
+      }
+    }
+
+    async function signOut() {
+      if (!confirm('Sign out of Lumina?')) return;
+      // Clear local state
+      txs = []; budgets = {}; goals = [];
+      if (auth) await auth.signOut();
+      // onAuthStateChanged will show the auth wall
+    }
+
     // ── Boot ──────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('e-date').value = new Date().toISOString().slice(0, 10);
-      initDB();
+      initFirebase();
     });
   </script>
 </body>
