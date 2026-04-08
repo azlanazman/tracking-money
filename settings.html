@@ -1,46 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Settings — My Finance Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="settings.css" />
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="settings.css"/>
   <style>
-    :root {
-      --surface: #fbf9f5;
-      --surface-low: #f5f3ef;
-      --surface-container: #edecea;
-      --surface-high: #e4e2de;
-      --surface-lowest: #ffffff;
-      --primary: #6f4627;
-      --primary-container: #8b5e3c;
-      --secondary: #b8922a;
-      --secondary-dim: #c9a84c;
-      --secondary-fixed: #f0d9a0;
-      --on-surface: #1b1c1a;
-      --on-surface-variant: #51443c;
-      --on-secondary-fixed: #3d2e0a;
-      --outline-variant: #d5c3b8;
-      --error: #ba1a1a;
-      --error-surface: #fdf0f0;
-      --success: #2d6a4f;
-      --success-surface: #f0f7f4;
-      --btn-gradient: linear-gradient(135deg, #6f4627 0%, #8b5e3c 100%);
-      --ambient-shadow: 0 8px 40px rgba(27, 28, 26, 0.05);
-      --ambient-shadow-lg: 0 16px 56px rgba(27, 28, 26, 0.07);
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
-      --radius-xl: 24px;
-    }
+  :root {
+    --surface:#fbf9f5;--surface-low:#f5f3ef;--surface-container:#edecea;
+    --surface-high:#e4e2de;--surface-lowest:#ffffff;--primary:#6f4627;
+    --primary-container:#8b5e3c;--secondary:#b8922a;--secondary-dim:#c9a84c;
+    --secondary-fixed:#f0d9a0;--on-surface:#1b1c1a;--on-surface-variant:#51443c;
+    --on-secondary-fixed:#3d2e0a;--outline-variant:#d5c3b8;--error:#ba1a1a;
+    --error-surface:#fdf0f0;--success:#2d6a4f;--success-surface:#f0f7f4;
+    --btn-gradient:linear-gradient(135deg,#6f4627 0%,#8b5e3c 100%);
+    --ambient-shadow:0 8px 40px rgba(27,28,26,0.05);
+    --ambient-shadow-lg:0 16px 56px rgba(27,28,26,0.07);
+    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;
+  }
   </style>
 </head>
-
 <body>
   <header>
     <div class="header-inner">
@@ -68,7 +51,7 @@
       <p class="settings-hint">These appear in the Account dropdown when adding a transaction.</p>
       <div id="accountList" class="tag-list"></div>
       <div class="add-row">
-        <input type="text" id="newAccount" placeholder="e.g. Maybank, TNG, Cash..." maxlength="30" />
+        <input type="text" id="newAccount" placeholder="e.g. Maybank, TNG, Cash..." maxlength="30"/>
         <button onclick="addAccount()">+ Add</button>
       </div>
     </section>
@@ -86,7 +69,7 @@
           <p class="col-label">Categories</p>
           <div id="categoryList" class="tag-list"></div>
           <div class="add-row">
-            <input type="text" id="newCategory" placeholder="New category..." maxlength="30" />
+            <input type="text" id="newCategory" placeholder="New category..." maxlength="30"/>
             <button onclick="addCategory()">+ Add</button>
           </div>
         </div>
@@ -94,7 +77,7 @@
           <p class="col-label" id="subColLabel">Select a category →</p>
           <div id="subcategoryList" class="tag-list"></div>
           <div class="add-row" id="subAddRow" style="display:none">
-            <input type="text" id="newSubcategory" placeholder="New sub-category..." maxlength="30" />
+            <input type="text" id="newSubcategory" placeholder="New sub-category..." maxlength="30"/>
             <button onclick="addSubcategory()">+ Add</button>
           </div>
         </div>
@@ -103,48 +86,40 @@
 
     <section class="settings-section">
       <h2>Pay Period</h2>
-      <p class="settings-hint">Set the start date for each pay period. The period is from the start date to the day
-        before the next period's start. If not set, uses the default day.</p>
+      <p class="settings-hint">Set your default salary day. Your spending periods will be measured from this day each month — e.g. day 25 means 25 Feb → 24 Mar counts as "March".</p>
       <div class="pay-period-default">
-        <label class="pp-label">Fallback default salary day (each month)</label>
+        <label class="pp-label">Default salary day (each month)</label>
         <div class="pp-day-row">
-          <input type="number" id="defaultDay" min="1" max="28" value="25" />
-          <span class="pp-hint">Day 1–28 (used when no specific start date is set)</span>
+          <input type="number" id="defaultDay" min="1" max="28" value="25"/>
+          <span class="pp-hint">Day 1–28 (use max 28 to avoid month-end issues)</span>
         </div>
       </div>
       <div class="pp-divider"></div>
       <div class="pay-period-overrides">
-        <p class="pp-label">Period start dates</p>
-        <p class="settings-hint" style="margin-top:4px">Set the exact start date for each pay period to reflect your
-          varying pay schedules.</p>
-        <div id="periodList"></div>
+        <p class="pp-label">Monthly overrides <span class="pp-optional">(for when salary arrives early or late)</span></p>
+        <p class="settings-hint" style="margin-top:4px">If your salary arrives on a different date for a specific month, set it here. This overrides the default for that period only.</p>
+        <div id="overrideList"></div>
         <div class="add-row pp-add-row">
           <div class="pp-add-group">
-            <label class="pp-sublabel">Period ending month</label>
-            <select id="addPeriodMonth">
-              <option value="01">January</option>
-              <option value="02">February</option>
-              <option value="03">March</option>
-              <option value="04">April</option>
-              <option value="05">May</option>
-              <option value="06">June</option>
-              <option value="07">July</option>
-              <option value="08">August</option>
-              <option value="09">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
+            <label class="pp-sublabel">Period month</label>
+            <select id="overrideMonth">
+              <option value="01">January</option><option value="02">February</option>
+              <option value="03">March</option><option value="04">April</option>
+              <option value="05">May</option><option value="06">June</option>
+              <option value="07">July</option><option value="08">August</option>
+              <option value="09">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
             </select>
           </div>
           <div class="pp-add-group">
-            <label class="pp-sublabel">Year</label>
-            <select id="addPeriodYear"></select>
+            <label class="pp-sublabel">Period year</label>
+            <select id="overrideYear"></select>
           </div>
           <div class="pp-add-group">
-            <label class="pp-sublabel">Start date</label>
-            <input type="date" id="addPeriodDate" />
+            <label class="pp-sublabel">Actual start date</label>
+            <input type="date" id="overrideDate"/>
           </div>
-          <button onclick="addPeriodStart()">+ Add</button>
+          <button onclick="addOverride()" style="align-self:flex-end">+ Add</button>
         </div>
       </div>
       <div class="pp-divider"></div>
@@ -167,5 +142,4 @@
   <script src="payperiod.js"></script>
   <script src="settings.js"></script>
 </body>
-
 </html>
