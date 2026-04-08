@@ -7,10 +7,10 @@
 window.PAY_PERIOD = (() => {
 
   // ── Cached settings ──
-  let _defaultDay = 25;          // fallback salary day (1–28)
-  let _periodStarts = {};         // { 'YYYY-MM': 'YYYY-MM-DD' } start dates per period
-  let _listeners = [];          // callbacks notified when settings change
-  let _db = null;
+  let _defaultDay  = 25;          // salary day (1–28)
+  let _overrides   = {};          // { 'YYYY-MM': 'YYYY-MM-DD' } start date overrides per period
+  let _listeners   = [];          // callbacks notified when settings change
+  let _db          = null;
 
   // ── Init: load from Firebase ──
   function init(db) {
@@ -18,8 +18,8 @@ window.PAY_PERIOD = (() => {
     db.collection('settings').doc('payperiod').onSnapshot(doc => {
       if (doc.exists) {
         const d = doc.data();
-        _defaultDay = d.defaultDay || 25;
-        _periodStarts = d.starts || {};
+        _defaultDay = d.defaultDay  || 25;
+        _overrides  = d.overrides   || {};
       }
       _listeners.forEach(fn => fn());
     });
@@ -46,16 +46,15 @@ window.PAY_PERIOD = (() => {
   // Period key convention: the month in which the period ENDS
   // e.g. key '2026-03' = period that ends ~25 Mar = starts ~25 Feb
   function getPeriodStart(periodKey) {
-    // Check if set
-    if (_periodStarts[periodKey]) {
-      return new Date(_periodStarts[periodKey] + 'T00:00:00');
+    // Check override first
+    if (_overrides[periodKey]) {
+      return new Date(_overrides[periodKey] + 'T00:00:00');
     }
-    // Fallback to default calculation
     const [y, m] = periodKey.split('-').map(Number);
     // Start is defaultDay of previous month
     const prevMonth = m - 2; // 0-indexed, one month earlier
-    const prevYear = prevMonth < 0 ? y - 1 : y;
-    const adjMonth = ((prevMonth % 12) + 12) % 12;
+    const prevYear  = prevMonth < 0 ? y - 1 : y;
+    const adjMonth  = ((prevMonth % 12) + 12) % 12;
     return safeDate(prevYear, adjMonth, _defaultDay);
   }
 
@@ -71,49 +70,32 @@ window.PAY_PERIOD = (() => {
 
   // ── Get the current period key based on today ──
   function currentPeriodKey() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let key = todayKey();
-    for (let i = 0; i < 12; i++) { // check up to 12 months back
-      const start = getPeriodStart(key);
-      const end = getPeriodEnd(key);
-      if (start <= today && today <= end) return key;
-      key = prevPeriodKey(key);
+    const now     = new Date();
+    const day     = now.getDate();
+    const month   = now.getMonth(); // 0-indexed
+    const year    = now.getFullYear();
+    // If today is on or after the salary day, we're in the period that ends next month
+    if (day >= _defaultDay) {
+      const endMonth = month + 2; // 1-indexed
+      const endYear  = endMonth > 12 ? year + 1 : year;
+      return `${endYear}-${String(endMonth > 12 ? endMonth - 12 : endMonth).padStart(2, '0')}`;
+    } else {
+      return `${year}-${String(month + 1).padStart(2, '0')}`;
     }
-    return todayKey(); // fallback
-  }
-
-  function todayKey() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  }
-
-  function nextPeriodKey(key) {
-    const [y, m] = key.split('-').map(Number);
-    const nextM = m + 1;
-    const nextY = nextM > 12 ? y + 1 : y;
-    return `${nextY}-${String(nextM > 12 ? nextM - 12 : nextM).padStart(2, '0')}`;
-  }
-
-  function prevPeriodKey(key) {
-    const [y, m] = key.split('-').map(Number);
-    const prevM = m - 1;
-    const prevY = prevM < 1 ? y - 1 : y;
-    return `${prevY}-${String(prevM < 1 ? 12 : prevM).padStart(2, '0')}`;
   }
 
   // ── Get start/end dates for the current period ──
   function currentPeriod() {
-    const key = currentPeriodKey();
+    const key   = currentPeriodKey();
     const start = getPeriodStart(key);
-    const end = getPeriodEnd(key);
+    const end   = getPeriodEnd(key);
     return {
       key,
-      start: toYMD(start),
-      end: toYMD(end),
-      label: `${toLabel(start)} – ${toLabel(end)}`,
+      start:      toYMD(start),
+      end:        toYMD(end),
+      label:      `${toLabel(start)} – ${toLabel(end)}`,
       startLabel: toLabel(start),
-      endLabel: toLabel(end),
+      endLabel:   toLabel(end),
     };
   }
 
@@ -123,14 +105,14 @@ window.PAY_PERIOD = (() => {
     let key = currentPeriodKey();
     for (let i = 0; i < n; i++) {
       const start = getPeriodStart(key);
-      const end = getPeriodEnd(key);
+      const end   = getPeriodEnd(key);
       periods.push({
         key,
-        start: toYMD(start),
-        end: toYMD(end),
-        label: `${toLabel(start)} – ${toLabel(end)}`,
+        start:      toYMD(start),
+        end:        toYMD(end),
+        label:      `${toLabel(start)} – ${toLabel(end)}`,
         startLabel: toLabel(start),
-        endLabel: toLabel(end),
+        endLabel:   toLabel(end),
       });
       // Move to previous period: subtract one month from key
       const [y, m] = key.split('-').map(Number);
@@ -152,23 +134,21 @@ window.PAY_PERIOD = (() => {
   // ── Get default salary day ──
   function getDefaultDay() { return _defaultDay; }
 
-  // ── Get period starts ──
-  function getPeriodStarts() { return { ..._periodStarts }; }
+  // ── Get overrides ──
+  function getOverrides() { return { ..._overrides }; }
 
   // ── Save settings to Firebase ──
-  async function save(defaultDay, periodStarts) {
+  async function save(defaultDay, overrides) {
     _defaultDay = defaultDay;
-    _periodStarts = periodStarts;
+    _overrides  = overrides;
     if (_db) {
-      await _db.collection('settings').doc('payperiod').set({ defaultDay, starts: _periodStarts });
+      await _db.collection('settings').doc('payperiod').set({ defaultDay, overrides });
     } else {
-      localStorage.setItem('payperiod', JSON.stringify({ defaultDay, starts: _periodStarts }));
+      localStorage.setItem('payperiod', JSON.stringify({ defaultDay, overrides }));
     }
   }
 
-  return {
-    init, onChange, currentPeriod, currentPeriodKey, lastNPeriods,
-    filterToPeriod, getPeriodStart, getPeriodEnd, getDefaultDay,
-    getPeriodStarts, save, toLabel, toYMD
-  };
+  return { init, onChange, currentPeriod, currentPeriodKey, lastNPeriods,
+           filterToPeriod, getPeriodStart, getPeriodEnd, getDefaultDay,
+           getOverrides, save, toLabel, toYMD };
 })();
