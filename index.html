@@ -843,7 +843,7 @@ async function initDB(){
     setDB('connecting');
     const uid=currentUser.uid;
     uref=db.collection('users').doc(uid);
-    await migrateToUserScope(uid);
+    try { await migrateToUserScope(uid); } catch(e) { console.warn('Migration skipped:', e.message); }
     PAY_PERIOD.init(db,uid);
     PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='analytics') applyAnalyticsPeriod(); if(curScr==='forecast') renderForecast(); });
     uref.collection('settings').doc('preferences').onSnapshot(doc=>{
