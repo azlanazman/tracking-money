@@ -586,6 +586,9 @@ input[type=number]{-moz-appearance:textfield}
     <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card"><p class="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Remaining</p><p id="b-rem" class="text-xl font-bold font-headline">RM 0</p></div>
   </div>
 
+  <!-- Burn Rate Banner -->
+  <div id="b-burnrate" class="mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium"></div>
+
   <!-- Budget Form + Progress -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
     <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
@@ -1097,6 +1100,8 @@ function renderBudgets(){
   // Insight
   const topCat=exC.reduce((acc,c)=>{const s=ptxs.filter(t=>t.category===c).reduce((a,t)=>a+t.amount,0);return s>acc[1]?[c,s]:acc;},['',0]);
   document.getElementById('b-insight').textContent=tot>0?`Based on current flow, you could save an additional ${RM(Math.max(rem,0))} this period by reviewing ${topCat[0]||'your top category'} expenses.`:'Set budget limits on the left to receive personalised insights.';
+  // Burn rate
+  renderBurnRate(p,spent,tot);
   // Budget form
   document.getElementById('b-form').innerHTML=exC.map(c=>{const b=budgets[c]||{amount:0,threshold:80};return`<div class="flex items-center gap-2.5 py-1.5">
     <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div>
@@ -1132,6 +1137,44 @@ function renderBudgets(){
         <span class="text-[10px] font-bold" style="color:${fc}">${raw.toFixed(0)}%</span>
       </div>
     </div>`;}).join('')+(unb.length?`<div class="mt-1"><p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Unbudgeted spending</p>${unb.map(c=>{const sp=ptxs.filter(t=>t.category===c).reduce((s,t)=>s+t.amount,0);return`<div class="flex justify-between py-2 px-3.5 bg-surface-container-lowest rounded-xl mb-1.5 amb-card"><span class="text-xs text-slate-500">${c}</span><span class="text-xs font-bold text-slate-800">${RM(sp)}</span></div>`;}).join('')}</div>`:''):'<div class="p-8 text-center text-xs text-slate-400">Set budgets and click Save Allocations.</div>';
+}
+function renderBurnRate(p,spent,tot){
+  const el=document.getElementById('b-burnrate');
+  if(!el)return;
+  const label=(txt,cls)=>`<span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0 ${cls}">${txt}</span>`;
+  if(tot===0){
+    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-surface-container text-slate-500';
+    el.innerHTML=label('Burn Rate','bg-slate-200 text-slate-600')+'Set budget limits to see how long they\'ll last at your current spend rate.';
+    return;
+  }
+  const MS=86400000,today=new Date();today.setHours(0,0,0,0);
+  const start=new Date(p.start+'T00:00:00'),end=new Date(p.end+'T00:00:00');
+  const elapsed=Math.max(Math.round((today-start)/MS)+1,1);
+  const remaining=Math.max(Math.round((end-today)/MS),0);
+  if(spent>=tot){
+    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-red-50 text-red-700 border border-red-100';
+    el.innerHTML=label('Burn Rate','bg-red-600 text-white')+`Over budget by <strong>${RM(spent-tot)}</strong> — ${remaining} day${remaining!==1?'s':''} still remaining in the period.`;
+    return;
+  }
+  if(spent===0){
+    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-surface-container text-slate-500';
+    el.innerHTML=label('Burn Rate','bg-slate-200 text-slate-600')+'No spending recorded yet this period.';
+    return;
+  }
+  const rate=spent/elapsed,daysLeft=(tot-spent)/rate,proj=spent+rate*remaining;
+  const rateStr=`${RM(rate)}/day`;
+  if(daysLeft<remaining){
+    const runsOut=new Date(today.getTime()+daysLeft*MS);
+    const runsOutStr=runsOut.toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+    const short=Math.ceil(remaining-daysLeft);
+    const crit=daysLeft<=3;
+    el.className=`mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium ${crit?'bg-red-50 text-red-700 border border-red-100':'bg-amber-50 text-amber-800 border border-amber-100'}`;
+    el.innerHTML=label('Burn Rate',crit?'bg-red-600 text-white':'bg-amber-500 text-white')+`At <strong>${rateStr}</strong>, budget runs out around <strong>${runsOutStr}</strong> — <strong>${short} day${short!==1?'s':''} short</strong> of period end.`;
+  }else{
+    const surplus=RM(tot-proj);
+    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-green-50 text-green-800 border border-green-100';
+    el.innerHTML=label('Burn Rate','bg-green-600 text-white')+`At <strong>${rateStr}</strong>, you\'ll finish the period with roughly <strong>${surplus}</strong> to spare.`;
+  }
 }
 async function saveBudgets(){
   const nb={};Object.keys(CATS.expense||{}).forEach(c=>{const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);if(e)nb[c]={amount:parseFloat(e.value)||0,threshold:parseInt(te?.value)||80};});
