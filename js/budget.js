@@ -326,7 +326,13 @@ function renderBurnRate() {
   const el = document.getElementById('burnRate');
   if (!el) return;
 
-  if (!currentPeriod) { el.className = 'burn-card burn-neutral'; el.innerHTML = ''; return; }
+  // Use the live currentPeriod if available; fall back to PAY_PERIOD directly
+  const period = currentPeriod || (typeof PAY_PERIOD !== 'undefined' ? PAY_PERIOD.currentPeriod() : null);
+  if (!period) {
+    el.className = 'burn-card burn-neutral';
+    el.innerHTML = '<span class="burn-label">Burn Rate</span> Loading period data…';
+    return;
+  }
 
   const totalBudgeted = EXPENSE_CATEGORIES.reduce((s, cat) =>
     s + ((budgets[cat] && budgets[cat].amount) || 0), 0);
@@ -340,8 +346,8 @@ function renderBurnRate() {
 
   const MS_PER_DAY    = 86400000;
   const today         = new Date(); today.setHours(0, 0, 0, 0);
-  const start         = new Date(currentPeriod.start + 'T00:00:00');
-  const end           = new Date(currentPeriod.end   + 'T00:00:00');
+  const start         = new Date(period.start + 'T00:00:00');
+  const end           = new Date(period.end   + 'T00:00:00');
   const daysElapsed   = Math.max(Math.round((today - start) / MS_PER_DAY) + 1, 1);
   const daysRemaining = Math.max(Math.round((end - today) / MS_PER_DAY), 0);
 

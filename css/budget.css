@@ -290,14 +290,14 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.burn-safe     { background: var(--success-surface); color: var(--success); }
+.burn-safe     { background: var(--success-surface); color: var(--success); border-left: 3px solid var(--success); }
 .burn-safe     .burn-label { background: var(--success); color: #fff; }
-.burn-warning  { background: var(--secondary-fixed); color: var(--on-secondary-fixed); }
+.burn-warning  { background: var(--secondary-fixed); color: var(--on-secondary-fixed); border-left: 3px solid var(--secondary); }
 .burn-warning  .burn-label { background: var(--secondary); color: #fff; }
-.burn-critical { background: var(--error-surface); color: var(--error); }
+.burn-critical { background: var(--error-surface); color: var(--error); border-left: 3px solid var(--error); }
 .burn-critical .burn-label { background: var(--error); color: #fff; }
-.burn-neutral  { background: var(--surface-container); color: var(--on-surface-variant); }
-.burn-neutral  .burn-label { background: var(--surface-high); color: var(--on-surface-variant); }
+.burn-neutral  { background: var(--surface-container); color: var(--on-surface-variant); border-left: 3px solid var(--outline-variant); }
+.burn-neutral  .burn-label { background: var(--outline-variant); color: var(--on-surface); }
 
 @media (max-width: 500px) {
   .budget-form-header,
