@@ -317,6 +317,63 @@ function renderSummaryCards() {
   const remEl       = document.getElementById('totalRemaining');
   remEl.textContent = 'RM ' + remaining.toFixed(2);
   remEl.style.color = totalSpent > totalBudgeted ? '#e74c3c' : '#27ae60';
+
+  renderBurnRate();
+}
+
+// ── Burn rate: how many days of budget remain at current spend rate ──
+function renderBurnRate() {
+  const el = document.getElementById('burnRate');
+  if (!el) return;
+
+  if (!currentPeriod) { el.className = 'burn-card burn-neutral'; el.innerHTML = ''; return; }
+
+  const totalBudgeted = EXPENSE_CATEGORIES.reduce((s, cat) =>
+    s + ((budgets[cat] && budgets[cat].amount) || 0), 0);
+  const totalSpent = transactions.reduce((s, t) => s + (t.amount || 0), 0);
+
+  if (totalBudgeted === 0) {
+    el.className = 'burn-card burn-neutral';
+    el.innerHTML = '<span class="burn-label">Burn Rate</span> Set budgets above to see how long they\'ll last.';
+    return;
+  }
+
+  const MS_PER_DAY    = 86400000;
+  const today         = new Date(); today.setHours(0, 0, 0, 0);
+  const start         = new Date(currentPeriod.start + 'T00:00:00');
+  const end           = new Date(currentPeriod.end   + 'T00:00:00');
+  const daysElapsed   = Math.max(Math.round((today - start) / MS_PER_DAY) + 1, 1);
+  const daysRemaining = Math.max(Math.round((end - today) / MS_PER_DAY), 0);
+
+  if (totalSpent >= totalBudgeted) {
+    const overage = (totalSpent - totalBudgeted).toFixed(2);
+    el.className = 'burn-card burn-critical';
+    el.innerHTML = `<span class="burn-label">Burn Rate</span> Over budget by <strong>RM ${overage}</strong> — ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} still remaining in the period.`;
+    return;
+  }
+
+  if (totalSpent === 0) {
+    el.className = 'burn-card burn-neutral';
+    el.innerHTML = '<span class="burn-label">Burn Rate</span> No spending recorded yet this period.';
+    return;
+  }
+
+  const dailyRate      = totalSpent / daysElapsed;
+  const budgetDaysLeft = (totalBudgeted - totalSpent) / dailyRate;
+  const projectedTotal = totalSpent + dailyRate * daysRemaining;
+  const rateLabel      = `RM ${dailyRate.toFixed(2)}/day`;
+
+  if (budgetDaysLeft < daysRemaining) {
+    const runsOutDate  = new Date(today.getTime() + budgetDaysLeft * MS_PER_DAY);
+    const runsOutLabel = runsOutDate.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+    const daysShort    = Math.ceil(daysRemaining - budgetDaysLeft);
+    el.className = 'burn-card ' + (budgetDaysLeft <= 3 ? 'burn-critical' : 'burn-warning');
+    el.innerHTML = `<span class="burn-label">Burn Rate</span> At <strong>${rateLabel}</strong>, budget runs out around <strong>${runsOutLabel}</strong> — <strong>${daysShort} day${daysShort !== 1 ? 's' : ''} short</strong> of period end.`;
+  } else {
+    const surplus = (totalBudgeted - projectedTotal).toFixed(2);
+    el.className = 'burn-card burn-safe';
+    el.innerHTML = `<span class="burn-label">Burn Rate</span> At <strong>${rateLabel}</strong>, you'll finish the period with roughly <strong>RM ${surplus}</strong> to spare.`;
+  }
 }
 
 // ── Run ──

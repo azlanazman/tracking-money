@@ -262,6 +262,40 @@
   color: var(--on-surface);
 }
 
+/* ── Burn rate banner ── */
+.burn-card {
+  margin: 0 auto 20px;
+  max-width: 860px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.burn-card strong { font-weight: 700; }
+.burn-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.burn-safe     { background: var(--success-surface); color: var(--success); }
+.burn-safe     .burn-label { background: var(--success); color: #fff; }
+.burn-warning  { background: var(--secondary-fixed); color: var(--on-secondary-fixed); }
+.burn-warning  .burn-label { background: var(--secondary); color: #fff; }
+.burn-critical { background: var(--error-surface); color: var(--error); }
+.burn-critical .burn-label { background: var(--error); color: #fff; }
+.burn-neutral  { background: var(--surface-container); color: var(--on-surface-variant); }
+.burn-neutral  .burn-label { background: var(--surface-high); color: var(--on-surface-variant); }
+
 @media (max-width: 500px) {
   .budget-form-header,
   .budget-row { grid-template-columns: 1fr 100px; }
