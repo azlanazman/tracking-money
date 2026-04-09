@@ -33,7 +33,8 @@ const DEFAULTS = {
 };
 
 // ── State ──
-let db            = null;
+let db   = null;
+let uref = null;
 let settings      = null;   // { accounts: [], categories: { expense:{}, income:{}, savings:{} } }
 let activeType    = 'expense';
 let selectedCat   = null;
@@ -43,25 +44,31 @@ function init() {
   try {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
-    setStatus('connecting', 'Loading...');
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      uref = uref.collection('users').doc(user.uid);
+      PAY_PERIOD.init(db, user.uid);
+      setStatus('connecting', 'Loading...');
 
-    db.collection('settings').doc('preferences').get().then(doc => {
-      if (doc.exists) {
-        settings = doc.data();
-        settings.categories = settings.categories || {};
-        ['expense','income','savings'].forEach(t => {
-          if (!settings.categories[t]) settings.categories[t] = DEFAULTS.categories[t];
-        });
-        if (!settings.accounts) settings.accounts = [...DEFAULTS.accounts];
-      } else {
-        settings = {
-          accounts:   [...DEFAULTS.accounts],
-          categories: JSON.parse(JSON.stringify(DEFAULTS.categories))
-        };
-      }
-      setStatus('connected', 'Connected');
-      loadPayPeriodFromSettings(settings);
-      renderAll();
+      uref.collection('settings').doc('preferences').get().then(doc => {
+        if (doc.exists) {
+          settings = doc.data();
+          settings.categories = settings.categories || {};
+          ['expense','income','savings'].forEach(t => {
+            if (!settings.categories[t]) settings.categories[t] = DEFAULTS.categories[t];
+          });
+          if (!settings.accounts) settings.accounts = [...DEFAULTS.accounts];
+        } else {
+          settings = {
+            accounts:   [...DEFAULTS.accounts],
+            categories: JSON.parse(JSON.stringify(DEFAULTS.categories))
+          };
+        }
+        setStatus('connected', 'Connected');
+        loadPayPeriodFromSettings(settings);
+        renderAll();
+      });
     });
 
   } catch(err) {
@@ -317,7 +324,7 @@ async function saveSettings() {
 
   if (db) {
     try {
-      await db.collection('settings').doc('preferences').set(settings);
+      await uref.collection('settings').doc('preferences').set(settings);
       statusEl.textContent = 'Saved! Changes apply immediately across all pages.';
       setTimeout(() => statusEl.textContent = '', 3000);
     } catch(err) {

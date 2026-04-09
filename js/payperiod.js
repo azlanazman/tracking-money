@@ -11,11 +11,16 @@ window.PAY_PERIOD = (() => {
   let _overrides   = {};          // { 'YYYY-MM': 'YYYY-MM-DD' } start date overrides per period
   let _listeners   = [];          // callbacks notified when settings change
   let _db          = null;
+  let _uid         = null;
 
   // ── Init: load from Firebase ──
-  function init(db) {
-    _db = db;
-    db.collection('settings').doc('payperiod').onSnapshot(doc => {
+  function init(db, uid) {
+    _db  = db;
+    _uid = uid;
+    const ref = uid
+      ? db.collection('users').doc(uid).collection('settings').doc('payperiod')
+      : db.collection('settings').doc('payperiod');
+    ref.onSnapshot(doc => {
       if (doc.exists) {
         const d = doc.data();
         _defaultDay = d.defaultDay  || 25;
@@ -142,7 +147,10 @@ window.PAY_PERIOD = (() => {
     _defaultDay = defaultDay;
     _overrides  = overrides;
     if (_db) {
-      await _db.collection('settings').doc('payperiod').set({ defaultDay, overrides });
+      const ref = _uid
+        ? _db.collection('users').doc(_uid).collection('settings').doc('payperiod')
+        : _db.collection('settings').doc('payperiod');
+      await ref.set({ defaultDay, overrides });
     } else {
       localStorage.setItem('payperiod', JSON.stringify({ defaultDay, overrides }));
     }

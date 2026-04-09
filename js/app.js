@@ -18,7 +18,7 @@ let editingId = null; // null = adding new; string = editing existing transactio
 
 function loadUserSettings() {
   if (!db) return;
-  db.collection('settings').doc('preferences').onSnapshot(doc => {
+  uref.collection('settings').doc('preferences').onSnapshot(doc => {
     if (doc.exists) {
       const data = doc.data();
       if (data.categories) CATEGORIES = data.categories;
@@ -57,18 +57,22 @@ const ICONS = {
 
 // ── Firebase init ──
 let db = null;
+let uref = null;
 let transactions = [];
 
 function initFirebase() {
   try {
-    const app = firebase.initializeApp(FIREBASE_CONFIG);
+    try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
-    setStatus('connected', 'Connected to Firebase');
-    migrateFromLocalStorage();
-    PAY_PERIOD.init(db);
-    PAY_PERIOD.onChange(() => { updateSummary(); renderTransactions(); });
-    loadTransactions();
-    loadUserSettings();
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      uref = db.collection('users').doc(user.uid);
+      PAY_PERIOD.init(db, user.uid);
+      PAY_PERIOD.onChange(() => { updateSummary(); renderTransactions(); });
+      loadTransactions();
+      loadUserSettings();
+    });
   } catch (err) {
     setStatus('error', 'Firebase not configured — using local storage');
     fallbackToLocal();
@@ -89,7 +93,7 @@ async function migrateFromLocalStorage() {
   try {
     const batch = db.batch();
     local.forEach(t => {
-      const ref = db.collection('transactions').doc(String(t.id));
+      const ref = uref.collection('transactions').doc(String(t.id));
       batch.set(ref, {
         date:         t.date,
         amount:       t.amount,
@@ -111,7 +115,7 @@ async function migrateFromLocalStorage() {
 
 function loadTransactions() {
   setStatus('connecting', 'Loading...');
-  db.collection('transactions')
+  uref.collection('transactions')
     .orderBy('createdAt', 'desc')
     .onSnapshot(snapshot => {
       transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -158,7 +162,7 @@ async function addTransaction() {
     // ── Update existing ──
     if (db) {
       try {
-        await db.collection('transactions').doc(String(editingId)).update(t);
+        await uref.collection('transactions').doc(String(editingId)).update(t);
       } catch (err) {
         alert('Update failed: ' + err.message);
         return;
@@ -176,7 +180,7 @@ async function addTransaction() {
     t.createdAt = Date.now();
     if (db) {
       try {
-        await db.collection('transactions').add(t);
+        await uref.collection('transactions').add(t);
       } catch (err) {
         alert('Save failed: ' + err.message);
         return;
@@ -248,7 +252,7 @@ async function deleteTransaction(id) {
 
   if (db) {
     try {
-      await db.collection('transactions').doc(String(id)).delete();
+      await uref.collection('transactions').doc(String(id)).delete();
     } catch (err) {
       alert('Delete failed: ' + err.message);
     }
@@ -269,7 +273,7 @@ async function clearAll() {
 
   if (db) {
     try {
-      const snapshot = await db.collection('transactions').get();
+      const snapshot = await uref.collection('transactions').get();
       const batch    = db.batch();
       snapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();

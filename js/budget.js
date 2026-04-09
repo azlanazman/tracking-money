@@ -1,5 +1,6 @@
 // ── State ──
-let db           = null;
+let db   = null;
+let uref = null;
 let budgets      = {};   // { category: { amount, threshold } }
 let transactions = [];
 let EXPENSE_CATEGORIES = []; // loaded dynamically from settings
@@ -41,10 +42,29 @@ function init() {
   try {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      uref = uref.collection('users').doc(user.uid);
+      initWithUser(user.uid);
+    });
+  } catch(err) {
+    setStatus('error', 'Firebase error');
+    budgets      = JSON.parse(localStorage.getItem('budgets')) || {};
+    const all    = JSON.parse(localStorage.getItem('financeTransactions')) || [];
+    filterToCurrentPeriod(all);
+    buildBudgetForm();
+    renderProgress();
+    renderSummaryCards();
+  }
+}
+
+function initWithUser(uid) {
+  try {
     setStatus('connecting', 'Loading...');
 
     // Init pay period — it will call onChange when ready
-    PAY_PERIOD.init(db);
+    PAY_PERIOD.init(db, uid);
     PAY_PERIOD.onChange(() => {
       currentPeriod = PAY_PERIOD.currentPeriod();
       updatePeriodLabel();
@@ -53,7 +73,7 @@ function init() {
     });
 
     // Load settings (categories) from Firestore
-    db.collection('settings').doc('preferences').get().then(doc => {
+    uref.collection('settings').doc('preferences').get().then(doc => {
       if (doc.exists && doc.data().categories && doc.data().categories.expense) {
         const expCats = doc.data().categories.expense;
         EXPENSE_CATEGORIES = Object.keys(expCats);
@@ -73,13 +93,13 @@ function init() {
     });
 
     // Load budgets from Firestore
-    db.collection('budgets').doc('settings').get().then(doc => {
+    uref.collection('budgets').doc('settings').get().then(doc => {
       if (doc.exists) budgets = doc.data();
       buildBudgetForm();
     });
 
     // Live-listen to ALL transactions — we filter to pay period in JS
-    db.collection('transactions')
+    uref.collection('transactions')
       .orderBy('createdAt', 'desc')
       .onSnapshot(snapshot => {
         const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -92,13 +112,7 @@ function init() {
       });
 
   } catch(err) {
-    setStatus('error', 'Firebase error');
-    budgets      = JSON.parse(localStorage.getItem('budgets')) || {};
-    const all    = JSON.parse(localStorage.getItem('financeTransactions')) || [];
-    filterToCurrentPeriod(all);
-    buildBudgetForm();
-    renderProgress();
-    renderSummaryCards();
+    setStatus('error', 'Load error: ' + err.message);
   }
 }
 
@@ -122,7 +136,7 @@ function filterToCurrentPeriod(all) {
 // ── Called when pay period settings change ──
 function refreshTransactions() {
   if (!db) return;
-  db.collection('transactions')
+  uref.collection('transactions')
     .orderBy('createdAt', 'desc')
     .get()
     .then(snapshot => {
@@ -189,7 +203,7 @@ async function saveBudgets() {
 
   if (db) {
     try {
-      await db.collection('budgets').doc('settings').set(newBudgets);
+      await uref.collection('budgets').doc('settings').set(newBudgets);
       statusEl.textContent = 'Saved!';
       setTimeout(() => statusEl.textContent = '', 2000);
     } catch(err) {

@@ -1,5 +1,6 @@
 // ── State ──
-let db           = null;
+let db   = null;
+let uref = null;
 let transactions = [];
 let goals        = [];
 let forecastChart= null;
@@ -53,12 +54,16 @@ function init() {
   try {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     db = firebase.firestore();
-    setStatus('connecting', 'Loading...');
-    PAY_PERIOD.init(db);
-    PAY_PERIOD.onChange(() => renderAll());
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      uref = uref.collection('users').doc(user.uid);
+      setStatus('connecting', 'Loading...');
+      PAY_PERIOD.init(db, user.uid);
+      PAY_PERIOD.onChange(() => renderAll());
 
     // Load user settings (categories) first
-    db.collection('settings').doc('preferences').get().then(doc => {
+    uref.collection('settings').doc('preferences').get().then(doc => {
       if (doc.exists && doc.data().categories && doc.data().categories.expense) {
         const expCats = doc.data().categories.expense;
         EXPENSE_CATEGORIES = Object.keys(expCats);
@@ -74,13 +79,13 @@ function init() {
     });
 
     // Load goals
-    db.collection('goals').doc('list').get().then(doc => {
+    uref.collection('goals').doc('list').get().then(doc => {
       goals = doc.exists ? (doc.data().goals || []) : [];
       renderGoals();
     });
 
     // Live transactions
-    db.collection('transactions')
+    uref.collection('transactions')
       .orderBy('date', 'desc')
       .onSnapshot(snap => {
         transactions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -90,6 +95,7 @@ function init() {
         setStatus('error', 'Load error: ' + err.message);
       });
 
+    });
   } catch(err) {
     transactions = JSON.parse(localStorage.getItem('financeTransactions')) || [];
     goals        = JSON.parse(localStorage.getItem('savingsGoals'))        || [];
@@ -240,7 +246,7 @@ async function saveGoals() {
 
   if (db) {
     try {
-      await db.collection('goals').doc('list').set({ goals });
+      await uref.collection('goals').doc('list').set({ goals });
       statusEl.textContent = 'Saved!';
       setTimeout(() => statusEl.textContent = '', 2000);
     } catch(err) {

@@ -1,5 +1,6 @@
 // ── Transactions loaded from Firebase ──
 let transactions = [];
+let uref = null;
 
 function setStatus(state, msg) {
   const el = document.getElementById('dbStatus');
@@ -10,31 +11,34 @@ function initChartsFirebase() {
   try {
     try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
     const db = firebase.firestore();
-    setStatus('connecting', 'Loading...');
+    const auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      uref = db.collection('users').doc(user.uid);
+      setStatus('connecting', 'Loading...');
 
-    // Init pay period
-    PAY_PERIOD.init(db);
-    PAY_PERIOD.onChange(() => {
-      // If user has "this period" selected, re-apply it
-      if (document.getElementById('quickSelect').value === 'this_period') {
-        applyPeriodRange(PAY_PERIOD.currentPeriod());
-        renderAll();
-      }
-      // Re-populate the period quick-select options
-      populatePeriodOptions();
-    });
-
-    db.collection('transactions')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setStatus('connected', 'Firebase connected · ' + transactions.length + ' records');
-        renderAll();
-      }, err => {
-        setStatus('error', 'Load error: ' + err.message);
-        transactions = JSON.parse(localStorage.getItem('financeTransactions')) || [];
-        renderAll();
+      // Init pay period
+      PAY_PERIOD.init(db, user.uid);
+      PAY_PERIOD.onChange(() => {
+        if (document.getElementById('quickSelect').value === 'this_period') {
+          applyPeriodRange(PAY_PERIOD.currentPeriod());
+          renderAll();
+        }
+        populatePeriodOptions();
       });
+
+      uref.collection('transactions')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setStatus('connected', 'Firebase connected · ' + transactions.length + ' records');
+          renderAll();
+        }, err => {
+          setStatus('error', 'Load error: ' + err.message);
+          transactions = JSON.parse(localStorage.getItem('financeTransactions')) || [];
+          renderAll();
+        });
+    });
   } catch(err) {
     setStatus('error', 'Firebase not configured');
     transactions = JSON.parse(localStorage.getItem('financeTransactions')) || [];

@@ -754,7 +754,7 @@ input[type=number]{-moz-appearance:textfield}
 <!-- ════ APP LOGIC ════════════════════════════════════════════ -->
 <script>
 // ── State ──────────────────────────────────────────────────────
-let db=null,txs=[],budgets={},goals=[];
+let db=null,uref=null,txs=[],budgets={},goals=[];
 let curScr='dashboard',editId=null;
 let anBar=null,anLine=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -838,12 +838,15 @@ function showAuthWall(){
   document.getElementById('app-shell').style.display='none';
 }
 
-function initDB(){
+async function initDB(){
   try{
     setDB('connecting');
-    PAY_PERIOD.init(db);
+    const uid=currentUser.uid;
+    uref=db.collection('users').doc(uid);
+    await migrateToUserScope(uid);
+    PAY_PERIOD.init(db,uid);
     PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='analytics') applyAnalyticsPeriod(); if(curScr==='forecast') renderForecast(); });
-    db.collection('settings').doc('preferences').onSnapshot(doc=>{
+    uref.collection('settings').doc('preferences').onSnapshot(doc=>{
       if(doc.exists){
         const d=doc.data();
         if(d.categories) CATS=d.categories;
@@ -856,9 +859,9 @@ function initDB(){
       }
       refreshEntry();renderSettings();
     });
-    db.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
-    db.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
-    db.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
+    uref.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
+    uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
+    uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       setDB('connected',txs.length+' records');
       renderDashboard();renderTx();renderBudgets();
@@ -867,6 +870,35 @@ function initDB(){
     setDB('error');
     console.error(e);
   }
+}
+// ── One-time migration: flat collections → users/{uid}/ ──────────
+// Remove this function after migration is confirmed.
+async function migrateToUserScope(uid){
+  const uref=db.collection('users').doc(uid);
+  const oldTxSnap=await db.collection('transactions').get();
+  if(oldTxSnap.empty) return; // already migrated or nothing to migrate
+  setDB('connecting','Migrating data to your account…');
+  const batch=db.batch();
+  oldTxSnap.forEach(doc=>batch.set(uref.collection('transactions').doc(doc.id),doc.data()));
+  const [prefSnap,ppSnap,budgSnap,goalsSnap]=await Promise.all([
+    db.collection('settings').doc('preferences').get(),
+    db.collection('settings').doc('payperiod').get(),
+    db.collection('budgets').doc('settings').get(),
+    db.collection('goals').doc('list').get(),
+  ]);
+  if(prefSnap.exists)  batch.set(uref.collection('settings').doc('preferences'),prefSnap.data());
+  if(ppSnap.exists)    batch.set(uref.collection('settings').doc('payperiod'),ppSnap.data());
+  if(budgSnap.exists)  batch.set(uref.collection('budgets').doc('settings'),budgSnap.data());
+  if(goalsSnap.exists) batch.set(uref.collection('goals').doc('list'),goalsSnap.data());
+  await batch.commit();
+  // Delete old flat data
+  const del=db.batch();
+  oldTxSnap.forEach(doc=>del.delete(doc.ref));
+  if(prefSnap.exists)  del.delete(db.collection('settings').doc('preferences'));
+  if(ppSnap.exists)    del.delete(db.collection('settings').doc('payperiod'));
+  if(budgSnap.exists)  del.delete(db.collection('budgets').doc('settings'));
+  if(goalsSnap.exists) del.delete(db.collection('goals').doc('list'));
+  await del.commit();
 }
 function setDB(st,msg=''){
   const cl={connected:'bg-emerald-400',connecting:'bg-amber-400',error:'bg-red-400'};
@@ -1010,8 +1042,8 @@ async function submitEntry(){
   if(!amt||amt<=0){alert('Please enter a valid amount.');return;}
   if(!date){alert('Please select a date.');return;}
   const t={date,amount:amt,account:acct,type:eType,category:cat,subcategory:sub||'',description:memo,createdAt:Date.now()};
-  if(editId){if(db)await db.collection('transactions').doc(String(editId)).update(t);else{const i=txs.findIndex(x=>String(x.id)===String(editId));if(i!==-1)txs[i]={...txs[i],...t};}}
-  else{if(db)await db.collection('transactions').add(t);else{t.id=Date.now();txs.unshift(t);}}
+  if(editId){if(uref)await uref.collection('transactions').doc(String(editId)).update(t);else{const i=txs.findIndex(x=>String(x.id)===String(editId));if(i!==-1)txs[i]={...txs[i],...t};}}
+  else{if(uref)await uref.collection('transactions').add(t);else{t.id=Date.now();txs.unshift(t);}}
   resetEntry();nav('dashboard');
 }
 function editTx(id){
@@ -1029,7 +1061,7 @@ function editTx(id){
   nav('entry');
 }
 function cancelEdit(){editId=null;resetEntry();nav('transactions');}
-async function delTx(id){if(!confirm('Delete this transaction?'))return;if(db)await db.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
+async function delTx(id){if(!confirm('Delete this transaction?'))return;if(uref)await uref.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
 
 // ── Analytics ───────────────────────────────────────────────────
 function applyAnalyticsPeriod(){
@@ -1192,7 +1224,7 @@ function renderBurnRate(p,spent,tot,ptxs,exC){
 }
 async function saveBudgets(){
   const nb={};Object.keys(CATS.expense||{}).forEach(c=>{const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);if(e)nb[c]={amount:parseFloat(e.value)||0,threshold:parseInt(te?.value)||80};});
-  budgets=nb;if(db){try{await db.collection('budgets').doc('settings').set(nb);}catch(e){}}else localStorage.setItem('budgets',JSON.stringify(nb));
+  budgets=nb;if(uref){try{await uref.collection('budgets').doc('settings').set(nb);}catch(e){}}else localStorage.setItem('budgets',JSON.stringify(nb));
   const m=document.getElementById('b-save-msg');m.textContent='Allocations saved ✓';setTimeout(()=>m.textContent='',2500);renderBudgets();
 }
 
@@ -1444,7 +1476,7 @@ async function saveSettings(){
 
   if(db){
     try{
-      await db.collection('settings').doc('preferences').set(ns);
+      await uref.collection('settings').doc('preferences').set(ns);
       await PAY_PERIOD.save(day,ppOvrd);
     }catch(e){}
   } else {
@@ -1603,7 +1635,7 @@ async function handleForgotPassword(){
 async function signOut(){
   if(!confirm('Sign out of Lumina?')) return;
   // Clear local state
-  txs=[]; budgets={}; goals=[];
+  txs=[]; budgets={}; goals=[]; uref=null;
   if(auth) await auth.signOut();
   // onAuthStateChanged will show the auth wall
 }
