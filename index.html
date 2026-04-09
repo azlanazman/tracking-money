@@ -843,7 +843,6 @@ async function initDB(){
     setDB('connecting');
     const uid=currentUser.uid;
     uref=db.collection('users').doc(uid);
-    try { await migrateToUserScope(uid); } catch(e) { console.warn('Migration skipped:', e.message); }
     PAY_PERIOD.init(db,uid);
     PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='analytics') applyAnalyticsPeriod(); if(curScr==='forecast') renderForecast(); });
     uref.collection('settings').doc('preferences').onSnapshot(doc=>{
@@ -870,35 +869,6 @@ async function initDB(){
     setDB('error');
     console.error(e);
   }
-}
-// ── One-time migration: flat collections → users/{uid}/ ──────────
-// Remove this function after migration is confirmed.
-async function migrateToUserScope(uid){
-  const uref=db.collection('users').doc(uid);
-  const oldTxSnap=await db.collection('transactions').get();
-  if(oldTxSnap.empty) return; // already migrated or nothing to migrate
-  setDB('connecting','Migrating data to your account…');
-  const batch=db.batch();
-  oldTxSnap.forEach(doc=>batch.set(uref.collection('transactions').doc(doc.id),doc.data()));
-  const [prefSnap,ppSnap,budgSnap,goalsSnap]=await Promise.all([
-    db.collection('settings').doc('preferences').get(),
-    db.collection('settings').doc('payperiod').get(),
-    db.collection('budgets').doc('settings').get(),
-    db.collection('goals').doc('list').get(),
-  ]);
-  if(prefSnap.exists)  batch.set(uref.collection('settings').doc('preferences'),prefSnap.data());
-  if(ppSnap.exists)    batch.set(uref.collection('settings').doc('payperiod'),ppSnap.data());
-  if(budgSnap.exists)  batch.set(uref.collection('budgets').doc('settings'),budgSnap.data());
-  if(goalsSnap.exists) batch.set(uref.collection('goals').doc('list'),goalsSnap.data());
-  await batch.commit();
-  // Delete old flat data
-  const del=db.batch();
-  oldTxSnap.forEach(doc=>del.delete(doc.ref));
-  if(prefSnap.exists)  del.delete(db.collection('settings').doc('preferences'));
-  if(ppSnap.exists)    del.delete(db.collection('settings').doc('payperiod'));
-  if(budgSnap.exists)  del.delete(db.collection('budgets').doc('settings'));
-  if(goalsSnap.exists) del.delete(db.collection('goals').doc('list'));
-  await del.commit();
 }
 function setDB(st,msg=''){
   const cl={connected:'bg-emerald-400',connecting:'bg-amber-400',error:'bg-red-400'};
