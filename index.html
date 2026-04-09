@@ -42,6 +42,21 @@ input[type=number]{-moz-appearance:textfield}
 @keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .slide-in{animation:slideIn .3s ease forwards}
 @media(max-width:767px){#sidebar{display:none!important}#mob-nav{display:flex!important}#main{margin-left:0!important}header{width:100%!important}}
+/* ── Sub-400px fixes ── */
+@media(max-width:399px){
+  /* Reduce screen padding so content isn't squeezed to <300px */
+  #sc-dashboard,#sc-analytics,#sc-transactions,#sc-entry,
+  #sc-budgets,#sc-forecast,#sc-settings{padding:16px!important}
+  /* Transaction screen header: wrap button below title instead of overflowing */
+  #sc-transactions>.flex.justify-between{flex-wrap:wrap;align-items:flex-start;gap:8px}
+  #sc-transactions>.flex.justify-between h2{font-size:1.5rem}
+  /* Budget summary row: 3 cols at 88px each overflows RM amounts — collapse to 2 */
+  #sc-budgets .grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+/* ── Touch: edit/delete buttons invisible on mobile (no hover) ── */
+@media(hover:none),(pointer:coarse){
+  #tx-list .opacity-0{opacity:1!important}
+}
 /* Auth layer */
 #auth-wall{position:fixed;inset:0;z-index:9999;background:#f7f9fb;display:flex;align-items:center;justify-content:center;padding:24px}
 #app-shell{display:none}

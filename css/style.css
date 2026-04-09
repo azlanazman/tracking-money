@@ -761,3 +761,26 @@ button#cancelEditBtn:hover { background: var(--surface-high); }
   flex-wrap: wrap;
   align-items: center;
 }
+
+/* ══════════════════════════════════════
+   SUB-400PX — prevent overflow and fix tap targets
+   ══════════════════════════════════════ */
+@media (max-width: 399px) {
+  /* Tighter section margins so content isn't squeezed to ~260px */
+  .form-section,
+  .export-section,
+  .filter-section,
+  .list-section,
+  .tx-section  { margin-left: 12px; margin-right: 12px; }
+
+  .form-section,
+  .export-section,
+  .filter-section,
+  .list-section { padding: 20px 16px; }
+
+  /* Summary cards: 20px amount font overflows a ~120px card at 360px */
+  .card-amount  { font-size: 16px; }
+
+  /* Nav tab tap target: increase to ≥44px height */
+  .top-nav-tab  { padding: 16px 12px 14px; }
+}

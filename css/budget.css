@@ -304,5 +304,12 @@
   .budget-row { grid-template-columns: 1fr 100px; }
   .budget-form-header span:nth-child(3),
   .budget-form-header span:nth-child(4),
-  .budget-row .threshold-select { display: none; }
+  .budget-row .threshold-select,
+  .budget-row > span:last-child { display: none; }  /* hide "current spent" — wraps to new row in 2-col grid */
+}
+
+@media (max-width: 399px) {
+  /* Tap targets: budget inputs and save button must be ≥44px */
+  .budget-row input[type="number"] { min-height: 44px; padding: 10px 12px; }
+  .save-row button                 { min-height: 44px; }
 }
