@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Lumina Financial — Modern Intelligence</title>
+<title>Tracking Money - Financial Intelligence</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -11,8 +11,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="payperiod.js"></script>
+<script src="config/firebase-config.js"></script>
+<script src="js/payperiod.js"></script>
 
 <script id="tw-cfg">
 tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary-container":"#454386","background":"#f7f9fb","on-background":"#191c1e","surface-variant":"#e0e3e5","surface-bright":"#f7f9fb","outline-variant":"#c7c4d8","surface-container-highest":"#e0e3e5","primary-container":"#4f46e5","error":"#ba1a1a","on-primary-container":"#dad7ff","on-error":"#ffffff","on-primary-fixed":"#0f0069","outline":"#777587","primary-fixed":"#e2dfff","surface-container":"#eceef0","secondary-fixed-dim":"#c3c0ff","secondary-container":"#b6b4ff","tertiary":"#7e3000","primary":"#3525cd","surface-container-high":"#e6e8ea","secondary-fixed":"#e2dfff","surface":"#f7f9fb","secondary":"#58579b","tertiary-fixed":"#ffdbcc","on-error-container":"#93000a","on-secondary-fixed":"#140f54","surface-container-low":"#f2f4f6","on-surface":"#191c1e","surface-dim":"#d8dadc","on-surface-variant":"#464555","error-container":"#ffdad6","surface-tint":"#4d44e3","on-secondary-fixed-variant":"#413f82","on-tertiary-fixed":"#351000","on-primary":"#ffffff","inverse-primary":"#c3c0ff","surface-container-lowest":"#ffffff","inverse-surface":"#2d3133","tertiary-container":"#a44100","on-secondary":"#ffffff","primary-fixed-dim":"#c3c0ff","inverse-on-surface":"#eff1f3","on-tertiary":"#ffffff","tertiary-fixed-dim":"#ffb695"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem","2xl":"1rem","3xl":"1.5rem",full:"9999px"},fontFamily:{headline:["Manrope"],body:["Inter"],label:["Inter"]}}}}
@@ -522,7 +522,7 @@ input[type=number]{-moz-appearance:textfield}
         <button id="e-cancel" onclick="cancelEdit()" style="display:none" class="w-full py-3 bg-surface-container text-slate-600 rounded-xl font-semibold text-sm hover:bg-surface-container-high transition-all duration-200">
           Cancel Edit
         </button>
-        <p class="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Lumina Financial · Encrypted</p>
+        <p class="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-widest">Tracking Money · Encrypted</p>
       </div>
     </div>
   </div>
