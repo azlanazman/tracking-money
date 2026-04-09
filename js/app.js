@@ -27,6 +27,8 @@ function loadUserSettings() {
     refreshAccountDropdowns();
     updateCategories();
     updateFilterCategories();
+  }, err => {
+    console.error('Settings load error:', err.message);
   });
 }
 
@@ -81,6 +83,7 @@ function initFirebase() {
 
 function setStatus(state, msg) {
   const el = document.getElementById('dbStatus');
+  if (!el) return;
   el.textContent = msg;
   el.className = 'db-status ' + state;
 }

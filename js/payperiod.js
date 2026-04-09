@@ -27,6 +27,10 @@ window.PAY_PERIOD = (() => {
         _overrides  = d.overrides   || {};
       }
       _listeners.forEach(fn => fn());
+    }, err => {
+      console.error('PAY_PERIOD: settings load error:', err.message);
+      // Still fire listeners so pages render with defaults rather than staying blank
+      _listeners.forEach(fn => fn());
     });
   }
 
@@ -131,6 +135,7 @@ window.PAY_PERIOD = (() => {
 
   // ── Filter transactions to a period ──
   function filterToPeriod(transactions, period) {
+    if (!period) return [];
     return transactions.filter(t =>
       t.date && t.date >= period.start && t.date <= period.end
     );
