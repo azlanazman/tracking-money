@@ -264,8 +264,8 @@
 
 /* ── Burn rate banner ── */
 .burn-card {
-  margin: 0 auto 20px;
-  max-width: 860px;
+  margin: 0 20px 12px;
+  max-width: 760px;
   padding: 14px 20px;
   border-radius: var(--radius-lg);
   font-size: 13px;
@@ -275,6 +275,9 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+@media (min-width: 800px) {
+  .burn-card { margin: 0 auto 12px; }
 }
 .burn-card strong { font-weight: 700; }
 .burn-label {
