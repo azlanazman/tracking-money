@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css"/>
   <link rel="stylesheet" href="css/forecast.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -27,16 +28,25 @@
 </head>
 <body>
   <header><div class="header-inner"><h1>Savings &amp; Forecast</h1><p class="subtitle">Monthly targets · 3-month outlook</p></div></header>
-  <nav class="top-nav"><div class="top-nav-inner">
-    <span id="dbStatus" class="db-status connecting">Connecting...</span>
-    <div class="top-nav-tabs">
-      <a href="index.html" class="top-nav-tab">Tracker</a>
-      <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
-      <a href="charts.html" class="top-nav-tab">Charts</a>
-      <a href="forecast.html" class="top-nav-tab active">Forecast</a>
-      <a href="settings.html" class="top-nav-tab">Settings</a>
+  <nav class="top-nav navbar navbar-expand-md">
+    <div class="top-nav-inner w-100">
+      <span id="dbStatus" class="db-status connecting">Connecting...</span>
+      <button class="navbar-toggler ms-auto" type="button"
+              data-bs-toggle="collapse" data-bs-target="#mainNav"
+              aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <div class="top-nav-tabs">
+          <a href="index.html" class="top-nav-tab">Tracker</a>
+          <a href="budget.html" class="top-nav-tab">Budget Monitor</a>
+          <a href="charts.html" class="top-nav-tab">Charts</a>
+          <a href="forecast.html" class="top-nav-tab active">Forecast</a>
+          <a href="settings.html" class="top-nav-tab">Settings</a>
+        </div>
+      </div>
     </div>
-  </div></nav>
+  </nav>
   <section class="summary">
     <div class="card teal"><p class="card-label">Avg monthly income</p><p class="card-amount" id="avgIncome">RM 0.00</p></div>
     <div class="card red"><p class="card-label">Avg monthly expenses</p><p class="card-amount" id="avgExpenses">RM 0.00</p></div>
@@ -74,5 +84,6 @@
   <script src="config/firebase-config.js"></script>
   <script src="js/payperiod.js"></script>
   <script src="js/forecast.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
