@@ -1,60 +1,67 @@
-# Tracking Money — Your Personal Finance Companion
+# Lumina — Personal Finance Intelligence
 
-A personal finance web app that does more than track where your money went. It watches your spending like a dashboard, warns you before things go wrong, and helps you understand your money habits clearly — so you can make better decisions, not just better regrets.
+A personal finance web app built to help you see the present and prepare for the future. Like a car dashboard — it watches your spending, warns you before things go wrong, and helps you understand your money habits clearly.
 
 ---
 
 ## What This App Is About
 
-Most money apps show you the past. This one is built to help you **see the present and prepare for the future**.
+Most money apps show you the past. This one is built to help you **see the present and prepare for the future**. It watches spending patterns, spots unusual transactions, tells you when you're heading toward trouble, and helps build habits that stick.
 
-Think of it like a car dashboard — you don't just check your fuel after you've run out. You watch the gauge, you get a warning light, you know roughly how far you can go. This app does the same for your money: it watches your spending patterns, spots when something looks unusual, tells you when you're heading toward trouble, and helps you build habits that stick.
-
-The goal is simple: **less financial stress, more financial confidence** — for anyone, not just people who are good with numbers.
+Goal: **less financial stress, more financial confidence** — for anyone, not just people who are good with numbers.
 
 ---
 
 ## Who This Is For
 
-Anyone who wants a clearer picture of their money — whether you're living paycheck to paycheck, saving for something important, managing a household, or just tired of wondering where it all went at the end of the month.
+Anyone who wants a clearer picture of their money — whether you're living paycheck to paycheck, saving for something important, managing a household, or just tired of wondering where it all went.
 
 ---
 
 ## What It Does Today
 
-- **Tracker** (`index.html`) — Log your income, expenses, and savings. See your totals for the current pay period at a glance. Filter and search your transaction history.
-- **Budget Monitor** (`budget.html`) — Set a monthly limit for each spending category. Watch a progress bar fill up as you spend. Get an early warning before you go over.
-- **Charts** (`charts.html`) — See your spending visually by category and by month. Quickly spot which areas are growing over time.
-- **Forecast** (`forecast.html`) — Based on how you've spent the last 3 months, the app projects what next month might look like. Set savings goals and see whether your current habits can support them.
-- **Settings** (`settings.html`) — Customise your accounts, categories, sub-categories, and salary date so everything fits how you actually manage money.
+Everything lives in a single-page app (`index.html`) with these screens, navigated via sidebar:
+
+- **Dashboard** (`sc-dashboard`) — Summary cards (income, expenses, balance, YTD), mini 6-month bar chart, recent ledger, top spending allocations for current pay period
+- **Analytics** (`sc-analytics`) — Stacked bar + line charts by category, period selector (this period / last period / last 30 / last 90 / all time), category breakdown table
+- **Transactions** (`sc-transactions`) — Paginated transaction list with filters by type, category, and month; edit and delete actions
+- **Log Transaction** (`sc-entry`) — Add/edit transaction form; type toggle (expense / income / savings), category and subcategory selectors, date, amount, account, memo
+- **Budget Monitor** (`sc-budgets`) — Gauge showing total budget consumption, per-category progress bars with status badges (On Track / Alert / Over Budget), burn rate widget, budget allocation form, unbudgeted spending section
+- **Forecast** (`sc-forecast`) — 3-month rolling averages for income/expense/savings, savings goals, projected surplus/shortfall
+- **Settings** (`sc-settings`) — Accounts list, category/subcategory manager (expense/income/savings tabs), pay period configuration with per-month override grid
+
+Auth is a full-screen wall before the app shell — email/password and Google Sign-In, with forgot password flow.
 
 ---
 
 ## Where It's Going — Planned Features
 
 ### Coming Next — Early Warnings
-- **"How long will my budget last?"** — Based on how fast you're spending right now, the app tells you roughly which day your budget runs out — so you can slow down before it's too late, not after
-- **Spending alerts** — When a transaction looks unusually large for its category (say, a Grab bill 3x your normal spend), it gets flagged automatically. You decide if it was expected or a surprise worth looking into
-- **Budget breach notifications** — When you go over budget, it doesn't just turn red and move on. It stays visible as an open issue until you acknowledge it — building awareness of patterns over time
+- **Spend anomaly flags** — transactions that are 2x the 3-month rolling average for their category get an amber "Unusual" badge
+- **Budget breach alert panel** — when a category goes over budget, create an open alert in Firestore; show dismissible alert cards; user acknowledges to resolve
+- **Alert badge on nav** — red badge on the Budgets nav item showing count of open alerts
 
 ### Soon After — Understanding Your Money Better
-- **Financial Health Score** — A single number (0–100) that summarises how well your finances are doing right now: Are you spending within your means? Are your savings on track? Is too much of your income locked into fixed costs? One score, honest answer
-- **Your money flow, visualised** — For any month, see exactly how your salary moved: what went to fixed commitments, what was discretionary, what made it to savings. Like a receipt for the whole month
-- **Life event markers** — Tag moments on your timeline: "Eid," "car broke down," "got a raise." Then when you look back at a spending spike, you know why it happened
+- **Financial Health Score** — 0–100 score from budget compliance, savings on track, fixed cost ratio, burn rate safety
+- **Money flow waterfall chart** — income → committed costs → discretionary → savings → remaining
+- **Life event annotations** — tag dates with labels; show as vertical lines on charts
 
 ### Later — Making It Personal
-- **Your own spending playbook** — Write notes to your future self: "When my Food spending goes high, check if I've been ordering Grab too much." The app surfaces these reminders when the pattern repeats
-- **Habit detection** — The app notices regular expenses you haven't categorised as fixed costs yet, and suggests you account for them in your budget going forward
-- **Spending heatmap** — A calendar view showing which days of the month you tend to spend the most — useful for spotting patterns you didn't know you had
+- **Personal spending playbook** — per-category notes surfaced when that category goes over budget
+- **Habit detection** — flag recurring unbudgeted expense categories
+- **Spending heatmap** — calendar grid of daily spend intensity
+- **12-month compliance history** — green/red/grey badges for past 12 periods
 
 ---
 
 ## Tech Stack
 
-- **Frontend**: Vanilla HTML, CSS, JavaScript (no build step — intentional; keeps it simple and deployable anywhere)
-- **Database**: Firebase Firestore (real-time sync across devices)
-- **Auth**: Firebase Authentication
-- **Charts**: Chart.js
+- **Frontend**: Vanilla HTML + JavaScript; Tailwind CSS (CDN, no build step); all in one file — intentional for zero-dependency deployability
+- **Fonts**: Manrope (headlines), Inter (body) — Google Fonts
+- **Icons**: Material Symbols Outlined — Google Fonts
+- **Charts**: Chart.js 4.4 (CDN)
+- **Database**: Firebase Firestore (real-time, user-scoped)
+- **Auth**: Firebase Authentication (email/password + Google)
 - **Export**: Google Sheets via Apps Script (`sheets-script.gs`)
 
 ---
@@ -63,56 +70,54 @@ Anyone who wants a clearer picture of their money — whether you're living payc
 
 ```
 /
-├── index.html              # Tracker — dashboard + transaction entry
-├── budget.html             # Budget Monitor
-├── charts.html             # Charts & trends
-├── forecast.html           # Forecast & savings goals
-├── settings.html           # Pay period, accounts, categories
+├── index.html              # App shell — HTML structure and inline CSS (~774 lines)
 ├── sheets-script.gs        # Google Apps Script for Sheets export
 ├── js/
-│   ├── app.js              # Transaction logic, category/account helpers, globals
-│   ├── payperiod.js        # Pay period utilities — shared across all pages
-│   ├── budget.js
-│   ├── charts.js
-│   ├── forecast.js
-│   └── settings.js
-├── css/
-│   ├── style.css           # Global styles
-│   ├── style-patch.css
-│   ├── budget.css / budget-patch.css
-│   ├── charts.css
-│   ├── forecast.css
-│   └── settings.css
+│   ├── payperiod.js        # Pay period utilities — loaded in <head>, no DOM deps
+│   ├── app.js              # State, navigation, Firebase data, all screen render logic
+│   └── auth.js             # Firebase init, auth state observer, auth UI handlers
 └── config/
     └── firebase-config.js  # Firebase API keys — never commit, never expose
 ```
+
+**Script load order** (matters — no bundler):
+```
+<head>:  payperiod.js
+<body>:  app.js  →  auth.js
+```
+
+`auth.js` calls `initDB()` defined in `app.js` — this works because both files are fully loaded before `DOMContentLoaded` fires.
 
 ---
 
 ## Key Conventions
 
-- Firebase initialised in `firebase-config.js`; `db` and `auth` are globals used across all pages
-- Categories and accounts stored in Firestore `settings/preferences`, loaded on page load via `loadUserSettings()`
-- `CATEGORIES` and `ACCOUNTS` are module-level globals in `app.js`
-- No module bundler — `<script>` load order matters; `payperiod.js` must load before page scripts
+- **SPA navigation**: `nav(scr)` in `app.js` swaps `.screen.active` class; each screen has id `sc-{name}`
+- **State globals**: `db`, `uref`, `txs[]`, `budgets{}`, `goals[]`, `CATS{}`, `ACCTS[]`, `auth`, `currentUser` — declared in `app.js`, set/used across `app.js` and `auth.js`
+- **Firebase paths**: all data is user-scoped under `users/{uid}/` — see Firestore model below
+- `payperiod.js` must load before `app.js`; it exposes `window.PAY_PERIOD`
+- `app.js` must load before `auth.js`; `auth.js` calls `initDB()` and sets globals declared in `app.js`
 - Pay period: salary day of previous month → day before salary day this month (configurable per month)
-- All monetary values stored as raw floats in Firestore; formatted as `RM X.XX` only at render time
+- All monetary values stored as raw floats; formatted as `RM X.XX` only at render time via `RM()` helper
+- Tailwind config is inline in a `<script id="tw-cfg">` block — includes custom colour tokens and font families
+- No module bundler — `<script>` load order matters
 
 ---
 
 ## Firestore Data Model
 
 ```
-transactions/{id}       — date, amount, account, type, category, subcategory, description, createdAt
-settings/preferences    — accounts[], categories{ expense{}, income{}, savings{} }
-settings/payperiod      — { defaultDay, overrides }
-budgets/settings        — { [category]: { amount, threshold } }
-goals/list              — { goals: [{ id, name, emoji, monthly }] }
+users/{uid}/transactions/{id}       — date, amount, account, type, category, subcategory, description, createdAt
+users/{uid}/settings/preferences    — accounts[], categories{ expense{}, income{}, savings{} }
+users/{uid}/settings/payperiod      — { defaultDay, overrides }
+users/{uid}/budgets/settings        — { [category]: { amount, threshold } }
+users/{uid}/goals/list              — { goals: [{ id, name, emoji, monthly }] }
 
 [planned]
-alerts/{id}             — type, category, period, status (open/acknowledged/resolved), notes, createdAt
-annotations/{id}        — date, label, icon, description
-health/history          — { periods: [{ period, score, breakdown }] }
+users/{uid}/alerts/{id}             — type, category, period, status (open/acknowledged), createdAt
+users/{uid}/annotations/{id}        — date, label, icon, description
+users/{uid}/health/history          — { periods: [{ period, score, breakdown }] }
+users/{uid}/reviews/{YYYY-MM}       — what happened, reason, what to do differently
 ```
 
 ---
@@ -132,7 +137,7 @@ Open `index.html` in a browser. Firebase connects automatically if `config/fireb
 ## Sensitive Files
 
 - `config/firebase-config.js` — live Firebase API keys; in `.gitignore`; never edit, never commit, never expose
-- `sheets-script.gs` — treat as private; contains account-specific deployment URL logic
+- `sheets-script.gs` — treat as private
 
 ---
 
@@ -141,4 +146,7 @@ Open `index.html` in a browser. Firebase connects automatically if `config/fireb
 - Add a build system, npm, or bundler unless explicitly asked
 - Commit `config/firebase-config.js`
 - Use `localStorage` as primary storage — Firebase is the source of truth; localStorage is fallback only
-- Break the no-framework rule — vanilla JS is intentional for zero-dependency deployability
+- Break the no-framework rule — vanilla JS + Tailwind CDN is intentional
+- Create separate HTML or CSS files — the SPA pattern is established; HTML and styles stay in `index.html`
+- Create additional JS files without a clear responsibility boundary — the current split (`payperiod.js`, `app.js`, `auth.js`) is intentional
+- Read Firestore outside of `users/{uid}/` paths — all data must be user-scoped
