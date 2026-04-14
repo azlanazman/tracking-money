@@ -416,21 +416,36 @@ input[type=number]{-moz-appearance:textfield}
     <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card"><p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Savings</p><p id="an-sav" class="text-xl font-bold tracking-tight text-secondary font-headline">RM 0</p></div>
     <div class="bg-surface-container-lowest p-5 rounded-2xl amb-card"><p class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wider">Top Category</p><p id="an-top" class="text-sm font-bold text-on-surface">—</p></div>
   </div>
-  <!-- Charts -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-    <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-      <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Monthly Breakdown</h3>
-      <div class="relative" style="height:240px"><canvas id="an-bar"></canvas></div>
+  <!-- Tab switcher -->
+  <div class="flex gap-1.5 mb-6 bg-surface-container p-1 rounded-xl w-fit">
+    <button id="an-tab-trends" onclick="switchAnTab('trends')" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all">Trends</button>
+    <button id="an-tab-waterfall" onclick="switchAnTab('waterfall')" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all">Waterfall</button>
+  </div>
+  <!-- Trends view -->
+  <div id="an-trends">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+        <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Monthly Breakdown</h3>
+        <div class="relative" style="height:240px"><canvas id="an-bar"></canvas></div>
+      </div>
+      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+        <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Category Trends</h3>
+        <div class="relative" style="height:240px"><canvas id="an-line"></canvas></div>
+      </div>
     </div>
     <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-      <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Category Trends</h3>
-      <div class="relative" style="height:240px"><canvas id="an-line"></canvas></div>
+      <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Allocation Breakdown</h3>
+      <div id="an-table"></div>
     </div>
   </div>
-  <!-- Allocation breakdown -->
-  <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-    <h3 class="text-base font-bold text-slate-900 font-headline mb-5">Allocation Breakdown</h3>
-    <div id="an-table"></div>
+  <!-- Waterfall view -->
+  <div id="an-waterfall" class="hidden">
+    <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+      <h3 class="text-base font-bold text-slate-900 font-headline mb-1">Money Flow</h3>
+      <p class="text-xs text-slate-400 mb-5">Where your income goes this period</p>
+      <div id="an-wf-wrap"></div>
+      <div id="an-wf-empty" class="hidden py-6 text-sm text-slate-400 text-center">No income data for selected period.</div>
+    </div>
   </div>
 </div>
 

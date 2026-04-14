@@ -8,7 +8,7 @@
 // ── State ──────────────────────────────────────────────────────
 let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[];
 let curScr='dashboard',editId=null;
-let anBar=null,anLine=null,fChart=null;
+let anBar=null,anLine=null,anWaterfall=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
 let eType='expense',eCat=null,sType='expense',sCat=null;
 let ppOvrd={};
@@ -26,6 +26,7 @@ const ICONS={Loan:'account_balance',Bills:'bolt',Takaful:'shield',Family:'family
 
 // Palette (indigo-themed)
 const PAL=['#3525cd','#4f46e5','#58579b','#7e3000','#a44100','#1e40af','#0f766e','#7c3aed','#b45309','#be123c','#047857','#0369a1'];
+const COMMITTED_CATS=['Loan','Bills','Takaful','CC','Subs'];
 const PAL_BG=['#e2dfff','#dad7ff','#e2dfff','#ffdbcc','#ffd2be','#dbeafe','#ccfbf1','#ede9fe','#fef3c7','#ffe4e6','#d1fae5','#e0f2fe'];
 
 const RM=v=>'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -403,6 +404,58 @@ function applyAnalyticsPeriod(){
   else{const ds=txs.map(t=>t.date).sort();anStart=ds[0]||'';anEnd=ds[ds.length-1]||'';}
   renderAnalytics();
 }
+function switchAnTab(tab){
+  const active='px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all';
+  const inactive='px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all';
+  document.getElementById('an-tab-trends').className=tab==='trends'?active:inactive;
+  document.getElementById('an-tab-waterfall').className=tab==='waterfall'?active:inactive;
+  document.getElementById('an-trends').classList.toggle('hidden',tab!=='trends');
+  document.getElementById('an-waterfall').classList.toggle('hidden',tab!=='waterfall');
+  document.getElementById('an-type').classList.toggle('hidden',tab==='waterfall');
+  renderAnalytics();
+}
+
+function renderWaterfall(inR){
+  const wfWrap=document.getElementById('an-wf-wrap');
+  const wfEmpty=document.getElementById('an-wf-empty');
+  const income=txs.filter(t=>t.type==='income'&&inR(t)).reduce((s,t)=>s+t.amount,0);
+  if(!income){wfWrap.innerHTML='';wfEmpty.classList.remove('hidden');return;}
+  wfEmpty.classList.add('hidden');
+  const expTxs=txs.filter(t=>t.type==='expense'&&inR(t));
+  const committed=expTxs.filter(t=>COMMITTED_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  const disc=expTxs.filter(t=>!COMMITTED_CATS.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+  const sav=txs.filter(t=>t.type==='savings'&&inR(t)).reduce((s,t)=>s+t.amount,0);
+  const remaining=income-committed-disc-sav;
+  const segs=[];
+  if(committed>0) segs.push({id:'Committed',value:committed,color:'#E24B4A'});
+  if(disc>0)      segs.push({id:'Discretionary',value:disc,color:'#F59E0B'});
+  if(sav>0)       segs.push({id:'Savings',value:sav,color:'#3B82F6'});
+  if(remaining>0) segs.push({id:'Remaining',value:remaining,color:'#3525cd'});
+  // SVG layout constants
+  const W=600,H=260,nW=14,pad=10,lX=110,rX=W-130;
+  const totalH=H-Math.max(segs.length-1,0)*pad;
+  const incY=(H-totalH)/2;
+  // Lay out right nodes proportionally
+  let ry=incY;
+  segs.forEach(s=>{s.h=(s.value/income)*totalH;s.y=ry;ry+=s.h+pad;});
+  // Bezier ribbons
+  let lCursor=incY;
+  const ribbons=segs.map(s=>{
+    const lT=lCursor,lB=lCursor+s.h;lCursor+=s.h;
+    const cx=(lX+nW+rX)/2;
+    return `<path d="M${lX+nW},${lT} C${cx},${lT} ${cx},${s.y} ${rX},${s.y} L${rX},${s.y+s.h} C${cx},${s.y+s.h} ${cx},${lB} ${lX+nW},${lB} Z" fill="${s.color}44" stroke="${s.color}88" stroke-width="0.5"/>`;
+  });
+  // Left (Income) node + label
+  const leftSVG=`<rect x="${lX}" y="${incY}" width="${nW}" height="${totalH}" rx="3" fill="#1D9E75"/>
+    <text x="${lX-10}" y="${incY+totalH/2-8}" text-anchor="end" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#334155">Income</text>
+    <text x="${lX-10}" y="${incY+totalH/2+8}" text-anchor="end" font-family="Inter,sans-serif" font-size="11" fill="#94a3b8">${RM(income)}</text>`;
+  // Right nodes + labels
+  const rightSVG=segs.map(s=>`<rect x="${rX}" y="${s.y}" width="${nW}" height="${s.h}" rx="3" fill="${s.color}"/>
+    <text x="${rX+nW+10}" y="${s.y+s.h/2-8}" font-family="Inter,sans-serif" font-size="12" font-weight="600" fill="#334155">${s.id}</text>
+    <text x="${rX+nW+10}" y="${s.y+s.h/2+8}" font-family="Inter,sans-serif" font-size="11" fill="#94a3b8">${RM(s.value)}</text>`).join('');
+  wfWrap.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">${ribbons.join('')}${leftSVG}${rightSVG}</svg>`;
+}
+
 function renderAnalytics(){
   if(isLoading){document.getElementById('an-table').innerHTML=LOADING_HTML;return;}
   const tp=document.getElementById('an-type')?.value||'expense';
@@ -414,6 +467,14 @@ function renderAnalytics(){
   const ct2={};txs.filter(t=>t.type==='expense'&&inR(t)).forEach(t=>ct2[t.category]=(ct2[t.category]||0)+t.amount);
   const top2=Object.entries(ct2).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('an-top').textContent=top2?`${top2[0]} (${RM(top2[1])})`:'—';
+  // Waterfall tab — render waterfall and skip trends charts
+  if(!document.getElementById('an-waterfall')?.classList.contains('hidden')){
+    if(anBar){anBar.destroy();anBar=null;}
+    if(anLine){anLine.destroy();anLine=null;}
+    renderWaterfall(inR);
+    return;
+  }
+  if(anWaterfall){anWaterfall.destroy();anWaterfall=null;}
   const fil=txs.filter(t=>t.type===tp&&inR(t));
   if(!fil.length){
     if(anBar){anBar.destroy();anBar=null;}
