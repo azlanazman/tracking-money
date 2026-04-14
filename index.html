@@ -289,26 +289,40 @@ input[type=number]{-moz-appearance:textfield}
     <p id="d-period-sub" class="text-sm text-slate-400 mt-0.5">Loading period…</p>
   </div>
 
-  <!-- Health Score Hero -->
-  <div class="bg-[#f5f3ee] p-6 rounded-3xl mb-4">
-    <div class="flex items-center gap-5">
-      <div class="flex-shrink-0 relative w-24 h-24">
-        <svg viewBox="0 0 72 72" class="w-full h-full">
-          <circle cx="36" cy="36" r="28" fill="none" stroke="#d6d2c4" stroke-width="7"/>
-          <circle id="hs-ring" cx="36" cy="36" r="28" fill="none" stroke="#1D9E75" stroke-width="7"
-            stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="175.93"
-            transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.7s ease,stroke 0.4s ease"/>
-        </svg>
-        <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <span id="hs-score" class="text-2xl font-bold text-slate-900 font-headline leading-none">—</span>
-          <span class="text-[10px] text-slate-400 font-medium">/100</span>
+  <!-- Hero Row: Health Score + Total Liquidity -->
+  <div class="grid grid-cols-2 gap-3 mb-4">
+
+    <!-- Health Score -->
+    <div class="bg-[#f5f3ee] p-4 rounded-3xl">
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0 relative w-20 h-20">
+          <svg viewBox="0 0 72 72" class="w-full h-full">
+            <circle cx="36" cy="36" r="28" fill="none" stroke="#d6d2c4" stroke-width="7"/>
+            <circle id="hs-ring" cx="36" cy="36" r="28" fill="none" stroke="#1D9E75" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="175.93"
+              transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.7s ease,stroke 0.4s ease"/>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span id="hs-score" class="text-2xl font-bold text-slate-900 font-headline leading-none">—</span>
+            <span class="text-[10px] text-slate-400 font-medium">/100</span>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p id="hs-label" class="text-base font-bold mb-1 font-headline" style="color:#1D9E75">—</p>
+          <p id="hs-detail" class="text-xs text-slate-500 leading-relaxed">Calculating…</p>
         </div>
       </div>
-      <div class="flex-1 min-w-0">
-        <p id="hs-label" class="text-xl font-bold mb-1.5 font-headline" style="color:#1D9E75">—</p>
-        <p id="hs-detail" class="text-sm text-slate-500 leading-relaxed">Calculating…</p>
+    </div>
+
+    <!-- Total Liquidity -->
+    <div class="bg-surface-container-lowest p-4 rounded-3xl amb-card flex flex-col justify-between">
+      <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Liquidity</p>
+      <div>
+        <p id="d-liquidity" class="text-xl font-bold text-slate-900 font-headline leading-tight mt-2">—</p>
+        <p id="d-liquidity-change" class="text-xs font-semibold mt-1.5 hidden"></p>
       </div>
     </div>
+
   </div>
 
   <!-- Budget Runway -->

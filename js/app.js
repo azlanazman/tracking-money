@@ -129,6 +129,25 @@ function renderDashboard(){
   document.getElementById('d-exp').textContent=RM(exp);
   document.getElementById('d-sav').textContent=RM(sav);
 
+  // Total Liquidity + period-over-period change
+  const bal=inc-exp-sav;
+  document.getElementById('d-liquidity').textContent=RM(bal);
+  const prevP=PAY_PERIOD.lastNPeriods(2)[1];
+  const chEl=document.getElementById('d-liquidity-change');
+  if(prevP){
+    const prevInP=PAY_PERIOD.filterToPeriod(txs,prevP);
+    const prevBal=prevInP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
+                 -prevInP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
+                 -prevInP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+    if(prevBal!==0){
+      const pct=(bal-prevBal)/Math.abs(prevBal)*100;
+      const up=pct>=0;
+      chEl.textContent=(up?'↑':'↓')+' '+Math.abs(pct).toFixed(1)+'% vs last period';
+      chEl.style.color=up?'#1D9E75':'#E24B4A';
+      chEl.classList.remove('hidden');
+    } else { chEl.classList.add('hidden'); }
+  } else { chEl.classList.add('hidden'); }
+
   // Budget Runway
   const exC=Object.keys(CATS.expense||{});
   const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
