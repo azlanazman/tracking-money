@@ -12,6 +12,7 @@ let anBar=null,anLine=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
 let eType='expense',eCat=null,sType='expense',sCat=null;
 let ppOvrd={};
+let isLoading=true;
 
 let CATS={
   expense:{Loan:['PTPTN','Emas'],Bills:['Unifi','Umobile','TNB'],Takaful:[],Family:['Wife','Kids'],CC:['Charge'],Subs:['Netflix','Sooka'],Car:[],Community:['Zakat'],Food:['Family','Work'],Toll:[],Parking:[],Fuel:['Fuel','Charge'],Medical:[],Misc:[]},
@@ -28,6 +29,7 @@ const PAL=['#3525cd','#4f46e5','#58579b','#7e3000','#a44100','#1e40af','#0f766e'
 const PAL_BG=['#e2dfff','#dad7ff','#e2dfff','#ffdbcc','#ffd2be','#dbeafe','#ccfbf1','#ede9fe','#fef3c7','#ffe4e6','#d1fae5','#e0f2fe'];
 
 const RM=v=>'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const LOADING_HTML='<div class="flex flex-col items-center justify-center py-16 gap-3"><div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div><p class="text-xs text-slate-400 font-medium">Loading…</p></div>';
 const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});
 const avg=arr=>{const nz=arr.filter(v=>v>0);return nz.length?nz.reduce((s,v)=>s+v,0)/nz.length:0};
 
@@ -59,6 +61,7 @@ function nav(scr){
 // ── Firebase data ────────────────────────────────────────────────
 
 async function initDB(){
+  isLoading=true;
   try{
     setDB('connecting');
     const uid=currentUser.uid;
@@ -82,10 +85,12 @@ async function initDB(){
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
+      isLoading=false;
       setDB('connected',txs.length+' records');
       renderDashboard();renderTx();renderBudgets();
-    },err=>{setDB('error');console.error(err);});
+    },err=>{isLoading=false;setDB('error');console.error(err);});
   }catch(e){
+    isLoading=false;
     setDB('error');
     console.error(e);
   }
@@ -98,6 +103,11 @@ function setDB(st,msg=''){
 
 // ── Dashboard ────────────────────────────────────────────────────
 function renderDashboard(){
+  if(isLoading){
+    document.getElementById('d-ledger').innerHTML=LOADING_HTML;
+    document.getElementById('d-alloc').innerHTML='<div class="text-xs text-slate-400 text-center py-2">Loading…</div>';
+    return;
+  }
   const p=PAY_PERIOD.currentPeriod();
   const inP=PAY_PERIOD.filterToPeriod(txs,p);
   const inc=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -171,6 +181,7 @@ function renderDashboard(){
 
 // ── Transactions ────────────────────────────────────────────────
 function renderTx(){
+  if(isLoading){document.getElementById('tx-list').innerHTML=LOADING_HTML;return;}
   const tf=document.getElementById('tf-type')?.value||'all';
   const cf=document.getElementById('tf-cat')?.value||'all';
   const mf=document.getElementById('tf-month')?.value||'all';
@@ -267,6 +278,7 @@ function applyAnalyticsPeriod(){
   renderAnalytics();
 }
 function renderAnalytics(){
+  if(isLoading){document.getElementById('an-table').innerHTML=LOADING_HTML;return;}
   const tp=document.getElementById('an-type')?.value||'expense';
   const inR=t=>(!anStart||t.date>=anStart)&&(!anEnd||t.date<=anEnd);
   const e2=txs.filter(t=>t.type==='expense'&&inR(t)).reduce((s,t)=>s+t.amount,0);
@@ -277,6 +289,12 @@ function renderAnalytics(){
   const top2=Object.entries(ct2).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('an-top').textContent=top2?`${top2[0]} (${RM(top2[1])})`:'—';
   const fil=txs.filter(t=>t.type===tp&&inR(t));
+  if(!fil.length){
+    if(anBar){anBar.destroy();anBar=null;}
+    if(anLine){anLine.destroy();anLine=null;}
+    document.getElementById('an-table').innerHTML='<p class="text-sm text-slate-400 text-center py-6">No data for selected period.</p>';
+    return;
+  }
   const cats=[...new Set(fil.map(t=>t.category))].sort();
   const ms=[...new Set(fil.map(t=>t.date.slice(0,7)))].sort();
   const ml=ms.map(m=>{const[y,mo]=m.split('-');return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]+' '+y;});
@@ -303,6 +321,7 @@ function renderAnalytics(){
 function getPTxs(){const p=PAY_PERIOD.currentPeriod();return txs.filter(t=>t.type==='expense'&&t.date&&t.date>=p.start&&t.date<=p.end);}
 function renderBudgets(){
   if(curScr!=='budgets')return;
+  if(isLoading){document.getElementById('b-prog').innerHTML=LOADING_HTML;return;}
   const p=PAY_PERIOD.currentPeriod();
   document.getElementById('b-period-note').textContent='Tracking your spending for '+p.label;
   const ptxs=getPTxs(),exC=Object.keys(CATS.expense||{});
@@ -364,53 +383,63 @@ function renderBudgets(){
 function renderBurnRate(p,spent,tot,ptxs,exC){
   const el=document.getElementById('b-burnrate');
   if(!el)return;
+
+  const BASE='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium';
   const label=(txt,cls)=>`<span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0 ${cls}">${txt}</span>`;
 
-  // Top categories by spend — used in all active states
-  const topCats=(ptxs&&exC)?exC
+  // Top 3 categories by spend this period
+  const topCats=exC
     .map(c=>({c,s:ptxs.filter(t=>t.category===c).reduce((a,t)=>a+t.amount,0)}))
-    .filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3):[];
-  const drivers=(total)=>topCats.length?
+    .filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
+
+  // Driver pills — always called when spent > 0, so spent is safe as divisor
+  const drivers=()=>topCats.length?
     `<span class="w-full flex items-center gap-2 flex-wrap mt-2 pt-2 border-t border-current/10">
       <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">Top drivers</span>
       ${topCats.map(x=>`<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/50 border border-current/10 text-[11px] font-bold">
-        ${x.c} <span class="opacity-60">·</span> ${(x.s/total*100).toFixed(0)}%
+        ${x.c} <span class="opacity-60">·</span> ${(x.s/spent*100).toFixed(0)}%
         ${budgets[x.c]&&budgets[x.c].amount&&x.s>budgets[x.c].amount?'<span class="text-[9px] font-black uppercase ml-0.5 opacity-75">over</span>':''}
       </span>`).join('')}
     </span>`:'';
 
   if(tot===0){
-    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-surface-container text-slate-500';
+    el.className=BASE+' bg-surface-container text-slate-500';
     el.innerHTML=label('Burn Rate','bg-slate-200 text-slate-600')+'Set budget limits to see how long they\'ll last at your current spend rate.';
     return;
   }
+
   const MS=86400000,today=new Date();today.setHours(0,0,0,0);
   const start=new Date(p.start+'T00:00:00'),end=new Date(p.end+'T00:00:00');
   const elapsed=Math.max(Math.round((today-start)/MS)+1,1);
   const remaining=Math.max(Math.round((end-today)/MS),0);
-  if(spent>=tot){
-    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-red-50 text-red-700 border border-red-100';
-    el.innerHTML=label('Burn Rate','bg-red-600 text-white')+`Over budget by <strong>${RM(spent-tot)}</strong> — ${remaining} day${remaining!==1?'s':''} still remaining in the period.`+drivers(spent);
+
+  if(spent>tot){
+    el.className=BASE+' bg-red-50 text-red-700 border border-red-100';
+    el.innerHTML=label('Burn Rate','bg-red-600 text-white')+`Over budget by <strong>${RM(spent-tot)}</strong> — ${remaining} day${remaining!==1?'s':''} still remaining in the period.`+drivers();
     return;
   }
   if(spent===0){
-    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-surface-container text-slate-500';
+    el.className=BASE+' bg-surface-container text-slate-500';
     el.innerHTML=label('Burn Rate','bg-slate-200 text-slate-600')+'No spending recorded yet this period.';
     return;
   }
-  const rate=spent/elapsed,daysLeft=(tot-spent)/rate,proj=spent+rate*remaining;
+
+  const rate=spent/elapsed;
+  const daysLeft=(tot-spent)/rate;
+  const proj=spent+rate*remaining;
   const rateStr=`${RM(rate)}/day`;
+
   if(daysLeft<remaining){
     const runsOut=new Date(today.getTime()+daysLeft*MS);
     const runsOutStr=runsOut.toLocaleDateString('en-MY',{day:'numeric',month:'short'});
-    const short=Math.ceil(remaining-daysLeft);
+    const projOver=RM(proj-tot);
     const crit=daysLeft<=3;
-    el.className=`mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium ${crit?'bg-red-50 text-red-700 border border-red-100':'bg-amber-50 text-amber-800 border border-amber-100'}`;
-    el.innerHTML=label('Burn Rate',crit?'bg-red-600 text-white':'bg-amber-500 text-white')+`At <strong>${rateStr}</strong>, budget runs out around <strong>${runsOutStr}</strong> — <strong>${short} day${short!==1?'s':''} short</strong> of period end.`+drivers(spent);
+    el.className=BASE+` ${crit?'bg-red-50 text-red-700 border border-red-100':'bg-amber-50 text-amber-800 border border-amber-100'}`;
+    el.innerHTML=label('Burn Rate',crit?'bg-red-600 text-white':'bg-amber-500 text-white')+`At <strong>${rateStr}</strong>, budget runs out around <strong>${runsOutStr}</strong> — projected to overspend by <strong>${projOver}</strong>.`+drivers();
   }else{
     const surplus=RM(tot-proj);
-    el.className='mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-green-50 text-green-800 border border-green-100';
-    el.innerHTML=label('Burn Rate','bg-green-600 text-white')+`At <strong>${rateStr}</strong>, you\'ll finish the period with roughly <strong>${surplus}</strong> to spare.`+drivers(spent);
+    el.className=BASE+' bg-green-50 text-green-800 border border-green-100';
+    el.innerHTML=label('Burn Rate','bg-green-600 text-white')+`At <strong>${rateStr}</strong>, you\'ll finish the period with roughly <strong>${surplus}</strong> to spare.`+drivers();
   }
 }
 async function saveBudgets(){
@@ -422,6 +451,13 @@ async function saveBudgets(){
 // ── Forecast ─────────────────────────────────────────────────────
 function renderForecast(){
   if(curScr!=='forecast')return;
+  if(isLoading){document.getElementById('f-cats').innerHTML=LOADING_HTML;return;}
+  if(!txs.length){
+    if(fChart){fChart.destroy();fChart=null;}
+    document.getElementById('f-cats').innerHTML='<p class="text-xs text-slate-400 text-center py-6">No transaction data yet — start logging entries to see your forecast.</p>';
+    document.getElementById('f-ops').innerHTML='<p class="text-sm opacity-70">Add at least one pay period of transactions to unlock strategic insights.</p>';
+    return;
+  }
   // p3 = 3 PAST periods only (not current), oldest → newest
   const p3=PAY_PERIOD.lastNPeriods(4).slice(1).reverse();
   const mtt=(tp,ps)=>ps.map(p=>txs.filter(t=>t.type===tp&&t.date&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));
@@ -515,9 +551,9 @@ function renderSettings(){
   const p=PAY_PERIOD.currentPeriod();
   document.getElementById('s-prev').textContent=p.label;
   document.getElementById('s-pp-badge').textContent='Current: '+p.label;
-  document.getElementById('s-accts').innerHTML=(ACCTS||[]).map((a,i)=>
-    `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-slate-100 rounded-full text-xs font-semibold text-slate-700">${a}<button onclick="delAcct(${i})" class="text-slate-400 hover:text-error transition-colors ml-0.5">✕</button></span>`
-  ).join('');
+  document.getElementById('s-accts').innerHTML=(ACCTS||[]).length
+    ? (ACCTS||[]).map((a,i)=>`<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-slate-100 rounded-full text-xs font-semibold text-slate-700">${a}<button onclick="delAcct(${i})" class="text-slate-400 hover:text-error transition-colors ml-0.5">✕</button></span>`).join('')
+    : '<p class="text-xs text-slate-400">No accounts added yet.</p>';
   renderPpGrid();
   renderCatS();
 }
@@ -647,7 +683,9 @@ function delPpOverride(key){
 function sCatTab(t){sType=t;sCat=null;['expense','income','savings'].forEach(x=>{const b=document.getElementById('st-'+x);if(!b)return;b.className=x===t?'px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-br from-primary to-primary-container text-white transition-all':'px-4 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:bg-white transition-all';});renderCatS();}
 function renderCatS(){
   const cats=Object.keys(CATS[sType]||{});
-  document.getElementById('s-cats').innerHTML=cats.map(c=>`<span onclick="sSelCat('${c}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all ${c===sCat?'bg-primary-fixed text-on-primary-fixed-variant border border-primary/20':'bg-surface-container-low border border-slate-100 text-slate-700 hover:bg-slate-100'}">${c}<button onclick="event.stopPropagation();delCat('${c}')" class="text-slate-400 hover:text-error transition-colors">✕</button></span>`).join('');
+  document.getElementById('s-cats').innerHTML=cats.length
+    ? cats.map(c=>`<span onclick="sSelCat('${c}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all ${c===sCat?'bg-primary-fixed text-on-primary-fixed-variant border border-primary/20':'bg-surface-container-low border border-slate-100 text-slate-700 hover:bg-slate-100'}">${c}<button onclick="event.stopPropagation();delCat('${c}')" class="text-slate-400 hover:text-error transition-colors">✕</button></span>`).join('')
+    : `<p class="text-xs text-slate-400">No ${sType} categories yet — add one below.</p>`;
   document.getElementById('s-catsel').textContent=sCat||'—';
   const sbs=(sCat&&CATS[sType][sCat])||[];
   document.getElementById('s-subs').innerHTML=sbs.map((s,i)=>`<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-slate-100 rounded-full text-xs font-semibold text-slate-700">${s}<button onclick="delSub(${i})" class="text-slate-400 hover:text-error transition-colors">✕</button></span>`).join('');

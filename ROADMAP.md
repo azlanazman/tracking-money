@@ -16,12 +16,17 @@ The token constraint is real right now. Anthropic has acknowledged that people a
 
 ## Architecture Note (Updated April 2026)
 
-The codebase was restructured into a **single-page app**. Everything now lives in `index.html` (~1630 lines): HTML structure, inline `<style>`, and an inline `<script>` block with all JS logic. The separate `budget.html`, `charts.html`, `forecast.html`, `settings.html`, all CSS files, and all JS files except `payperiod.js` were removed.
+The codebase was restructured into a **single-page app**. The separate `budget.html`, `charts.html`, `forecast.html`, `settings.html`, all CSS files, and the old monolithic JS files were removed. JS was subsequently extracted from inline `<script>` back into separate files for maintainability (commit `89f1062`).
+
+**Current file layout:**
+- `index.html` (~774 lines) — HTML structure and inline `<style>` block only
+- `js/payperiod.js` (~167 lines) — pay period utilities, loaded in `<head>`
+- `js/app.js` (~722 lines) — all state, navigation, Firebase data, and screen render logic
+- `js/auth.js` (~187 lines) — Firebase init, auth state observer, auth UI
 
 **What this means for sessions:**
-- "Files to bring" is now always `index.html` + `js/payperiod.js`
-- Instead of editing separate files, you work within sections of `index.html` — the HTML screen divs (`sc-*`) and the corresponding JS functions in the script block
-- Each screen's JS section is clearly delimited by `// ── Section Name ──` comments
+- "Files to bring" is `index.html` (relevant screen div) + the JS function(s) from `js/app.js` + `js/payperiod.js` if pay period logic is involved
+- Each screen's JS section in `app.js` is delimited by `// ── Section Name ──` comments
 
 ---
 
@@ -56,7 +61,7 @@ This means **one feature per session**, not one phase per session. The plan is s
 | 0.1 | Normalise JS files to consistent error handling and Firebase null-checks | ✅ Done | Completed in commit `2cbe906`; fixes to `payperiod.js` persist; `app.js` was later absorbed into the SPA |
 | 0.2 | Audit and fix mobile layout issues below 400px | ✅ Done | Fixed in commit `a8bbb70`; sub-400px CSS rules now live in `index.html` `<style>` block |
 | 0.3 | Standardise CSS — merge patch files, remove dead rules | ✅ Superseded | All CSS is now inline in `index.html`; patch files were deleted with the multi-page structure |
-| 0.4 | Add loading and empty states everywhere | ⚠️ Partial | Empty-state messages exist on some screens (transactions, dashboard ledger); no loading spinners yet |
+| 0.4 | Add loading and empty states everywhere | ✅ Done | `isLoading` flag added to `app.js`; spinner shown on Dashboard, Transactions, Analytics, Budgets, Forecast while Firebase connects; empty states added for Analytics (no chart on zero data), Forecast (no transactions), Settings accounts and categories tabs |
 
 ---
 

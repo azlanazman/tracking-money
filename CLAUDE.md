@@ -93,7 +93,8 @@ Auth is a full-screen wall before the app shell — email/password and Google Si
 ## Key Conventions
 
 - **SPA navigation**: `nav(scr)` in `app.js` swaps `.screen.active` class; each screen has id `sc-{name}`
-- **State globals**: `db`, `uref`, `txs[]`, `budgets{}`, `goals[]`, `CATS{}`, `ACCTS[]`, `auth`, `currentUser` — declared in `app.js`, set/used across `app.js` and `auth.js`
+- **State globals**: `db`, `uref`, `txs[]`, `budgets{}`, `goals[]`, `CATS{}`, `ACCTS[]`, `auth`, `currentUser`, `isLoading` — declared in `app.js`, set/used across `app.js` and `auth.js`
+- **Loading gate**: `isLoading` starts `true`, is reset to `true` at the top of `initDB()` (handles re-login), and is set to `false` only when the Firestore transactions snapshot first fires (or on any error path). All data-dependent render functions check `isLoading` and show a spinner early-return if true — do not call these functions before `initDB` completes
 - **Firebase paths**: all data is user-scoped under `users/{uid}/` — see Firestore model below
 - `payperiod.js` must load before `app.js`; it exposes `window.PAY_PERIOD`
 - `app.js` must load before `auth.js`; `auth.js` calls `initDB()` and sets globals declared in `app.js`
@@ -150,3 +151,42 @@ Open `index.html` in a browser. Firebase connects automatically if `config/fireb
 - Create separate HTML or CSS files — the SPA pattern is established; HTML and styles stay in `index.html`
 - Create additional JS files without a clear responsibility boundary — the current split (`payperiod.js`, `app.js`, `auth.js`) is intentional
 - Read Firestore outside of `users/{uid}/` paths — all data must be user-scoped
+
+---
+
+## Development Workflow
+
+I follow a 7-step process. Steps 1–3 I prompt manually. Steps 4–6 you run automatically after every build slice. Step 7 requires my explicit approval.
+
+### Step 1 · Define
+I will describe the objective in plain English. Before writing any code, confirm back to me in 2–3 sentences what you understand the goal to be. If anything is ambiguous, ask one clarifying question before proceeding.
+
+### Step 2 · Plan
+Break the work into small, atomic tasks — each task should change one thing and be testable on its own. Show me the task list before starting. Wait for my go-ahead.
+
+### Step 3 · Build
+Build one task at a time. Before touching any file, say which file you're editing and why in plain English. No jargon. Prefer the simpler of two approaches.
+
+### Step 4 · Test (automatic after every build slice)
+- Open the browser and confirm the feature works as described — list what you checked
+- Verify no existing screens are broken (Dashboard, Transactions, Budget Monitor at minimum)
+- If something is broken, stop and report it before touching anything else
+- Do not proceed to step 5 until the slice works correctly
+
+### Step 5 · Review (automatic after step 4 passes)
+Check the code you just wrote for:
+- Functions longer than 30 lines — flag them
+- Logic that duplicates something already in `app.js` — flag it
+- Variable names that would confuse someone in 6 months — flag them
+- Anything that violates the constraints listed above — flag it
+
+Keep the review to bullet points, 5 items max. Minor issues can be noted but don't need to block step 6.
+
+### Step 6 · Simplify (automatic after step 5)
+Suggest one or two concrete simplifications to the code just written. Prefer deleting lines over adding them. Prefer obvious names over clever ones. Apply the simplification only if it does not change behaviour.
+
+### Step 7 · Ship (requires my approval)
+- Never push to GitHub without asking me first
+- Before pushing, summarise what changed in plain English — one short paragraph, no jargon
+- Use commit messages in this format: `add [feature]` or `fix [problem]`
+- Only commit files that changed. Never touch `config/firebase-config.js`
