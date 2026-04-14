@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════
 
 // ── State ──────────────────────────────────────────────────────
-let db=null,uref=null,txs=[],budgets={},goals=[];
+let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[];
 let curScr='dashboard',editId=null;
 let anBar=null,anLine=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -83,6 +83,7 @@ async function initDB(){
     });
     uref.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
+    uref.collection('alerts').onSnapshot(snap=>{alerts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAlerts();});
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       isLoading=false;
@@ -180,6 +181,16 @@ function renderDashboard(){
 }
 
 // ── Transactions ────────────────────────────────────────────────
+function unusualThresholds(){
+  const periods=PAY_PERIOD.lastNPeriods(4).slice(1); // 3 past periods, not current
+  const hist=txs.filter(t=>t.type==='expense'&&periods.some(p=>t.date>=p.start&&t.date<=p.end));
+  const sums={},counts={};
+  hist.forEach(t=>{sums[t.category]=(sums[t.category]||0)+t.amount;counts[t.category]=(counts[t.category]||0)+1;});
+  const out={};
+  Object.keys(sums).forEach(c=>{out[c]=sums[c]/counts[c];});
+  return out;
+}
+
 function renderTx(){
   if(isLoading){document.getElementById('tx-list').innerHTML=LOADING_HTML;return;}
   const tf=document.getElementById('tf-type')?.value||'all';
@@ -193,7 +204,10 @@ function renderTx(){
   if(txPg>pgs)txPg=pgs;
   const sl=fil.slice((txPg-1)*txPS,txPg*txPS);
   const TCLR={expense:'text-slate-900',income:'text-primary',savings:'text-secondary'};
-  document.getElementById('tx-list').innerHTML=sl.length?sl.map(t=>`
+  const thresholds=unusualThresholds();
+  document.getElementById('tx-list').innerHTML=sl.length?sl.map(t=>{
+    const unusual=t.type==='expense'&&thresholds[t.category]>0&&t.amount>2*thresholds[t.category];
+    return`
     <div class="group bg-surface-container-lowest hover:bg-surface-container-low transition-all duration-200 p-4 rounded-2xl flex items-center gap-4">
       <div class="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 flex-shrink-0">
         <span class="material-symbols-outlined msym text-[20px]">${ICONS[t.category]||'payments'}</span>
@@ -204,12 +218,14 @@ function renderTx(){
         ${t.description?`<p class="text-[11px] text-slate-400 truncate">${t.description}</p>`:''}
       </div>
       <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-surface-container text-slate-500 flex-shrink-0">${t.type}</span>
+      ${unusual?'<span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 flex-shrink-0">Unusual</span>':''}
       <p class="font-bold text-sm ${TCLR[t.type]} whitespace-nowrap flex-shrink-0">${t.type==='income'?'+':'-'}${RM(t.amount)}</p>
       <div class="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onclick="editTx('${t.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary-fixed transition-all" title="Edit"><span class="material-symbols-outlined msym text-[16px]">edit</span></button>
         <button onclick="delTx('${t.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-error hover:bg-error-container transition-all" title="Delete"><span class="material-symbols-outlined msym text-[16px]">delete</span></button>
       </div>
-    </div>`).join(''):'<div class="p-10 text-center text-sm text-slate-400">No transactions match your filters.</div>';
+    </div>`;
+  }).join(''):'<div class="p-10 text-center text-sm text-slate-400">No transactions match your filters.</div>';
   document.getElementById('tx-cnt').textContent=tot+' entries';
   document.getElementById('tx-info').textContent=tot?`Showing ${(txPg-1)*txPS+1}–${Math.min(txPg*txPS,tot)} of ${tot}`:'';
   const pn=document.getElementById('tx-pages');
@@ -318,6 +334,23 @@ function renderAnalytics(){
 }
 
 // ── Budgets ──────────────────────────────────────────────────────
+function renderAlerts(){
+  const el=document.getElementById('b-alerts');
+  if(!el)return;
+  const open=alerts.filter(a=>a.status==='open');
+  el.innerHTML=open.map(a=>`
+    <div class="mb-3 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium bg-error-container text-on-error-container">
+      <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex-shrink-0 bg-red-600 text-white">Budget Alert</span>
+      <span class="flex-1"><strong>${a.category}</strong> is over budget by <strong>${RM(a.amount_over||0)}</strong> this period.</span>
+      <button onclick="acknowledgeAlert('${a.id}')" class="flex-shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white/30 hover:bg-white/50 transition-colors">Acknowledge</button>
+    </div>`).join('');
+}
+
+function acknowledgeAlert(id){
+  if(uref)uref.collection('alerts').doc(id).update({status:'acknowledged'});
+  else{const a=alerts.find(x=>x.id===id);if(a)a.status='acknowledged';renderAlerts();}
+}
+
 function getPTxs(){const p=PAY_PERIOD.currentPeriod();return txs.filter(t=>t.type==='expense'&&t.date&&t.date>=p.start&&t.date<=p.end);}
 function renderBudgets(){
   if(curScr!=='budgets')return;
@@ -363,6 +396,7 @@ function renderBudgets(){
     const bv=budgets[c].amount,thr=budgets[c].threshold||80;
     const pct=bv>0?Math.min(sp/bv*100,100):0,raw=bv>0?sp/bv*100:0;
     const st=raw>=100?'over':raw>=thr?'warning':'ok';
+    if(st==='over'&&uref){const aid=`${c}-${p.start.slice(0,7)}`;if(!alerts.find(a=>a.category===c&&a.period===p.start.slice(0,7)))uref.collection('alerts').doc(aid).set({category:c,period:p.start.slice(0,7),status:'open',amount_over:sp-bv,createdAt:Date.now()});}
     const fc=st==='over'?'#7e3000':st==='warning'?'#b45309':'#3525cd';
     const clr=PAL[exC.indexOf(c)%PAL.length];
     return`<div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">

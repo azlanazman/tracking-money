@@ -73,8 +73,8 @@ This means **one feature per session**, not one phase per session. The plan is s
 | # | Session Goal | Status | Files to bring | Prompt to use in Claude Code |
 |---|---|---|---|---|
 | 1.1 | Burn rate widget on Budget Monitor | ✅ Done | — | — |
-| 1.2 | Unusual spend flag on transactions | ⬜ Not started | `index.html` (paste `sc-transactions` div + `renderTx` function) | "In index.html, add automatic anomaly flagging to the `renderTx` function. For each transaction rendered, check if its amount is more than 2x the 3-month rolling average for that category, calculated on the fly from the `txs` array. If so, render a small amber warning badge next to the transaction amount with the label 'Unusual'. Match the existing badge/pill style pattern already used in the budget progress rows." |
-| 1.3 | Budget breach alert panel | ⬜ Not started | `index.html` (paste `sc-budgets` div + `renderBudgets` + `saveBudgets` functions) | "In index.html, add a budget breach alert panel to the `sc-budgets` screen above the burn rate widget. When any category exceeds its budget, create an alert entry stored in Firestore under `users/{uid}/alerts/{id}` with fields: category, period (YYYY-MM), status ('open'), amount_over, createdAt. Show open alerts as dismissible cards at the top of the budgets screen. When the user clicks Acknowledge, update the status to 'acknowledged' in Firestore. Check for breaches inside `renderBudgets` each time it runs. Use the existing colour patterns from the budget progress status badges." |
+| 1.2 | Unusual spend flag on transactions | ✅ Done | — | — |
+| 1.3 | Budget breach alert panel | ✅ Done | — | — |
 | 1.4 | Alert badge on Budgets nav item | ⬜ Not started | `index.html` (paste sidebar nav HTML + `initDB` function) | "In index.html, add a small red badge to the Budgets nav item (both sidebar `snav-budgets` and mobile nav) showing the count of open alerts from `users/{uid}/alerts` where status is 'open'. Set up the Firestore listener inside `initDB` alongside the existing listeners. The badge should disappear when count is zero. Keep it inline — no new JS file." |
 
 ---
