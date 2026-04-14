@@ -210,9 +210,10 @@ input[type=number]{-moz-appearance:textfield}
       <span class="material-symbols-outlined msym">add_circle</span>
       <span class="text-sm font-medium">Log Transaction</span>
     </a>
-    <a onclick="nav('budgets')" id="snav-budgets" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('budgets')" id="snav-budgets" class="relative flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
       <span class="material-symbols-outlined msym">account_balance_wallet</span>
       <span class="text-sm font-medium">Budgets</span>
+      <span id="alert-badge" class="hidden absolute top-2 left-7 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"></span>
     </a>
     <a onclick="nav('forecast')" id="snav-forecast" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
       <span class="material-symbols-outlined msym">query_stats</span>
@@ -359,6 +360,27 @@ input[type=number]{-moz-appearance:textfield}
         <div id="d-bars" class="h-36 w-full flex items-end gap-1.5 mb-3"></div>
         <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
           <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
+        </div>
+      </div>
+      <!-- Financial Health Score -->
+      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+        <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight mb-5">Financial Health</h3>
+        <div class="flex items-center gap-6">
+          <div class="flex-shrink-0 relative w-20 h-20">
+            <svg viewBox="0 0 72 72" class="w-full h-full">
+              <circle cx="36" cy="36" r="28" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+              <circle id="hs-ring" cx="36" cy="36" r="28" fill="none" stroke="#1D9E75" stroke-width="8"
+                stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="175.93"
+                transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.7s ease,stroke 0.4s ease"/>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span id="hs-score" class="text-xl font-bold text-slate-900 font-headline">—</span>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p id="hs-label" class="text-base font-bold mb-1 text-slate-400">—</p>
+            <p id="hs-detail" class="text-xs text-slate-400 leading-relaxed">Calculating…</p>
+          </div>
         </div>
       </div>
       <!-- Top Allocations -->

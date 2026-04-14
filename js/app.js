@@ -178,6 +178,112 @@ function renderDashboard(){
     const bg=['bg-primary','bg-secondary','bg-tertiary','bg-slate-300'];
     return`<div class="${bg[i]||'bg-slate-300'} h-full" style="width:${(a/tot*100).toFixed(1)}%"></div>`;
   }).join('');
+  calculateHealthScore();
+}
+
+function calculateHealthScore(){
+  const p=PAY_PERIOD.currentPeriod();
+  const inP=PAY_PERIOD.filterToPeriod(txs,p);
+  const ptxs=inP.filter(t=>t.type==='expense');
+  const exC=Object.keys(CATS.expense||{});
+
+  // Signal 1 — Budget compliance (30 pts)
+  const spent=ptxs.reduce((s,t)=>s+t.amount,0);
+  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  let s1=15;
+  if(budgetTot>0){
+    const r=spent/budgetTot;
+    if(r<=0.80)s1=30;
+    else if(r<=1.00)s1=Math.round(30-(r-0.80)/0.20*12);
+    else if(r<=1.10)s1=8;
+    else s1=0;
+  }
+
+  // Signal 2 — Burn rate safety (30 pts)
+  let s2=15;
+  if(budgetTot>0){
+    const start=new Date(p.start),end=new Date(p.end),today=new Date();
+    const elapsed=Math.max((today-start)/86400000,1);
+    const remaining=Math.max((end-today)/86400000,0);
+    const daily=spent/elapsed;
+    const projected=spent+daily*remaining;
+    const daysShort=projected>budgetTot?Math.round((projected-budgetTot)/daily):0;
+    if(daysShort<=0)s2=30;
+    else if(daysShort<=3)s2=18;
+    else if(daysShort<=7)s2=8;
+    else s2=0;
+  }
+
+  // Signal 3 — Savings on track (25 pts)
+  const savAmt=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const savGoal=(goals||[]).reduce((s,g)=>s+(g.monthly||0),0);
+  let s3=12;
+  if(savGoal>0){
+    const r=savAmt/savGoal;
+    if(r>=1.00)s3=25;
+    else if(r>=0.50)s3=Math.round(12+(r-0.50)/0.50*13);
+    else if(r>0)s3=6;
+    else s3=0;
+  }
+
+  // Signal 4 — Fixed cost ratio (15 pts)
+  const FIXED=['Loan','Bills','Takaful','CC','Subs'];
+  const hist3=PAY_PERIOD.lastNPeriods(4).slice(1);
+  let s4=8;
+  if(hist3.length>=1){
+    const h3txs=txs.filter(t=>hist3.some(hp=>t.date>=hp.start&&t.date<=hp.end));
+    const fixedExp=h3txs.filter(t=>t.type==='expense'&&FIXED.includes(t.category)).reduce((s,t)=>s+t.amount,0);
+    const h3inc=h3txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    if(h3inc>0){
+      const r=fixedExp/h3inc;
+      if(r<=0.40)s4=15;
+      else if(r<=0.50)s4=12;
+      else if(r<=0.60)s4=7;
+      else if(r<=0.70)s4=3;
+      else s4=0;
+    }
+  }
+
+  const score=s1+s2+s3+s4;
+  const colour=score>=80?'#1D9E75':score>=60?'#BA7517':'#E24B4A';
+  const label=score>=80?'Healthy':score>=60?'Fair':'At risk';
+
+  // Detail — lowest signal wins; tie-break: burn > budget > savings > fixed
+  const sigs=[
+    {s:s2,msg:'Budget projected to run out before period ends.'},
+    {s:s1,msg:'Spending is tracking over budget this period.'},
+    {s:s3,msg:'No savings recorded yet this period.'},
+    {s:s4,msg:'Fixed commitments are taking up a high share of income.'},
+  ];
+  const minS=Math.min(...sigs.map(x=>x.s));
+  const detail=minS>20?'All signals looking good — keep it up.':sigs.find(x=>x.s===minS).msg;
+
+  // Update DOM
+  const circ=175.93;
+  const ring=document.getElementById('hs-ring');
+  const sc=document.getElementById('hs-score');
+  const lbl=document.getElementById('hs-label');
+  const det=document.getElementById('hs-detail');
+  if(!ring||!sc||!lbl||!det)return;
+  ring.setAttribute('stroke',colour);
+  ring.setAttribute('stroke-dashoffset',(circ*(1-score/100)).toFixed(2));
+  sc.textContent=score;
+  lbl.textContent=label;
+  lbl.style.color=colour;
+  det.textContent=detail;
+
+  // Persist to Firestore (non-blocking)
+  if(uref){
+    const entry={period:p.start,score,label,breakdown:{budgetCompliance:s1,burnRate:s2,savings:s3,fixedCostRatio:s4},calculatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const href=uref.collection('health').doc('history');
+    href.get().then(doc=>{
+      const periods=doc.exists?(doc.data().periods||[]):[];
+      const idx=periods.findIndex(e=>e.period===p.start);
+      if(idx>=0)periods[idx]=entry;else periods.push(entry);
+      if(periods.length>24)periods.splice(0,periods.length-24);
+      href.set({periods}).catch(()=>{});
+    }).catch(()=>{});
+  }
 }
 
 // ── Transactions ────────────────────────────────────────────────
@@ -344,6 +450,15 @@ function renderAlerts(){
       <span class="flex-1"><strong>${a.category}</strong> is over budget by <strong>${RM(a.amount_over||0)}</strong> this period.</span>
       <button onclick="acknowledgeAlert('${a.id}')" class="flex-shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white/30 hover:bg-white/50 transition-colors">Acknowledge</button>
     </div>`).join('');
+  renderAlertBadge();
+}
+
+function renderAlertBadge(){
+  const el=document.getElementById('alert-badge');
+  if(!el)return;
+  const n=alerts.filter(a=>a.status==='open').length;
+  el.textContent=n;
+  el.classList.toggle('hidden',n===0);
 }
 
 function acknowledgeAlert(id){
