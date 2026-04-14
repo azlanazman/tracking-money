@@ -105,8 +105,7 @@ function setDB(st,msg=''){
 // ── Dashboard ────────────────────────────────────────────────────
 function renderDashboard(){
   if(isLoading){
-    document.getElementById('d-ledger').innerHTML=LOADING_HTML;
-    document.getElementById('d-alloc').innerHTML='<div class="text-xs text-slate-400 text-center py-2">Loading…</div>';
+    ['d-inc','d-exp','d-sav'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
     return;
   }
   const p=PAY_PERIOD.currentPeriod();
@@ -114,70 +113,59 @@ function renderDashboard(){
   const inc=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp=inP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const sav=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
-  const bal=inc-exp-sav;
-  document.getElementById('d-bal').textContent=RM(bal);
+
+  // Greeting
+  const hr=new Date().getHours();
+  const greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const firstName=(currentUser&&currentUser.displayName||'').split(/\s+/)[0];
+  document.getElementById('d-greeting').textContent=greet+(firstName?', '+firstName:'');
+
+  // Period subheader with days left
+  const start=new Date(p.start),end=new Date(p.end);
+  const today=new Date(); today.setHours(0,0,0,0);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+  const fmt=d=>d.toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+  document.getElementById('d-period-sub').textContent=`${fmt(start)} – ${fmt(end)} · ${daysLeft} day${daysLeft!==1?'s':''} left`;
+
+  // Summary chips
   document.getElementById('d-inc').textContent=RM(inc);
   document.getElementById('d-exp').textContent=RM(exp);
-  document.getElementById('d-period').textContent=p.label;
-  document.getElementById('d-inc-sub').textContent=p.label.split('–')[0].trim();
-  const expPct=inc>0?Math.min(exp/inc*100,100):0;
-  document.getElementById('d-exp-fill').style.width=expPct+'%';
-  document.getElementById('d-exp-pct').textContent=expPct.toFixed(0)+'% of period income';
+  document.getElementById('d-sav').textContent=RM(sav);
 
-  // Net YTD
-  const now=new Date(),yr=now.getFullYear();
-  const ytdInc=txs.filter(t=>t.type==='income'&&t.date&&t.date.startsWith(yr)).reduce((s,t)=>s+t.amount,0);
-  const ytdExp=txs.filter(t=>t.type==='expense'&&t.date&&t.date.startsWith(yr)).reduce((s,t)=>s+t.amount,0);
-  const ytd=ytdInc-ytdExp;
-  document.getElementById('d-ytd').textContent=(ytd>=0?'+':'')+RM(ytd);
-  document.getElementById('d-ytd-badge').textContent=ytdInc>0?((ytd/ytdInc)*100).toFixed(1)+'%':'—';
+  // Budget Runway
+  const exC=Object.keys(CATS.expense||{});
+  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
+  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
+  const daily=elapsed>0?exp/elapsed:0;
+  const remaining=Math.max((end-today)/86400000,0);
+  const projected=exp+daily*remaining;
+  const runwayOk=budgetTot===0||projected<=budgetTot;
+  const usedPct=budgetTot>0?Math.min(exp/budgetTot*100,100):0;
+  document.getElementById('d-runway-used-fill').style.width=usedPct.toFixed(1)+'%';
+  document.getElementById('d-runway-used-fill').style.backgroundColor=runwayOk?'#1D9E75':'#E24B4A';
+  document.getElementById('d-runway-used-amt').textContent=budgetTot>0?`${RM(exp)} / ${RM(budgetTot)}`:`${RM(exp)} / no budget`;
+  document.getElementById('d-runway-elapsed-fill').style.width=(elapsed/totalDays*100).toFixed(1)+'%';
+  document.getElementById('d-runway-days').textContent=`Day ${elapsed} of ${totalDays}`;
+  const statusEl=document.getElementById('d-runway-status');
+  statusEl.textContent=runwayOk?'Lasts the full period':'At risk';
+  statusEl.style.color=runwayOk?'#1D9E75':'#E24B4A';
 
-  // Mini bar chart (last 6 months expenses)
-  const months=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.toISOString().slice(0,7));}
-  const bH=months.map(m=>txs.filter(t=>t.type==='expense'&&t.date&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const mx=Math.max(...bH,1);
-  const peakIdx=bH.indexOf(Math.max(...bH));
-  document.getElementById('d-bars').innerHTML=bH.map((h,i)=>{
-    const pct=Math.max(Math.round(h/mx*100),5);
-    const isPeak=i===peakIdx&&h>0;
-    return`<div class="flex-1 rounded-t-lg transition-all relative ${isPeak?'bg-primary/25 border-t-4 border-primary':'bg-slate-100'}" style="height:${pct}%">${isPeak?'<div class="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary ring-4 ring-primary-fixed"></div>':''}</div>`;
-  }).join('');
+  // Anomaly alert — show worst anomaly from current period
+  const thresholds=unusualThresholds();
+  const anomalies=inP.filter(t=>t.type==='expense'&&thresholds[t.category]>0&&t.amount>2*thresholds[t.category]);
+  anomalies.sort((a,b)=>b.amount-a.amount);
+  const alertEl=document.getElementById('d-alert');
+  if(anomalies.length>0){
+    const a=anomalies[0];
+    const mult=(a.amount/thresholds[a.category]).toFixed(0);
+    document.getElementById('d-alert-title').textContent=`Unusual spend — ${a.subcategory||a.category}`;
+    document.getElementById('d-alert-msg').textContent=`${RM(a.amount)} on ${fd(a.date)}. That's ${mult}× your usual for ${a.category}.`;
+    alertEl.classList.remove('hidden');
+  } else {
+    alertEl.classList.add('hidden');
+  }
 
-  // Recent ledger
-  const rec=txs.slice(0,6);
-  const TCLR={expense:'text-on-surface',income:'text-primary',savings:'text-secondary'};
-  document.getElementById('d-ledger').innerHTML=rec.length?rec.map(t=>{
-    const iInc=t.type==='income';
-    const iconBg=iInc?'bg-primary-fixed text-primary':'bg-slate-100 text-slate-600';
-    return`<div class="group bg-surface-container-lowest hover:bg-surface-container-low transition-all duration-200 p-4 rounded-2xl flex items-center gap-4 cursor-pointer" onclick="editTx('${t.id}')">
-      <div class="w-12 h-12 ${iconBg} group-hover:bg-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors">
-        <span class="material-symbols-outlined msym">${ICONS[t.category]||'payments'}</span>
-      </div>
-      <div class="flex-1 min-w-0">
-        <h4 class="font-bold text-slate-900 text-sm leading-tight truncate">${t.category}${t.subcategory?' · '+t.subcategory:''}</h4>
-        <p class="text-xs text-slate-400 mt-0.5">${fd(t.date)} · ${t.account||''}</p>
-      </div>
-      <div class="text-right flex-shrink-0">
-        <p class="font-bold ${iInc?'text-primary':'text-slate-900'}">${iInc?'+':'-'}${RM(t.amount)}</p>
-        <p class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">${t.type}</p>
-      </div>
-    </div>`;}).join(''):'<div class="p-10 text-center text-sm text-slate-400">No transactions yet — add your first entry.</div>';
-
-  // Top Allocations
-  const ct={};inP.filter(t=>t.type==='expense').forEach(t=>ct[t.category]=(ct[t.category]||0)+t.amount);
-  const tot=Object.values(ct).reduce((s,v)=>s+v,0)||1;
-  const t5=Object.entries(ct).sort((a,b)=>b[1]-a[1]).slice(0,4);
-  const allocColors=['bg-primary','bg-secondary','bg-tertiary','bg-slate-300'];
-  document.getElementById('d-alloc').innerHTML=t5.length?t5.map(([c,a],i)=>`
-    <div class="flex items-center gap-3">
-      <div class="w-2 h-2 rounded-full flex-shrink-0 ${allocColors[i]||'bg-slate-300'}"></div>
-      <span class="text-sm font-medium text-slate-700 flex-1">${c}</span>
-      <span class="text-sm font-bold text-slate-900">${Math.round(a/tot*100)}%</span>
-    </div>`).join(''):'<div class="text-sm text-slate-400">No expenses this period</div>';
-  document.getElementById('d-alloc-bar').innerHTML=t5.map(([,a],i)=>{
-    const bg=['bg-primary','bg-secondary','bg-tertiary','bg-slate-300'];
-    return`<div class="${bg[i]||'bg-slate-300'} h-full" style="width:${(a/tot*100).toFixed(1)}%"></div>`;
-  }).join('');
   calculateHealthScore();
 }
 

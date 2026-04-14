@@ -281,116 +281,95 @@ input[type=number]{-moz-appearance:textfield}
 <main id="main" class="ml-64 pt-16 min-h-screen pb-12">
 
 <!-- ── DASHBOARD ── -->
-<div id="sc-dashboard" class="screen active p-8 lg:p-10 max-w-7xl slide-in">
+<div id="sc-dashboard" class="screen active p-6 lg:p-8 max-w-2xl slide-in">
 
-  <!-- Hero Bento -->
-  <section class="grid grid-cols-12 gap-5 mb-8">
-    <!-- Liquidity Card -->
-    <div class="col-span-12 lg:col-span-5 bg-gradient-to-br from-primary to-primary-container p-8 rounded-3xl text-white relative overflow-hidden amb-lg">
-      <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute -left-4 -top-4 w-28 h-28 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none"></div>
-      <div class="relative z-10">
-        <p class="text-indigo-100/70 font-medium text-sm mb-1">Total Liquidity</p>
-        <h2 id="d-bal" class="text-5xl font-bold tracking-tight mb-7 font-headline">RM 0.00</h2>
-        <div class="flex items-center gap-4 flex-wrap">
-          <div class="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl flex items-center gap-2">
-            <span class="material-symbols-outlined msym text-[16px]">trending_up</span>
-            <span class="text-sm font-bold">This Period</span>
-          </div>
-          <p id="d-period" class="text-sm text-indigo-100/60">Loading period…</p>
-        </div>
-      </div>
-    </div>
-    <!-- Income Card -->
-    <div class="col-span-12 md:col-span-6 lg:col-span-3 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
-      <div>
-        <div class="w-11 h-11 bg-primary-fixed rounded-2xl flex items-center justify-center text-primary mb-5">
-          <span class="material-symbols-outlined msym">account_balance</span>
-        </div>
-        <p class="text-slate-500 font-medium text-sm mb-1">Monthly Income</p>
-        <h3 id="d-inc" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
-      </div>
-      <div class="mt-4 pt-4 border-t border-slate-50">
-        <p class="text-xs text-slate-400"><span id="d-inc-sub" class="text-primary font-bold">Period</span> income</p>
-      </div>
-    </div>
-    <!-- Expenses Card -->
-    <div class="col-span-12 md:col-span-6 lg:col-span-4 bg-surface-container-lowest p-7 rounded-3xl amb-card flex flex-col justify-between">
-      <div>
-        <div class="w-11 h-11 bg-tertiary-fixed rounded-2xl flex items-center justify-center text-tertiary mb-5">
-          <span class="material-symbols-outlined msym">shopping_cart</span>
-        </div>
-        <p class="text-slate-500 font-medium text-sm mb-1">Monthly Expenses</p>
-        <h3 id="d-exp" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">RM 0.00</h3>
-      </div>
-      <div>
-        <div id="d-exp-bar" class="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div id="d-exp-fill" class="h-full bg-tertiary rounded-full transition-all" style="width:0%"></div>
-        </div>
-        <p id="d-exp-pct" class="mt-1.5 text-xs text-slate-400">0% of period income</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Lower Grid -->
-  <div class="grid grid-cols-12 gap-7">
-    <!-- Recent Transactions -->
-    <section class="col-span-12 lg:col-span-7">
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-xl font-bold text-slate-900 font-headline tracking-tight">Recent Transactions</h2>
-        <button onclick="nav('transactions')" class="text-indigo-600 font-semibold text-sm hover:underline underline-offset-2 transition-all">View all history</button>
-      </div>
-      <div id="d-ledger" class="space-y-2.5"><div class="p-5 text-center text-sm text-slate-400">Loading…</div></div>
-    </section>
-
-    <!-- Right Column -->
-    <section class="col-span-12 lg:col-span-5 space-y-5">
-      <!-- Net Gain Card -->
-      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-        <div class="flex items-start justify-between mb-6">
-          <div>
-            <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight">Net Gain YTD</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Portfolio performance</p>
-          </div>
-          <div class="text-right">
-            <p id="d-ytd" class="text-xl font-bold text-primary font-headline">RM 0</p>
-            <span id="d-ytd-badge" class="text-[10px] text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded-full inline-block mt-0.5">—</span>
-          </div>
-        </div>
-        <div id="d-bars" class="h-36 w-full flex items-end gap-1.5 mb-3"></div>
-        <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-          <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span>
-        </div>
-      </div>
-      <!-- Financial Health Score -->
-      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-        <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight mb-5">Financial Health</h3>
-        <div class="flex items-center gap-6">
-          <div class="flex-shrink-0 relative w-20 h-20">
-            <svg viewBox="0 0 72 72" class="w-full h-full">
-              <circle cx="36" cy="36" r="28" fill="none" stroke="#e2e8f0" stroke-width="8"/>
-              <circle id="hs-ring" cx="36" cy="36" r="28" fill="none" stroke="#1D9E75" stroke-width="8"
-                stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="175.93"
-                transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.7s ease,stroke 0.4s ease"/>
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <span id="hs-score" class="text-xl font-bold text-slate-900 font-headline">—</span>
-            </div>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p id="hs-label" class="text-base font-bold mb-1 text-slate-400">—</p>
-            <p id="hs-detail" class="text-xs text-slate-400 leading-relaxed">Calculating…</p>
-          </div>
-        </div>
-      </div>
-      <!-- Top Allocations -->
-      <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-        <h3 class="text-lg font-bold text-slate-900 font-headline tracking-tight mb-5">Top Allocations</h3>
-        <div id="d-alloc" class="space-y-3.5 mb-6"><div class="text-sm text-slate-400">—</div></div>
-        <div id="d-alloc-bar" class="flex gap-0.5 h-2.5 w-full rounded-full overflow-hidden"></div>
-      </div>
-    </section>
+  <!-- Greeting -->
+  <div class="mb-6">
+    <h1 id="d-greeting" class="text-2xl font-bold text-slate-900 font-headline tracking-tight">Good morning</h1>
+    <p id="d-period-sub" class="text-sm text-slate-400 mt-0.5">Loading period…</p>
   </div>
+
+  <!-- Health Score Hero -->
+  <div class="bg-[#f5f3ee] p-6 rounded-3xl mb-4">
+    <div class="flex items-center gap-5">
+      <div class="flex-shrink-0 relative w-24 h-24">
+        <svg viewBox="0 0 72 72" class="w-full h-full">
+          <circle cx="36" cy="36" r="28" fill="none" stroke="#d6d2c4" stroke-width="7"/>
+          <circle id="hs-ring" cx="36" cy="36" r="28" fill="none" stroke="#1D9E75" stroke-width="7"
+            stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="175.93"
+            transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 0.7s ease,stroke 0.4s ease"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <span id="hs-score" class="text-2xl font-bold text-slate-900 font-headline leading-none">—</span>
+          <span class="text-[10px] text-slate-400 font-medium">/100</span>
+        </div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p id="hs-label" class="text-xl font-bold mb-1.5 font-headline" style="color:#1D9E75">—</p>
+        <p id="hs-detail" class="text-sm text-slate-500 leading-relaxed">Calculating…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Runway -->
+  <div class="bg-surface-container-lowest p-5 rounded-3xl amb-card mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-bold text-slate-700">Budget runway</h3>
+      <span id="d-runway-status" class="text-sm font-bold" style="color:#1D9E75">—</span>
+    </div>
+    <div class="grid grid-cols-2 gap-5">
+      <div>
+        <p class="text-xs text-slate-400 mb-1.5">Budget used</p>
+        <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+          <div id="d-runway-used-fill" class="h-full rounded-full transition-all" style="width:0%;background-color:#1D9E75"></div>
+        </div>
+        <p id="d-runway-used-amt" class="text-xs text-slate-500 font-medium">RM 0 / RM 0</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-400 mb-1.5">Period elapsed</p>
+        <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1.5">
+          <div id="d-runway-elapsed-fill" class="h-full bg-slate-300 rounded-full transition-all" style="width:0%"></div>
+        </div>
+        <p id="d-runway-days" class="text-xs text-slate-500 font-medium">Day 0 of 0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Chips -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+      <p class="text-xs text-slate-400 font-medium mb-1">Income</p>
+      <p id="d-inc" class="text-sm font-bold font-headline leading-tight" style="color:#1D9E75">RM 0</p>
+    </div>
+    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+      <p class="text-xs text-slate-400 font-medium mb-1">Spent</p>
+      <p id="d-exp" class="text-sm font-bold text-slate-900 font-headline leading-tight">RM 0</p>
+    </div>
+    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+      <p class="text-xs text-slate-400 font-medium mb-1">Saved</p>
+      <p id="d-sav" class="text-sm font-bold text-primary font-headline leading-tight">RM 0</p>
+    </div>
+  </div>
+
+  <!-- Anomaly Alert (hidden when none) -->
+  <div id="d-alert" class="hidden bg-amber-50 border border-amber-100 p-5 rounded-2xl mb-4">
+    <div class="flex gap-3">
+      <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+        <span class="material-symbols-outlined msym text-amber-600" style="font-size:18px">warning</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p id="d-alert-title" class="text-sm font-bold text-amber-800 mb-0.5">Unusual spend</p>
+        <p id="d-alert-msg" class="text-xs text-amber-700 leading-relaxed mb-2"></p>
+        <button onclick="nav('transactions')" class="text-xs font-bold text-amber-800 hover:underline">Review transaction →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Transaction CTA -->
+  <button onclick="nav('entry')" class="w-full py-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 hover:border-slate-300 transition-all">
+    Add transaction
+  </button>
+
 </div>
 
 <!-- ── ANALYTICS ── -->
