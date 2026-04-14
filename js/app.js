@@ -38,14 +38,11 @@ let auth=null;
 let currentUser=null;
 
 // ── Navigation ──────────────────────────────────────────────────
-const TITLES={dashboard:'Dashboard',analytics:'Analytics',transactions:'Transactions',entry:'Log Transaction',budgets:'Budget Monitor',forecast:'Forecast',settings:'Settings'};
-
 function nav(scr){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('[id^="snav-"]').forEach(n=>{n.classList.remove('nav-active');});
   const sc=document.getElementById('sc-'+scr);if(sc){sc.classList.add('active');sc.classList.add('slide-in');setTimeout(()=>sc.classList.remove('slide-in'),350);}
   const sn=document.getElementById('snav-'+scr);if(sn)sn.classList.add('nav-active');
-  document.getElementById('pg-title').textContent=TITLES[scr]||scr;
   curScr=scr;
   ppEditKey=null; // close any open pay-period tile editor
   if(scr==='entry'&&!editId)resetEntry();
@@ -87,7 +84,7 @@ async function initDB(){
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       isLoading=false;
-      setDB('connected',txs.length+' records');
+      setDB('connected',txs.length+' RECORDS');
       renderDashboard();renderTx();renderBudgets();
     },err=>{isLoading=false;setDB('error');console.error(err);});
   }catch(e){
