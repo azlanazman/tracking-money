@@ -7,6 +7,7 @@
 
 // ── State ──────────────────────────────────────────────────────
 let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
+let DEMO_MODE=false;
 let curScr='dashboard',editId=null;
 let anBar=null,anLine=null,anWaterfall=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -33,6 +34,16 @@ const RM=v=>'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits
 const LOADING_HTML='<div class="flex flex-col items-center justify-center py-16 gap-3"><div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div><p class="text-xs text-slate-400 font-medium">Loading…</p></div>';
 const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});
 const avg=arr=>{const nz=arr.filter(v=>v>0);return nz.length?nz.reduce((s,v)=>s+v,0)/nz.length:0};
+
+function showDemoToast(){
+  const existing=document.getElementById('demo-toast');if(existing)return;
+  const t=document.createElement('div');
+  t.id='demo-toast';
+  t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;background:#1e293b;color:#fff;font-size:13px;font-weight:600;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap;font-family:Inter,sans-serif';
+  t.textContent='Demo mode — changes are disabled';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2500);
+}
 
 if(window.ChartAnnotation)Chart.register(window.ChartAnnotation);
 
@@ -65,6 +76,8 @@ async function initDB(){
   try{
     setDB('connecting');
     const uid=currentUser.uid;
+    DEMO_MODE=currentUser.email==='demo@lumina.app';
+    const demoBanner=document.getElementById('demo-banner');if(demoBanner)demoBanner.classList.toggle('hidden',!DEMO_MODE);
     uref=db.collection('users').doc(uid);
     PAY_PERIOD.init(db,uid);
     PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='analytics') applyAnalyticsPeriod(); if(curScr==='forecast') renderForecast(); });
@@ -365,6 +378,7 @@ function refreshEntry(){
 function selCat(c){eCat=c;document.getElementById('e-cat-sel').textContent=c;refreshEntry();}
 function updSub(){const subs=(CATS[eType]&&eCat&&CATS[eType][eCat])||[];const ss=document.getElementById('e-sub');if(ss)ss.innerHTML=subs.length?subs.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">— none —</option>';}
 async function submitEntry(){
+  if(DEMO_MODE){showDemoToast();return;}
   const amt=parseFloat(document.getElementById('e-amt').value);
   const date=document.getElementById('e-date').value;
   const acct=document.getElementById('e-acct').value;
@@ -393,7 +407,7 @@ function editTx(id){
   nav('entry');
 }
 function cancelEdit(){editId=null;resetEntry();nav('transactions');}
-async function delTx(id){if(!confirm('Delete this transaction?'))return;if(uref)await uref.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
+async function delTx(id){if(DEMO_MODE){showDemoToast();return;}if(!confirm('Delete this transaction?'))return;if(uref)await uref.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
 
 // ── Analytics ───────────────────────────────────────────────────
 function applyAnalyticsPeriod(){
@@ -540,6 +554,7 @@ function renderAlertBadge(){
 }
 
 function acknowledgeAlert(id){
+  if(DEMO_MODE){showDemoToast();return;}
   if(uref)uref.collection('alerts').doc(id).update({status:'acknowledged'});
   else{const a=alerts.find(x=>x.id===id);if(a)a.status='acknowledged';renderAlerts();}
 }
@@ -670,6 +685,7 @@ function renderBurnRate(p,spent,tot,ptxs,exC){
   }
 }
 async function saveBudgets(){
+  if(DEMO_MODE){showDemoToast();return;}
   const nb={};Object.keys(CATS.expense||{}).forEach(c=>{const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);if(e)nb[c]={amount:parseFloat(e.value)||0,threshold:parseInt(te?.value)||80};});
   budgets=nb;if(uref){try{await uref.collection('budgets').doc('settings').set(nb);}catch(e){}}else localStorage.setItem('budgets',JSON.stringify(nb));
   const m=document.getElementById('b-save-msg');m.textContent='Allocations saved ✓';setTimeout(()=>m.textContent='',2500);renderBudgets();
@@ -883,6 +899,7 @@ function renderPpGrid(){
 
 // Called while user types in inline tile input — update ppOvrd live
 function ppInlineChange(key, val){
+  if(DEMO_MODE){showDemoToast();return;}
   const day=parseInt(val);
   const defDay=parseInt(document.getElementById('s-day').value)||25;
   if(!isNaN(day)&&day>=1&&day<=28){
@@ -912,6 +929,7 @@ function ppInlineChange(key, val){
 }
 
 function delPpOverride(key){
+  if(DEMO_MODE){showDemoToast();return;}
   delete ppOvrd[key];
   if(ppEditKey===key) ppEditKey=null;
   refreshPpPreview();
@@ -930,12 +948,12 @@ function renderCatS(){
   document.getElementById('s-subrow').style.visibility=sCat?'visible':'hidden';
 }
 function sSelCat(c){sCat=c;renderCatS();}
-function addAcct(){const v=document.getElementById('s-nacct').value.trim();if(!v||ACCTS.includes(v))return;ACCTS.push(v);document.getElementById('s-nacct').value='';renderSettings();}
-function delAcct(i){ACCTS.splice(i,1);renderSettings();}
-function addCat(){const v=document.getElementById('s-ncat').value.trim();if(!v||CATS[sType][v]!==undefined)return;CATS[sType][v]=[];document.getElementById('s-ncat').value='';renderCatS();}
-function delCat(c){if(!confirm(`Delete "${c}"?`))return;delete CATS[sType][c];if(sCat===c)sCat=null;renderCatS();}
-function addSub(){if(!sCat)return;const v=document.getElementById('s-nsub').value.trim();if(!v)return;CATS[sType][sCat].push(v);document.getElementById('s-nsub').value='';renderCatS();}
-function delSub(i){if(!sCat)return;CATS[sType][sCat].splice(i,1);renderCatS();}
+function addAcct(){if(DEMO_MODE){showDemoToast();return;}const v=document.getElementById('s-nacct').value.trim();if(!v||ACCTS.includes(v))return;ACCTS.push(v);document.getElementById('s-nacct').value='';renderSettings();}
+function delAcct(i){if(DEMO_MODE){showDemoToast();return;}ACCTS.splice(i,1);renderSettings();}
+function addCat(){if(DEMO_MODE){showDemoToast();return;}const v=document.getElementById('s-ncat').value.trim();if(!v||CATS[sType][v]!==undefined)return;CATS[sType][v]=[];document.getElementById('s-ncat').value='';renderCatS();}
+function delCat(c){if(DEMO_MODE){showDemoToast();return;}if(!confirm(`Delete "${c}"?`))return;delete CATS[sType][c];if(sCat===c)sCat=null;renderCatS();}
+function addSub(){if(DEMO_MODE){showDemoToast();return;}if(!sCat)return;const v=document.getElementById('s-nsub').value.trim();if(!v)return;CATS[sType][sCat].push(v);document.getElementById('s-nsub').value='';renderCatS();}
+function delSub(i){if(DEMO_MODE){showDemoToast();return;}if(!sCat)return;CATS[sType][sCat].splice(i,1);renderCatS();}
 
 // ── Life Events ──────────────────────────────────────────────────
 const LE_ICONS=['celebration','warning','work','favorite','flight','more_horiz'];
@@ -949,6 +967,7 @@ function selectLeIcon(icon){
   });
 }
 async function saveAnnotation(){
+  if(DEMO_MODE){showDemoToast();return;}
   const date=document.getElementById('le-date').value;
   const label=document.getElementById('le-label').value.trim();
   const icon=document.getElementById('le-icon').value||'celebration';
@@ -961,10 +980,12 @@ async function saveAnnotation(){
   selectLeIcon('celebration');
 }
 async function deleteAnnotation(id){
+  if(DEMO_MODE){showDemoToast();return;}
   if(uref)await uref.collection('annotations').doc(id).delete();
 }
 
 async function saveSettings(){
+  if(DEMO_MODE){showDemoToast();return;}
   const day=parseInt(document.getElementById('s-day').value)||25;
   const ns={accounts:ACCTS,categories:CATS,payperiod:{defaultDay:day,overrides:ppOvrd}};
 

@@ -181,7 +181,7 @@ async function handleForgotPassword(){
 async function signOut(){
   if(!confirm('Sign out of Lumina?')) return;
   // Reset in-memory state declared in app.js before Firebase clears the session
-  txs=[]; budgets={}; goals=[]; alerts=[]; uref=null;
+  txs=[]; budgets={}; goals=[]; alerts=[]; uref=null; DEMO_MODE=false;
   if(auth) await auth.signOut();
   // onAuthStateChanged will show the auth wall
 }

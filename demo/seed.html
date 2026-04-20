@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lumina — Demo Seeder</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="../config/firebase-config.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:#f7f9fb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{background:#fff;border-radius:20px;padding:36px;width:100%;max-width:520px;box-shadow:0 20px 48px rgba(25,28,30,.09)}
+  .logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3525cd,#4f46e5);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px}
+  .logo-text{font-family:system-ui,sans-serif;font-weight:800;font-size:18px;color:#0f172a;letter-spacing:-.02em}
+  .logo-sub{font-size:12px;color:#94a3b8;font-weight:500}
+  h2{font-size:20px;font-weight:700;color:#0f172a;margin-bottom:8px}
+  p{font-size:13px;color:#64748b;line-height:1.6;margin-bottom:24px}
+  .btn{width:100%;padding:14px;background:linear-gradient(135deg,#3525cd,#4f46e5);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;letter-spacing:.02em;font-family:inherit}
+  .btn:hover:not(:disabled){opacity:.9}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-reset{background:#f1f5f9;color:#334155;margin-top:10px}
+  .btn-reset:hover:not(:disabled){background:#e2e8f0;opacity:1}
+  #log{margin-top:24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;max-height:300px;overflow-y:auto;display:none}
+  .log-line{font-size:12px;color:#334155;padding:3px 0;display:flex;gap:8px;align-items:flex-start}
+  .log-line.ok .dot{color:#10b981}
+  .log-line.err .dot{color:#ef4444}
+  .log-line.info .dot{color:#6366f1}
+  .log-line.sub .dot{color:#94a3b8}
+  .dot{flex-shrink:0;font-size:14px;line-height:1.3}
+  .status{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;margin-bottom:16px;display:none}
+  .status.ok{background:#f0fdf4;color:#166534}
+  .status.err{background:#fef2f2;color:#991b1b}
+  .status.run{background:#eef2ff;color:#3730a3}
+  .warning-box{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:20px}
+  .warning-box p{color:#92400e;font-size:12px;margin:0;line-height:1.5}
+  .warning-box strong{display:block;margin-bottom:4px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">Lumina</div>
+      <div class="logo-sub">Demo Seeder — Internal Tool</div>
+    </div>
+  </div>
+
+  <h2>Seed Demo Data</h2>
+  <p>Signs in as <strong>demo@lumina.app</strong>, wipes all existing demo data, and seeds fresh realistic data across all live features.</p>
+
+  <div class="warning-box">
+    <p><strong>Before running:</strong> Create the demo user in Firebase Console → Authentication → Add user: <code>demo@lumina.app</code> / <code>demo!23</code></p>
+  </div>
+
+  <div id="status" class="status"></div>
+  <button id="seed-btn" class="btn" onclick="runSeed()">Seed Demo Data</button>
+  <button id="reset-btn" class="btn btn-reset" onclick="resetLog()" style="display:none">Run Again</button>
+
+  <div id="log"></div>
+</div>
+
+<script>
+// ── Firebase init ──────────────────────────────────────
+try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+const DEMO_EMAIL = 'demo@lumina.app';
+const DEMO_PASS  = 'demo!23';
+
+// ── Logging UI ─────────────────────────────────────────
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+
+function log(msg, type='info') {
+  logEl.style.display = 'block';
+  const icons = { ok:'✓', err:'✗', info:'·', sub:'–' };
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.innerHTML = `<span class="dot">${icons[type]||'·'}</span><span>${msg}</span>`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(msg, type) {
+  statusEl.className = 'status ' + type;
+  statusEl.textContent = msg;
+  statusEl.style.display = 'flex';
+}
+
+function resetLog() {
+  logEl.innerHTML = '';
+  logEl.style.display = 'none';
+  statusEl.style.display = 'none';
+  document.getElementById('seed-btn').disabled = false;
+  document.getElementById('seed-btn').style.display = 'block';
+  document.getElementById('reset-btn').style.display = 'none';
+}
+
+// ── Demo data definitions ──────────────────────────────
+
+const CATS = {
+  expense: {
+    Loan:      ['PTPTN'],
+    Bills:     ['Unifi', 'Umobile', 'TNB'],
+    Takaful:   [],
+    CC:        ['Charge'],
+    Subs:      ['Netflix', 'Sooka'],
+    Car:       [],
+    Community: ['Zakat'],
+    Food:      ['Family', 'Work'],
+    Toll:      [],
+    Parking:   [],
+    Fuel:      ['Fuel'],
+    Medical:   [],
+    Misc:      []
+  },
+  income:  { Salary: [], Freelance: [], Bonus: [] },
+  savings: { Saving: [] }
+};
+
+const PREFERENCES = {
+  accounts: ['CIMB', 'Maybank', 'TNG', 'Cash'],
+  categories: CATS,
+  payperiod: { defaultDay: 25, overrides: {} }
+};
+
+const BUDGETS = {
+  Loan:      { amount: 800,  threshold: 80 },
+  Bills:     { amount: 400,  threshold: 80 },
+  Takaful:   { amount: 200,  threshold: 80 },
+  CC:        { amount: 400,  threshold: 80 },
+  Subs:      { amount: 100,  threshold: 80 },
+  Car:       { amount: 300,  threshold: 80 },
+  Community: { amount: 300,  threshold: 80 },
+  Food:      { amount: 1200, threshold: 80 },
+  Toll:      { amount: 100,  threshold: 80 },
+  Parking:   { amount: 80,   threshold: 80 },
+  Fuel:      { amount: 250,  threshold: 80 },
+  Medical:   { amount: 150,  threshold: 80 },
+  Misc:      { amount: 200,  threshold: 80 }
+};
+
+const GOALS = { goals: [
+  { id: 'g1', name: 'Emergency Fund', emoji: '🛡️', monthly: 500  },
+  { id: 'g2', name: 'Unit Trust',     emoji: '📈', monthly: 1000 },
+  { id: 'g3', name: 'Umrah Fund',     emoji: '✈️', monthly: 300  }
+]};
+
+// Annotations: { date, label, icon }
+const ANNOTATIONS = [
+  { date: '2026-01-25', label: 'Chinese New Year',      icon: 'celebration' },
+  { date: '2026-03-01', label: 'Got a raise',            icon: 'celebration' },
+  { date: '2026-03-15', label: 'Car needed new tyres',   icon: 'warning'     }
+];
+
+// Transactions: [date, amount, account, type, category, sub, description]
+// Salary is on 10th of each month so it appears in the same calendar month
+const TX_DATA = [
+  // ── January 2026 ──────────────────────────────────────
+  // Income
+  ['2026-01-10', 6500,  'Maybank', 'income',  'Salary',   '',       'January salary'],
+  ['2026-01-25', 800,   'CIMB',   'income',  'Freelance','',       'Design project'],
+  // Savings
+  ['2026-01-15', 500,   'CIMB',   'savings', 'Saving',   '',       'Emergency fund'],
+  ['2026-01-15', 1000,  'CIMB',   'savings', 'Saving',   '',       'Unit trust'],
+  ['2026-01-28', 300,   'CIMB',   'savings', 'Saving',   '',       'Umrah fund'],
+  // Expenses
+  ['2026-01-02', 145,   'Maybank','expense', 'Bills',    'TNB',    'TNB January'],
+  ['2026-01-03', 139,   'Maybank','expense', 'Bills',    'Unifi',  'Unifi January'],
+  ['2026-01-03', 60,    'Maybank','expense', 'Bills',    'Umobile','Umobile January'],
+  ['2026-01-05', 350,   'Maybank','expense', 'Loan',     'PTPTN',  'PTPTN January'],
+  ['2026-01-06', 180,   'Maybank','expense', 'Takaful',  '',       'Takaful premium'],
+  ['2026-01-08', 55,    'Maybank','expense', 'Subs',     'Netflix','Netflix'],
+  ['2026-01-08', 39,    'Maybank','expense', 'Subs',     'Sooka',  'Sooka Sports'],
+  ['2026-01-10', 220,   'Maybank','expense', 'Food',     'Family', 'Groceries week 1'],
+  ['2026-01-12', 120,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-01-12', 45,    'TNG',    'expense', 'Toll',     '',       'Touch n Go reload'],
+  ['2026-01-13', 35,    'TNG',    'expense', 'Parking',  '',       'Office parking'],
+  ['2026-01-15', 180,   'Maybank','expense', 'Food',     'Family', 'Groceries week 2'],
+  ['2026-01-17', 250,   'Maybank','expense', 'Car',      '',       'Car service'],
+  ['2026-01-18', 95,    'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-01-20', 165,   'Maybank','expense', 'Food',     'Work',   'Team lunch'],
+  ['2026-01-21', 38,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-01-22', 80,    'Maybank','expense', 'Medical',  '',       'Clinic visit'],
+  ['2026-01-24', 55,    'Cash',   'expense', 'Misc',     '',       'Miscellaneous'],
+  ['2026-01-28', 250,   'Maybank','expense', 'Food',     'Family', 'CNY dinner with family'],
+  ['2026-01-30', 28,    'TNG',    'expense', 'Parking',  '',       'Parking'],
+
+  // ── February 2026 ─────────────────────────────────────
+  // Income
+  ['2026-02-10', 6500,  'Maybank','income',  'Salary',   '',       'February salary'],
+  // Savings
+  ['2026-02-15', 500,   'CIMB',   'savings', 'Saving',   '',       'Emergency fund'],
+  ['2026-02-15', 1000,  'CIMB',   'savings', 'Saving',   '',       'Unit trust'],
+  // Expenses
+  ['2026-02-02', 132,   'Maybank','expense', 'Bills',    'TNB',    'TNB February'],
+  ['2026-02-03', 139,   'Maybank','expense', 'Bills',    'Unifi',  'Unifi February'],
+  ['2026-02-03', 60,    'Maybank','expense', 'Bills',    'Umobile','Umobile February'],
+  ['2026-02-05', 350,   'Maybank','expense', 'Loan',     'PTPTN',  'PTPTN February'],
+  ['2026-02-06', 180,   'Maybank','expense', 'Takaful',  '',       'Takaful premium'],
+  ['2026-02-08', 55,    'Maybank','expense', 'Subs',     'Netflix','Netflix'],
+  ['2026-02-08', 39,    'Maybank','expense', 'Subs',     'Sooka',  'Sooka Sports'],
+  ['2026-02-10', 205,   'Maybank','expense', 'Food',     'Family', 'Groceries'],
+  ['2026-02-12', 110,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-02-12', 42,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-02-13', 28,    'TNG',    'expense', 'Parking',  '',       'Parking'],
+  ['2026-02-14', 480,   'Maybank','expense', 'Food',     'Family', 'Valentine dinner'],
+  ['2026-02-16', 105,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-02-18', 45,    'Maybank','expense', 'Medical',  '',       'Pharmacy'],
+  ['2026-02-20', 178,   'Maybank','expense', 'Food',     'Work',   'Makan-makan'],
+  ['2026-02-22', 40,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-02-24', 120,   'Cash',   'expense', 'Misc',     '',       'Miscellaneous'],
+  ['2026-02-25', 350,   'Maybank','expense', 'CC',       'Charge', 'Credit card payment'],
+  ['2026-02-27', 155,   'Maybank','expense', 'Food',     'Family', 'Groceries'],
+
+  // ── March 2026 ────────────────────────────────────────
+  // Income
+  ['2026-03-05', 2000,  'Maybank','income',  'Bonus',    '',       'Annual bonus'],
+  ['2026-03-10', 7000,  'Maybank','income',  'Salary',   '',       'March salary — new rate'],
+  // Savings
+  ['2026-03-15', 500,   'CIMB',   'savings', 'Saving',   '',       'Emergency fund'],
+  ['2026-03-15', 1500,  'CIMB',   'savings', 'Saving',   '',       'Unit trust (increased)'],
+  ['2026-03-28', 300,   'CIMB',   'savings', 'Saving',   '',       'Umrah fund'],
+  // Expenses
+  ['2026-03-02', 158,   'Maybank','expense', 'Bills',    'TNB',    'TNB March'],
+  ['2026-03-03', 139,   'Maybank','expense', 'Bills',    'Unifi',  'Unifi March'],
+  ['2026-03-03', 60,    'Maybank','expense', 'Bills',    'Umobile','Umobile March'],
+  ['2026-03-05', 350,   'Maybank','expense', 'Loan',     'PTPTN',  'PTPTN March'],
+  ['2026-03-06', 180,   'Maybank','expense', 'Takaful',  '',       'Takaful premium'],
+  ['2026-03-08', 55,    'Maybank','expense', 'Subs',     'Netflix','Netflix'],
+  ['2026-03-08', 39,    'Maybank','expense', 'Subs',     'Sooka',  'Sooka Sports'],
+  ['2026-03-10', 195,   'Maybank','expense', 'Food',     'Family', 'Groceries'],
+  ['2026-03-12', 130,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-03-12', 55,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-03-13', 45,    'TNG',    'expense', 'Parking',  '',       'Parking'],
+  ['2026-03-15', 650,   'Maybank','expense', 'Car',      '',       'New tyres — both front'],
+  ['2026-03-16', 115,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-03-18', 65,    'Maybank','expense', 'Medical',  '',       'Doctor'],
+  ['2026-03-20', 188,   'Maybank','expense', 'Food',     'Work',   'Birthday lunch'],
+  ['2026-03-22', 48,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-03-24', 75,    'Cash',   'expense', 'Misc',     '',       'Miscellaneous'],
+  ['2026-03-25', 300,   'Maybank','expense', 'Community','Zakat',  'Zakat pendapatan'],
+  ['2026-03-25', 139,   'Maybank','expense', 'Bills',    'Unifi',  'Unifi March (advance)'],
+  ['2026-03-25', 60,    'Maybank','expense', 'Bills',    'Umobile','Umobile March (advance)'],
+  ['2026-03-28', 210,   'Maybank','expense', 'Food',     'Family', 'Raya prep groceries'],
+
+  // ── April 2026 (current, up to Apr 20) ────────────────
+  // Income
+  ['2026-04-10', 7000,  'Maybank','income',  'Salary',   '',       'April salary'],
+  ['2026-04-18', 500,   'CIMB',   'income',  'Freelance','',       'Consultation fee'],
+  // Savings
+  ['2026-04-12', 500,   'CIMB',   'savings', 'Saving',   '',       'Emergency fund'],
+  ['2026-04-12', 1000,  'CIMB',   'savings', 'Saving',   '',       'Unit trust'],
+  // Expenses
+  ['2026-04-02', 148,   'Maybank','expense', 'Bills',    'TNB',    'TNB April'],
+  ['2026-04-03', 139,   'Maybank','expense', 'Bills',    'Unifi',  'Unifi April'],
+  ['2026-04-03', 60,    'Maybank','expense', 'Bills',    'Umobile','Umobile April'],
+  ['2026-04-05', 350,   'Maybank','expense', 'Loan',     'PTPTN',  'PTPTN April'],
+  ['2026-04-06', 180,   'Maybank','expense', 'Takaful',  '',       'Takaful premium'],
+  ['2026-04-08', 55,    'Maybank','expense', 'Subs',     'Netflix','Netflix'],
+  ['2026-04-08', 39,    'Maybank','expense', 'Subs',     'Sooka',  'Sooka Sports'],
+  ['2026-04-10', 195,   'Maybank','expense', 'Food',     'Family', 'Groceries'],
+  ['2026-04-12', 125,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-04-12', 50,    'TNG',    'expense', 'Toll',     '',       'Touch n Go'],
+  ['2026-04-14', 35,    'TNG',    'expense', 'Parking',  '',       'Parking'],
+  ['2026-04-15', 145,   'Maybank','expense', 'Food',     'Work',   'Hari Raya lunch'],
+  ['2026-04-16', 110,   'TNG',    'expense', 'Fuel',     'Fuel',   'Petrol'],
+  ['2026-04-18', 55,    'Maybank','expense', 'Medical',  '',       'Pharmacy'],
+  ['2026-04-20', 85,    'Cash',   'expense', 'Misc',     '',       'Miscellaneous']
+];
+
+// ── Seeder ─────────────────────────────────────────────
+
+async function runSeed() {
+  const btn = document.getElementById('seed-btn');
+  btn.disabled = true;
+  logEl.innerHTML = '';
+  logEl.style.display = 'block';
+  setStatus('Seeding in progress…', 'run');
+
+  try {
+    // 1. Sign in
+    log('Signing in as demo@lumina.app…', 'info');
+    await auth.signInWithEmailAndPassword(DEMO_EMAIL, DEMO_PASS);
+    const uid = auth.currentUser.uid;
+    log(`Signed in — UID: ${uid.slice(0, 12)}…`, 'ok');
+
+    const uref = db.collection('users').doc(uid);
+
+    // 2. Wipe existing data
+    log('Clearing existing demo data…', 'info');
+    await Promise.all(['transactions','annotations','alerts'].map(c=>wipeCollection(uref.collection(c))));
+    log('  transactions, annotations, alerts cleared', 'sub');
+
+    // 3. Seed settings/preferences
+    log('Seeding preferences…', 'info');
+    await uref.collection('settings').doc('preferences').set(PREFERENCES);
+    log('  accounts, categories, pay period — done', 'ok');
+
+    // 4. Seed budgets
+    log('Seeding budgets…', 'info');
+    await uref.collection('budgets').doc('settings').set(BUDGETS);
+    log(`  ${Object.keys(BUDGETS).length} categories — done`, 'ok');
+
+    // 5. Seed goals
+    log('Seeding savings goals…', 'info');
+    await uref.collection('goals').doc('list').set(GOALS);
+    log(`  ${GOALS.goals.length} goals — done`, 'ok');
+
+    // 6. Seed annotations
+    log('Seeding life event annotations…', 'info');
+    for (const a of ANNOTATIONS) {
+      await uref.collection('annotations').add({ ...a, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      log(`  ${a.date} · ${a.label}`, 'sub');
+    }
+    log(`  ${ANNOTATIONS.length} annotations — done`, 'ok');
+
+    // 7. Seed transactions (batched)
+    log(`Seeding ${TX_DATA.length} transactions…`, 'info');
+    const BATCH_SIZE = 400;
+    let count = 0;
+    for (let i = 0; i < TX_DATA.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      TX_DATA.slice(i, i + BATCH_SIZE).forEach(([date, amount, account, type, category, subcategory, description]) => {
+        const ref = uref.collection('transactions').doc();
+        // createdAt: parse date so ordering reflects date order
+        const createdAt = new Date(date + 'T12:00:00').getTime() + count++;
+        batch.set(ref, { date, amount, account, type, category, subcategory, description, createdAt });
+      });
+      await batch.commit();
+      log(`  batch ${Math.floor(i / BATCH_SIZE) + 1}: ${Math.min(i + BATCH_SIZE, TX_DATA.length)} of ${TX_DATA.length} written`, 'sub');
+    }
+    log(`  ${TX_DATA.length} transactions — done`, 'ok');
+
+    // 8. Sign out
+    await auth.signOut();
+    log('Signed out', 'sub');
+
+    setStatus('Demo data seeded successfully — ready to use.', 'ok');
+    document.getElementById('seed-btn').style.display = 'none';
+    document.getElementById('reset-btn').style.display = 'block';
+
+  } catch (err) {
+    log('Error: ' + (err.message || err), 'err');
+    setStatus('Seeding failed — see log above.', 'err');
+    btn.disabled = false;
+  }
+}
+
+// Delete all docs in a collection (up to 200 — enough for demo cleanup)
+async function wipeCollection(colRef) {
+  const snap = await colRef.limit(200).get();
+  if (snap.empty) return;
+  const batch = db.batch();
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+}
+</script>
+</body>
+</html>
