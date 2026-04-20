@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════
 
 // ── State ──────────────────────────────────────────────────────
-let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[];
+let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
 let curScr='dashboard',editId=null;
 let anBar=null,anLine=null,anWaterfall=null,fChart=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -33,6 +33,8 @@ const RM=v=>'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits
 const LOADING_HTML='<div class="flex flex-col items-center justify-center py-16 gap-3"><div class="w-7 h-7 rounded-full border-2 border-primary border-t-transparent animate-spin"></div><p class="text-xs text-slate-400 font-medium">Loading…</p></div>';
 const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});
 const avg=arr=>{const nz=arr.filter(v=>v>0);return nz.length?nz.reduce((s,v)=>s+v,0)/nz.length:0};
+
+if(window.ChartAnnotation)Chart.register(window.ChartAnnotation);
 
 // ── Auth state (set by auth.js) ──────────────────────────────────
 let auth=null;
@@ -82,6 +84,7 @@ async function initDB(){
     uref.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
     uref.collection('alerts').onSnapshot(snap=>{alerts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAlerts();});
+    uref.collection('annotations').orderBy('date','asc').onSnapshot(snap=>{annotations=snap.docs.map(d=>({id:d.id,...d.data()}));if(curScr==='analytics')renderAnalytics();if(curScr==='settings')renderSettings();});
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       isLoading=false;
@@ -484,14 +487,24 @@ function renderAnalytics(){
   }
   const cats=[...new Set(fil.map(t=>t.category))].sort();
   const ms=[...new Set(fil.map(t=>t.date.slice(0,7)))].sort();
-  const ml=ms.map(m=>{const[y,mo]=m.split('-');return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo)-1]+' '+y;});
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const ml=ms.map(m=>{const[y,mo]=m.split('-');return MN[parseInt(mo)-1]+' '+y;});
   const data={};ms.forEach(m=>{data[m]={};cats.forEach(c=>data[m][c]=0);});fil.forEach(t=>{const m=t.date.slice(0,7);data[m][t.category]=(data[m][t.category]||0)+t.amount;});
   const ds=cats.map((c,i)=>({label:c,data:ms.map(m=>data[m][c]||0),backgroundColor:PAL[i%PAL.length]+'cc',borderColor:PAL[i%PAL.length],borderWidth:1.5,borderRadius:4}));
   if(anBar){anBar.destroy();anBar=null;}if(anLine){anLine.destroy();anLine=null;}
-  const bOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10,family:'Inter'}}},y:{stacked:true,ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10,family:'Inter'}},grid:{color:'#f2f4f6'}}}};
+  const anCfg={};
+  annotations.forEach((a,i)=>{
+    const[y,mo]=a.date.slice(0,7).split('-');
+    const lbl=MN[parseInt(mo)-1]+' '+y;
+    if(!ml.includes(lbl))return;
+    anCfg['ev'+i]={type:'line',scaleID:'x',value:lbl,borderColor:'#6366f1',borderWidth:1,borderDash:[4,4],label:{display:true,content:a.label,position:'start',backgroundColor:'#6366f1',color:'#fff',font:{size:9,family:'Inter'},padding:{x:5,y:3}}};
+  });
+  const anPlugin={annotation:{annotations:anCfg}};
+  const bOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}},...anPlugin},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10,family:'Inter'}}},y:{stacked:true,ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10,family:'Inter'}},grid:{color:'#f2f4f6'}}}};
   const bc=document.getElementById('an-bar')?.getContext('2d');if(bc)anBar=new Chart(bc,{type:'bar',data:{labels:ml,datasets:ds},options:bOpts});
+  const lOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}},...anPlugin},scales:{x:{grid:{color:'#f2f4f6'},ticks:{font:{size:10}}},y:{ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10}},grid:{color:'#f2f4f6'}}}};
   const lc=document.getElementById('an-line')?.getContext('2d');
-  if(lc)anLine=new Chart(lc,{type:'line',data:{labels:ml,datasets:cats.map((c,i)=>({label:c,data:ms.map(m=>data[m][c]||0),borderColor:PAL[i%PAL.length],backgroundColor:PAL[i%PAL.length]+'18',borderWidth:2,pointRadius:3.5,pointHoverRadius:5,tension:.4,fill:false}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}}},scales:{x:{grid:{color:'#f2f4f6'},ticks:{font:{size:10}}},y:{ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10}},grid:{color:'#f2f4f6'}}}}});
+  if(lc)anLine=new Chart(lc,{type:'line',data:{labels:ml,datasets:cats.map((c,i)=>({label:c,data:ms.map(m=>data[m][c]||0),borderColor:PAL[i%PAL.length],backgroundColor:PAL[i%PAL.length]+'18',borderWidth:2,pointRadius:3.5,pointHoverRadius:5,tension:.4,fill:false}))},options:lOpts});
   const tots={};fil.forEach(t=>tots[t.category]=(tots[t.category]||0)+t.amount);
   const grand=Object.values(tots).reduce((s,v)=>s+v,0)||1;
   const srt=Object.entries(tots).sort((a,b)=>b[1]-a[1]);
@@ -770,6 +783,17 @@ function renderSettings(){
     : '<p class="text-xs text-slate-400">No accounts added yet.</p>';
   renderPpGrid();
   renderCatS();
+  const el=document.getElementById('s-annotations');
+  if(el){
+    el.innerHTML=annotations.length
+      ? annotations.map(a=>`<div class="flex items-center gap-3 px-4 py-3 bg-surface-container-low rounded-xl">
+          <span class="material-symbols-outlined msym text-base text-primary">${a.icon||'more_horiz'}</span>
+          <span class="text-xs text-slate-400 font-semibold flex-shrink-0">${fd(a.date)}</span>
+          <span class="flex-1 text-sm font-medium text-slate-700 truncate">${a.label}</span>
+          <button onclick="deleteAnnotation('${a.id}')" class="text-slate-300 hover:text-error transition-colors flex-shrink-0"><span class="material-symbols-outlined msym text-base">delete</span></button>
+        </div>`).join('')
+      : '<p class="text-xs text-slate-400">No life events added yet.</p>';
+  }
 }
 
 // Build the 12-month override grid
@@ -912,6 +936,33 @@ function addCat(){const v=document.getElementById('s-ncat').value.trim();if(!v||
 function delCat(c){if(!confirm(`Delete "${c}"?`))return;delete CATS[sType][c];if(sCat===c)sCat=null;renderCatS();}
 function addSub(){if(!sCat)return;const v=document.getElementById('s-nsub').value.trim();if(!v)return;CATS[sType][sCat].push(v);document.getElementById('s-nsub').value='';renderCatS();}
 function delSub(i){if(!sCat)return;CATS[sType][sCat].splice(i,1);renderCatS();}
+
+// ── Life Events ──────────────────────────────────────────────────
+const LE_ICONS=['celebration','warning','work','favorite','flight','more_horiz'];
+function selectLeIcon(icon){
+  document.getElementById('le-icon').value=icon;
+  LE_ICONS.forEach(ic=>{
+    const btn=document.getElementById('le-ic-'+ic);
+    if(!btn)return;
+    if(ic===icon){btn.classList.add('border-2','border-primary','bg-primary-fixed','text-primary');btn.classList.remove('border','border-slate-200','bg-surface-container-low','text-slate-400');}
+    else{btn.classList.remove('border-2','border-primary','bg-primary-fixed','text-primary');btn.classList.add('border','border-slate-200','bg-surface-container-low','text-slate-400');}
+  });
+}
+async function saveAnnotation(){
+  const date=document.getElementById('le-date').value;
+  const label=document.getElementById('le-label').value.trim();
+  const icon=document.getElementById('le-icon').value||'celebration';
+  if(!date||!label)return;
+  if(uref){
+    await uref.collection('annotations').add({date,label,icon,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  }
+  document.getElementById('le-date').value='';
+  document.getElementById('le-label').value='';
+  selectLeIcon('celebration');
+}
+async function deleteAnnotation(id){
+  if(uref)await uref.collection('annotations').doc(id).delete();
+}
 
 async function saveSettings(){
   const day=parseInt(document.getElementById('s-day').value)||25;

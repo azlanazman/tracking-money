@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -773,6 +774,51 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
       </div>
+    </div>
+    <!-- Life Events -->
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+      <h3 class="text-sm font-bold text-slate-900 font-headline mb-1">Life Events</h3>
+      <p class="text-xs text-slate-400 mb-5 leading-relaxed">Mark dates that affected your spending. They appear as reference lines on your analytics charts.</p>
+      <!-- Add form -->
+      <div class="space-y-3 mb-5">
+        <div class="flex gap-3 flex-wrap">
+          <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Date</label>
+            <input id="le-date" type="date" class="bg-surface-container-low border border-slate-100 rounded-xl px-3 py-2 text-sm font-medium text-on-surface outline-none focus:ring-2 focus:ring-primary/20"/>
+          </div>
+          <div class="flex flex-col gap-1 flex-1 min-w-40">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Label</label>
+            <input id="le-label" type="text" placeholder="e.g. Started new job…" maxlength="40" class="bg-surface-container-low border border-slate-100 rounded-xl px-3 py-2 text-sm font-medium text-on-surface outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400"/>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Icon</label>
+          <div class="flex gap-2">
+            <input type="hidden" id="le-icon" value="celebration"/>
+            <button type="button" onclick="selectLeIcon('celebration')" id="le-ic-celebration" title="Celebration" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border-2 border-primary bg-primary-fixed text-primary transition-all">
+              <span class="material-symbols-outlined msym text-lg">celebration</span>
+            </button>
+            <button type="button" onclick="selectLeIcon('warning')" id="le-ic-warning" title="Problem" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-surface-container-low text-slate-400 hover:border-primary/40 transition-all">
+              <span class="material-symbols-outlined msym text-lg">warning</span>
+            </button>
+            <button type="button" onclick="selectLeIcon('work')" id="le-ic-work" title="Work" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-surface-container-low text-slate-400 hover:border-primary/40 transition-all">
+              <span class="material-symbols-outlined msym text-lg">work</span>
+            </button>
+            <button type="button" onclick="selectLeIcon('favorite')" id="le-ic-favorite" title="Health" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-surface-container-low text-slate-400 hover:border-primary/40 transition-all">
+              <span class="material-symbols-outlined msym text-lg">favorite</span>
+            </button>
+            <button type="button" onclick="selectLeIcon('flight')" id="le-ic-flight" title="Travel" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-surface-container-low text-slate-400 hover:border-primary/40 transition-all">
+              <span class="material-symbols-outlined msym text-lg">flight</span>
+            </button>
+            <button type="button" onclick="selectLeIcon('more_horiz')" id="le-ic-more_horiz" title="Other" class="le-ic-btn w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-surface-container-low text-slate-400 hover:border-primary/40 transition-all">
+              <span class="material-symbols-outlined msym text-lg">more_horiz</span>
+            </button>
+          </div>
+        </div>
+        <button onclick="saveAnnotation()" class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl text-sm font-semibold shadow-sm shadow-indigo-200 hover:opacity-90 transition-all">Add Event</button>
+      </div>
+      <!-- Existing annotations list -->
+      <div id="s-annotations" class="space-y-2"></div>
     </div>
     <!-- Save -->
     <div class="flex items-center gap-4">
