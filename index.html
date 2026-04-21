@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Tracking Money - Financial Intelligence</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -16,21 +16,66 @@
 <script src="js/payperiod.js"></script>
 
 <script id="tw-cfg">
-tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary-container":"#454386","background":"#f7f9fb","on-background":"#191c1e","surface-variant":"#e0e3e5","surface-bright":"#f7f9fb","outline-variant":"#c7c4d8","surface-container-highest":"#e0e3e5","primary-container":"#4f46e5","error":"#ba1a1a","on-primary-container":"#dad7ff","on-error":"#ffffff","on-primary-fixed":"#0f0069","outline":"#777587","primary-fixed":"#e2dfff","surface-container":"#eceef0","secondary-fixed-dim":"#c3c0ff","secondary-container":"#b6b4ff","tertiary":"#7e3000","primary":"#3525cd","surface-container-high":"#e6e8ea","secondary-fixed":"#e2dfff","surface":"#f7f9fb","secondary":"#58579b","tertiary-fixed":"#ffdbcc","on-error-container":"#93000a","on-secondary-fixed":"#140f54","surface-container-low":"#f2f4f6","on-surface":"#191c1e","surface-dim":"#d8dadc","on-surface-variant":"#464555","error-container":"#ffdad6","surface-tint":"#4d44e3","on-secondary-fixed-variant":"#413f82","on-tertiary-fixed":"#351000","on-primary":"#ffffff","inverse-primary":"#c3c0ff","surface-container-lowest":"#ffffff","inverse-surface":"#2d3133","tertiary-container":"#a44100","on-secondary":"#ffffff","primary-fixed-dim":"#c3c0ff","inverse-on-surface":"#eff1f3","on-tertiary":"#ffffff","tertiary-fixed-dim":"#ffb695"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem","2xl":"1rem","3xl":"1.5rem",full:"9999px"},fontFamily:{headline:["Manrope"],body:["Inter"],label:["Inter"]}}}}
+tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-secondary-container":"#454386","background":"#f7f9fb","on-background":"#191c1e","surface-variant":"#e0e3e5","surface-bright":"#f7f9fb","outline-variant":"#c7c4d8","surface-container-highest":"#e0e3e5","primary-container":"#4f46e5","error":"#ba1a1a","on-primary-container":"#dad7ff","on-error":"#ffffff","on-primary-fixed":"#0f0069","outline":"#777587","primary-fixed":"#e2dfff","surface-container":"#eceef0","secondary-fixed-dim":"#c3c0ff","secondary-container":"#b6b4ff","tertiary":"#7e3000","primary":"#3525cd","surface-container-high":"#e6e8ea","secondary-fixed":"#e2dfff","surface":"#f7f9fb","secondary":"#58579b","tertiary-fixed":"#ffdbcc","on-error-container":"#93000a","on-secondary-fixed":"#140f54","surface-container-low":"#f2f4f6","on-surface":"#191c1e","surface-dim":"#d8dadc","on-surface-variant":"#464555","error-container":"#ffdad6","surface-tint":"#4d44e3","on-secondary-fixed-variant":"#413f82","on-tertiary-fixed":"#351000","on-primary":"#ffffff","inverse-primary":"#c3c0ff","surface-container-lowest":"#ffffff","inverse-surface":"#2d3133","tertiary-container":"#a44100","on-secondary":"#ffffff","primary-fixed-dim":"#c3c0ff","inverse-on-surface":"#eff1f3","on-tertiary":"#ffffff","tertiary-fixed-dim":"#ffb695"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem","2xl":"1rem","3xl":"1.5rem",full:"9999px"},fontFamily:{headline:["Instrument Serif"],body:["Geist"],label:["Geist"]}}}}
 </script>
 
 <style>
+/* ── Design tokens ─────────────────────────────────────── */
+:root{
+  --bg:#F5F3EE;--bg-2:#EEEBE3;--surface:#FFFFFF;
+  --ink:#14120F;--ink-2:#3A362E;--ink-3:#6B6559;--ink-4:#A39C8E;
+  --line:rgba(20,18,15,0.08);--line-2:rgba(20,18,15,0.04);
+  --accent:#2B5F3E;--accent-soft:#D9E4D8;--warn:#B8572B;
+  --shadow-sm:0 1px 2px rgba(20,18,15,0.04),0 2px 6px rgba(20,18,15,0.03);
+  --shadow-md:0 4px 20px rgba(20,18,15,0.06),0 1px 3px rgba(20,18,15,0.04);
+  --r-sm:10px;--r-md:16px;--r-lg:24px;--r-xl:36px;
+  --sans:'Geist',-apple-system,system-ui,sans-serif;
+  --serif:'Instrument Serif',Georgia,serif;
+  --mono:'Geist Mono',ui-monospace,monospace;
+}
+[data-theme="dark"]{
+  --bg:#0C0B0A;--bg-2:#141311;--surface:#1A1816;
+  --ink:#F4F1EA;--ink-2:#D0CBC0;--ink-3:#8A847A;--ink-4:#56524B;
+  --line:rgba(244,241,234,0.08);--line-2:rgba(244,241,234,0.04);
+  --accent:#C9F560;--accent-soft:rgba(201,245,96,0.12);--warn:#F5A15F;
+}
+[data-theme="warm"]{
+  --bg:#F7EFE4;--bg-2:#F0E6D6;--surface:#FBF6EE;
+  --ink:#2A1F14;--ink-2:#4E3F2E;--ink-3:#857663;--ink-4:#B5A691;
+  --line:rgba(42,31,20,0.10);--line-2:rgba(42,31,20,0.05);
+  --accent:#C85A3C;--accent-soft:#F2D9CC;--warn:#B56B1C;
+}
+/* ── Base ───────────────────────────────────────────────── */
 *{box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#f7f9fb}
-h1,h2,h3,h4,.font-headline{font-family:'Manrope',sans-serif}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink)}
+h1,h2,h3,h4,.font-headline{font-family:var(--serif)}
+/* ── Theme-responsive layout ────────────────────────────── */
+#auth-wall{background:var(--bg)}
+#sidebar{background:var(--bg-2)!important;border-color:var(--line)!important}
+#main{background:var(--bg)}
+header{background:color-mix(in srgb,var(--bg) 85%,transparent)!important;border-color:var(--line)!important}
+#mob-nav{background:color-mix(in srgb,var(--bg-2) 90%,transparent)!important;border-color:var(--line)!important}
+/* Card surfaces */
+.amb-card,.amb-lg{background:var(--surface)}
+.bg-surface-container-lowest{background:var(--surface)!important}
+.bg-surface-container-low,.bg-slate-50{background:var(--bg-2)!important}
+.bg-white{background:var(--surface)!important}
+/* Text */
+.text-slate-900,.text-on-surface{color:var(--ink)!important}
+.text-slate-700,.text-slate-600{color:var(--ink-2)!important}
+.text-slate-500,.text-slate-400{color:var(--ink-3)!important}
+/* Borders */
+.border-slate-100,.border-slate-200{border-color:var(--line)!important}
 .msym{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle;line-height:1}
 .msym-fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
 .glass-nav{background:rgba(255,255,255,.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
 .amb-card{box-shadow:0 12px 32px rgba(25,28,30,.06)}
 .amb-lg{box-shadow:0 20px 48px rgba(25,28,30,.09)}
+.lum-card{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);border-radius:var(--r-lg)}
 .indigo-glow{box-shadow:0 8px 24px rgba(53,37,205,.3)}
 .screen{display:none}.screen.active{display:block}
-.nav-active{background:#eef2ff!important;color:#3525cd!important;font-weight:600}
+.nav-active{background:var(--accent-soft)!important;color:var(--accent)!important;font-weight:600}
+#sidebar nav a:hover:not(.nav-active){background:var(--line)!important;color:var(--ink)!important}
 .cat-active{background:#3525cd!important;color:#fff!important;box-shadow:0 8px 24px rgba(53,37,205,.3)}
 .cat-active .cat-icon{background:rgba(255,255,255,.2)!important;color:#fff!important}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
@@ -59,7 +104,7 @@ input[type=number]{-moz-appearance:textfield}
   #tx-list .opacity-0{opacity:1!important}
 }
 /* Auth layer */
-#auth-wall{position:fixed;inset:0;z-index:9999;background:#f7f9fb;display:flex;align-items:center;justify-content:center;padding:24px}
+#auth-wall{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
 #app-shell{display:none}
 @keyframes authFadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .auth-fade{animation:authFadeIn .4s ease forwards}
@@ -184,43 +229,45 @@ input[type=number]{-moz-appearance:textfield}
 <aside id="sidebar" class="fixed left-0 top-0 h-screen w-64 bg-slate-50 flex flex-col p-4 z-50 border-r border-slate-100">
   <!-- Brand -->
   <div class="flex items-center gap-3 mb-10 px-2 pt-2">
-    <div class="w-8 h-8 bg-gradient-to-br from-primary to-primary-container rounded-lg flex items-center justify-center flex-shrink-0">
-      <span class="material-symbols-outlined msym text-white text-[18px]">account_balance_wallet</span>
+    <div style="width:28px;height:28px;border-radius:8px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M8 3a10 10 0 1012 12A8 8 0 018 3z" fill="var(--bg)"/>
+      </svg>
     </div>
     <div>
-      <div class="text-base font-bold tracking-tight text-slate-900 font-headline leading-tight">Lumina</div>
-      <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Financial</div>
+      <div style="font-family:var(--serif);font-style:italic;font-size:20px;line-height:1;color:var(--ink)">Lumina</div>
+      <div style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);margin-top:2px">Financial</div>
     </div>
   </div>
 
   <!-- Navigation -->
   <nav class="flex-1 space-y-1">
-    <a onclick="nav('dashboard')" id="snav-dashboard" class="nav-active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('dashboard')" id="snav-dashboard" class="nav-active flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">dashboard</span>
       <span class="text-sm font-medium">Dashboard</span>
     </a>
-    <a onclick="nav('analytics')" id="snav-analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('analytics')" id="snav-analytics" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">insights</span>
       <span class="text-sm font-medium">Analytics</span>
     </a>
-    <a onclick="nav('transactions')" id="snav-transactions" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('transactions')" id="snav-transactions" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">receipt_long</span>
       <span class="text-sm font-medium">Transactions</span>
     </a>
-    <a onclick="nav('entry')" id="snav-entry" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('entry')" id="snav-entry" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">add_circle</span>
       <span class="text-sm font-medium">Log Transaction</span>
     </a>
-    <a onclick="nav('budgets')" id="snav-budgets" class="relative flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('budgets')" id="snav-budgets" class="relative flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">account_balance_wallet</span>
       <span class="text-sm font-medium">Budgets</span>
       <span id="alert-badge" class="hidden absolute top-2 left-7 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center leading-none"></span>
     </a>
-    <a onclick="nav('forecast')" id="snav-forecast" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('forecast')" id="snav-forecast" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">query_stats</span>
       <span class="text-sm font-medium">Forecast</span>
     </a>
-    <a onclick="nav('settings')" id="snav-settings" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50">
+    <a onclick="nav('settings')" id="snav-settings" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
       <span class="material-symbols-outlined msym">settings</span>
       <span class="text-sm font-medium">Settings</span>
     </a>
@@ -228,19 +275,29 @@ input[type=number]{-moz-appearance:textfield}
 
   <!-- Footer -->
   <div class="mt-auto space-y-4">
-    <button onclick="nav('entry')" class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2">
+    <button onclick="nav('entry')" class="w-full py-3 rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+      style="background:var(--accent);color:#fff">
       <span class="material-symbols-outlined msym text-[18px]">add</span>
-      New Transfer
+      Log Transaction
     </button>
-    <div class="pt-4 border-t border-slate-200 space-y-1">
-      <a class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-indigo-600 transition-colors duration-200 cursor-pointer">
+    <div class="pt-3 border-t border-slate-200 space-y-1">
+      <a class="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer transition-colors duration-200" style="color:var(--ink-3)">
         <span class="material-symbols-outlined msym text-[20px]">help_outline</span>
         <span class="text-sm font-medium">Support</span>
       </a>
-      <a onclick="signOut()" class="flex items-center gap-3 py-2 px-2 rounded-lg text-slate-500 hover:text-error transition-colors duration-200 cursor-pointer">
+      <a onclick="signOut()" class="flex items-center gap-3 py-2 px-2 rounded-lg cursor-pointer transition-colors duration-200" style="color:var(--ink-3)">
         <span class="material-symbols-outlined msym text-[20px]">logout</span>
         <span class="text-sm font-medium">Sign Out</span>
       </a>
+    </div>
+    <!-- Runway mini card -->
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px">
+      <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Next Salary</div>
+      <div id="sb-runway-days" style="font-family:var(--serif);font-style:italic;font-size:26px;line-height:1;color:var(--ink)">—</div>
+      <div style="height:4px;background:var(--line);border-radius:2px;margin-top:10px;overflow:hidden">
+        <div id="sb-runway-bar-fill" style="width:0%;height:100%;background:var(--accent);border-radius:2px;transition:width .7s ease"></div>
+      </div>
+      <div id="sb-runway-dates" style="font-size:10px;color:var(--ink-3);margin-top:6px;display:flex;justify-content:space-between"></div>
     </div>
     <!-- DB Status -->
     <div class="flex items-center gap-2 px-2 pb-1">
@@ -291,11 +348,14 @@ input[type=number]{-moz-appearance:textfield}
     <p id="d-period-sub" class="text-sm text-slate-400 mt-0.5">Loading period…</p>
   </div>
 
+  <!-- RunwayHero -->
+  <div id="d-runway-hero" class="mb-4"></div>
+
   <!-- Hero Row: Health Score + Total Liquidity -->
   <div class="grid grid-cols-2 gap-3 mb-4">
 
     <!-- Health Score -->
-    <div class="bg-[#f5f3ee] p-4 rounded-3xl">
+    <div class="lum-card p-4">
       <div class="flex items-center gap-3">
         <div class="flex-shrink-0 relative w-20 h-20">
           <svg viewBox="0 0 72 72" class="w-full h-full">
@@ -317,7 +377,7 @@ input[type=number]{-moz-appearance:textfield}
     </div>
 
     <!-- Total Liquidity -->
-    <div class="bg-surface-container-lowest p-4 rounded-3xl amb-card flex flex-col justify-between">
+    <div class="lum-card p-4 flex flex-col justify-between">
       <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Liquidity</p>
       <div>
         <p id="d-liquidity" class="text-xl font-bold text-slate-900 font-headline leading-tight mt-2">—</p>
@@ -328,7 +388,7 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 
   <!-- Budget Runway -->
-  <div class="bg-surface-container-lowest p-5 rounded-3xl amb-card mb-4">
+  <div class="lum-card p-5 mb-4">
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm font-bold text-slate-700">Budget runway</h3>
       <span id="d-runway-status" class="text-sm font-bold" style="color:#1D9E75">—</span>
@@ -353,15 +413,15 @@ input[type=number]{-moz-appearance:textfield}
 
   <!-- Summary Chips -->
   <div class="grid grid-cols-3 gap-3 mb-4">
-    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+    <div class="lum-card p-4">
       <p class="text-xs text-slate-400 font-medium mb-1">Income</p>
       <p id="d-inc" class="text-sm font-bold font-headline leading-tight" style="color:#1D9E75">RM 0</p>
     </div>
-    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+    <div class="lum-card p-4">
       <p class="text-xs text-slate-400 font-medium mb-1">Spent</p>
       <p id="d-exp" class="text-sm font-bold text-slate-900 font-headline leading-tight">RM 0</p>
     </div>
-    <div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
+    <div class="lum-card p-4">
       <p class="text-xs text-slate-400 font-medium mb-1">Saved</p>
       <p id="d-sav" class="text-sm font-bold text-primary font-headline leading-tight">RM 0</p>
     </div>
@@ -382,7 +442,7 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 
   <!-- Add Transaction CTA -->
-  <button onclick="nav('entry')" class="w-full py-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 hover:border-slate-300 transition-all">
+  <button onclick="nav('entry')" class="w-full py-4 rounded-2xl font-bold text-sm transition-all" style="background:var(--accent);color:var(--bg)">
     Add transaction
   </button>
 
@@ -708,6 +768,25 @@ input[type=number]{-moz-appearance:textfield}
     <h2 class="text-3xl font-bold tracking-tight font-headline">Settings</h2>
   </div>
   <div class="space-y-5">
+    <!-- Theme -->
+    <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+      <h3 class="text-sm font-bold text-slate-900 font-headline mb-1">Appearance</h3>
+      <p class="text-xs text-slate-400 mb-4">Choose how Lumina looks. Your preference is saved to this device.</p>
+      <div class="flex gap-2">
+        <button class="theme-btn" data-theme="" onclick="setTheme('')"
+          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
+          Minimal
+        </button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"
+          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
+          Dark
+        </button>
+        <button class="theme-btn" data-theme="warm" onclick="setTheme('warm')"
+          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
+          Warm
+        </button>
+      </div>
+    </div>
     <!-- Pay Period -->
     <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
       <div class="flex items-start justify-between mb-5">

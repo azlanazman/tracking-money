@@ -10,6 +10,7 @@ let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
 let DEMO_MODE=false;
 let curScr='dashboard',editId=null;
 let anBar=null,anLine=null,anWaterfall=null,fChart=null;
+let _rhRaf=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
 let eType='expense',eCat=null,sType='expense',sCat=null;
 let ppOvrd={};
@@ -199,7 +200,117 @@ function renderDashboard(){
     alertEl.classList.add('hidden');
   }
 
+  renderRunwayHero(daysLeft,totalDays,inc,exp,sav,budgetTot,daily,p.end);
+  updateSidebarRunway();
   calculateHealthScore();
+}
+
+function renderRunwayHero(daysLeft,daysTotal,inc,exp,sav,budgetTot,dailyActual,periodEnd){
+  if(_rhRaf){cancelAnimationFrame(_rhRaf);_rhRaf=null;}
+  const el=document.getElementById('d-runway-hero');
+  if(!el)return;
+
+  const dailySafe=daysLeft>0?Math.max(0,(budgetTot-exp)/daysLeft):0;
+  const pacing=budgetTot===0||dailyActual<=dailySafe;
+  const pacingDiff=Math.abs(dailySafe-dailyActual);
+  const pct=daysTotal>0?daysLeft/daysTotal:0;
+  const endFmt=new Date(periodEnd).toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+
+  // SVG ring geometry
+  const sz=220,stroke=11,r=(sz-stroke)/2;
+  const circ=2*Math.PI*r;
+  const elapsed=daysTotal-daysLeft;
+
+  // Day tick marks
+  const ticks=Array.from({length:daysTotal},(_,i)=>{
+    const a=(i/daysTotal)*2*Math.PI-Math.PI/2;
+    const past=i<elapsed;
+    const x1=(sz/2+Math.cos(a)*(r-stroke/2-5)).toFixed(1);
+    const y1=(sz/2+Math.sin(a)*(r-stroke/2-5)).toFixed(1);
+    const x2=(sz/2+Math.cos(a)*(r-stroke/2-1)).toFixed(1);
+    const y2=(sz/2+Math.sin(a)*(r-stroke/2-1)).toFixed(1);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${past?'var(--ink-4)':'var(--line)'}" stroke-width="1" stroke-linecap="round" ${past?'opacity="0.55"':''}/>`;
+  }).join('');
+
+  const sentenceHTML=pacing
+    ?`You can spend <span style="color:var(--accent);font-style:italic">${RM(dailySafe)}</span> a day and finish green.`
+    :`Slow down <span style="font-style:italic">${RM(pacingDiff)}</span> a day to recover the period.`;
+
+  el.innerHTML=`
+    <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:36px 40px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 85% 15%,var(--accent-soft),transparent 55%);opacity:0.7"></div>
+      <div style="position:relative;display:flex;align-items:center;gap:40px;flex-wrap:wrap">
+        <div style="position:relative;width:${sz}px;height:${sz}px;flex-shrink:0">
+          <svg width="${sz}" height="${sz}">
+            <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${stroke}"/>
+            ${ticks}
+            <circle id="rh-arc" cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none"
+              stroke="var(--accent)" stroke-width="${stroke}" stroke-linecap="round"
+              stroke-dasharray="${circ.toFixed(2)}"
+              stroke-dashoffset="${circ.toFixed(2)}"
+              transform="rotate(-90 ${sz/2} ${sz/2})"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px">Runway</div>
+            <div id="rh-days" style="font-family:var(--serif);font-style:italic;font-size:96px;line-height:0.85;letter-spacing:-0.04em;color:var(--ink)">0</div>
+            <div style="font-size:12px;color:var(--ink-3);margin-top:10px">days to <span style="color:var(--ink)">${endFmt}</span></div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">${pacing?'On track':'Pacing hot'}</div>
+          <div style="font-family:var(--serif);font-size:28px;line-height:1.25;color:var(--ink);margin-bottom:20px;letter-spacing:-0.01em">${sentenceHTML}</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);padding-top:16px">
+            <div>
+              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Spent</div>
+              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(exp)}</div>
+            </div>
+            <div style="padding-left:16px;border-left:1px solid var(--line)">
+              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Income</div>
+              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(inc)}</div>
+            </div>
+            <div style="padding-left:16px;border-left:1px solid var(--line)">
+              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Saved</div>
+              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(sav)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // Animate arc + count-up
+  const targetOffset=circ*(1-pct);
+  const arcEl=document.getElementById('rh-arc');
+  const daysEl=document.getElementById('rh-days');
+  const duration=1600;
+  let startTs=null;
+  function easeOut(t){return t===1?1:1-Math.pow(2,-10*t);}
+  function tick(ts){
+    if(!startTs)startTs=ts;
+    const progress=Math.min((ts-startTs)/duration,1);
+    const e=easeOut(progress);
+    if(arcEl)arcEl.setAttribute('stroke-dashoffset',(circ-(circ-targetOffset)*e).toFixed(2));
+    if(daysEl)daysEl.textContent=Math.round(daysLeft*e);
+    if(progress<1){_rhRaf=requestAnimationFrame(tick);}else{_rhRaf=null;}
+  }
+  _rhRaf=requestAnimationFrame(tick);
+}
+
+function updateSidebarRunway(){
+  const p=PAY_PERIOD.currentPeriod();
+  const today=new Date(); today.setHours(0,0,0,0);
+  const end=new Date(p.end);
+  const start=new Date(p.start);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+  const total=Math.round((end-start)/86400000)+1;
+  const elapsed=total-daysLeft;
+  const pct=Math.min(100,Math.round((elapsed/total)*100));
+  const fmt=d=>new Date(d).toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+  const daysEl=document.getElementById('sb-runway-days');
+  const barEl=document.getElementById('sb-runway-bar-fill');
+  const datesEl=document.getElementById('sb-runway-dates');
+  if(daysEl) daysEl.textContent=daysLeft+' day'+(daysLeft!==1?'s':'');
+  if(barEl) barEl.style.width=pct+'%';
+  if(datesEl) datesEl.innerHTML=`<span>${fmt(p.start)}</span><span>${fmt(p.end)}</span>`;
 }
 
 function calculateHealthScore(){
@@ -334,19 +445,18 @@ function renderTx(){
   const thresholds=unusualThresholds();
   document.getElementById('tx-list').innerHTML=sl.length?sl.map(t=>{
     const unusual=t.type==='expense'&&thresholds[t.category]>0&&t.amount>2*thresholds[t.category];
+    const arrowSymbol=t.type==='income'?'↑':t.type==='savings'?'→':'↓';
+    const arrowBg=t.type==='income'?'background:var(--accent-soft);color:var(--accent)':'background:var(--line-2);color:var(--ink-3)';
     return`
     <div class="group bg-surface-container-lowest hover:bg-surface-container-low transition-all duration-200 p-4 rounded-2xl flex items-center gap-4">
-      <div class="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600 flex-shrink-0">
-        <span class="material-symbols-outlined msym text-[20px]">${ICONS[t.category]||'payments'}</span>
-      </div>
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0" style="${arrowBg}">${arrowSymbol}</div>
       <div class="flex-1 min-w-0">
         <p class="font-bold text-slate-900 text-sm truncate">${t.category}${t.subcategory?' · '+t.subcategory:''}</p>
         <p class="text-xs text-slate-400 mt-0.5">${fd(t.date)} · ${t.account||''}</p>
         ${t.description?`<p class="text-[11px] text-slate-400 truncate">${t.description}</p>`:''}
       </div>
-      <span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-surface-container text-slate-500 flex-shrink-0">${t.type}</span>
       ${unusual?'<span class="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 flex-shrink-0">Unusual</span>':''}
-      <p class="font-bold text-sm ${TCLR[t.type]} whitespace-nowrap flex-shrink-0">${t.type==='income'?'+':'-'}${RM(t.amount)}</p>
+      <p class="font-bold text-sm ${TCLR[t.type]} whitespace-nowrap flex-shrink-0" style="font-family:var(--mono)">${t.type==='income'?'+':'-'}${RM(t.amount)}</p>
       <div class="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onclick="editTx('${t.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-primary-fixed transition-all" title="Edit"><span class="material-symbols-outlined msym text-[16px]">edit</span></button>
         <button onclick="delTx('${t.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-error hover:bg-error-container transition-all" title="Delete"><span class="material-symbols-outlined msym text-[16px]">delete</span></button>
@@ -1012,7 +1122,28 @@ async function saveSettings(){
 }
 
 // ── Boot ──────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────
+function initTheme(){
+  const saved=localStorage.getItem('lumina-theme')||'';
+  document.body.setAttribute('data-theme',saved);
+  syncThemeBtns(saved);
+}
+function setTheme(val){
+  document.body.setAttribute('data-theme',val);
+  localStorage.setItem('lumina-theme',val);
+  syncThemeBtns(val);
+}
+function syncThemeBtns(val){
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    const active=b.dataset.theme===val;
+    b.style.background=active?'var(--accent)':'transparent';
+    b.style.color=active?'#fff':'var(--ink-2)';
+    b.style.borderColor=active?'var(--accent)':'var(--line)';
+  });
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
+  initTheme();
   initFirebase(); // defined in auth.js, loaded after this file
 });
