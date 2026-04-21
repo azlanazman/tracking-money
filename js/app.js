@@ -9,7 +9,7 @@
 let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
 let DEMO_MODE=false;
 let curScr='dashboard',editId=null;
-let anBar=null,anLine=null,anWaterfall=null,fChart=null;
+let anBar=null,anLine=null,anWaterfall=null,fChart=null,_whereChart=null;
 let _rhRaf=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
 let eType='expense',eCat=null,sType='expense',sCat=null;
@@ -203,6 +203,8 @@ function renderDashboard(){
   renderRunwayHero(daysLeft,totalDays,inc,exp,sav,budgetTot,daily,p.end);
   updateSidebarRunway();
   calculateHealthScore();
+  renderSpendRhythm();
+  renderWhereItWent();
 }
 
 function renderRunwayHero(daysLeft,daysTotal,inc,exp,sav,budgetTot,dailyActual,periodEnd){
@@ -416,6 +418,184 @@ function calculateHealthScore(){
       href.set({periods}).catch(()=>{});
     }).catch(()=>{});
   }
+}
+
+// ── Spend Rhythm ─────────────────────────────────────────────────
+function renderSpendRhythm(){
+  const el=document.getElementById('d-spend-rhythm');
+  if(!el)return;
+
+  // Monday of the current week
+  const today=new Date();today.setHours(0,0,0,0);
+  const dow=today.getDay();
+  const mondayOffset=dow===0?6:dow-1;
+  const w4Mon=new Date(today);w4Mon.setDate(today.getDate()-mondayOffset);
+  const w1Mon=new Date(w4Mon);w1Mon.setDate(w4Mon.getDate()-21);
+
+  // Daily spend lookup
+  const byDay={};
+  txs.filter(t=>t.type==='expense'&&t.date).forEach(t=>{byDay[t.date]=(byDay[t.date]||0)+t.amount;});
+
+  // 4×7 matrix: rows=weeks (W1 oldest), cols=Mon–Sun
+  const weeks=[];
+  for(let w=0;w<4;w++){
+    const row=[];
+    for(let d=0;d<7;d++){
+      const dt=new Date(w1Mon);dt.setDate(w1Mon.getDate()+w*7+d);
+      const ymd=dt.toISOString().slice(0,10);
+      row.push({ymd,amt:dt>today?null:(byDay[ymd]||0)});
+    }
+    weeks.push(row);
+  }
+
+  // 4-week daily average (non-zero, non-future)
+  const nonZero=weeks.flat().filter(c=>c.amt!==null&&c.amt>0).map(c=>c.amt);
+  const avg4=nonZero.length?nonZero.reduce((s,v)=>s+v,0)/nonZero.length:0;
+
+  // Day-of-week averages for pattern label
+  const dowAvgs=Array.from({length:7},(_,d)=>{
+    const vals=weeks.map(w=>w[d]).filter(c=>c.amt!==null&&c.amt>0).map(c=>c.amt);
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:0;
+  });
+  const activeDowAvgs=dowAvgs.filter(v=>v>0);
+  const overallMean=activeDowAvgs.length?activeDowAvgs.reduce((s,v)=>s+v,0)/activeDowAvgs.length:0;
+  let patternLabel=null;
+  if(overallMean>0){
+    const ranked=[...dowAvgs.entries()].sort((a,b)=>b[1]-a[1]);
+    const [top,topV]=ranked[0];
+    const [sec]=ranked[1]||[0];
+    const NAMES=['Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays','Sundays'];
+    if(topV>1.5*overallMean){
+      patternLabel=((top===5||top===6)&&(sec===5||sec===6))
+        ?'Weekends run hot':NAMES[top]+' run hot';
+    }
+  }
+
+  // Cell colour (opacity-based so it works across light/dark/warm themes)
+  function cellBg(amt){
+    if(amt===null||amt===0)return'background:var(--bg-2);color:var(--ink-4)';
+    if(avg4===0||amt<=avg4*0.75)return'background:rgba(201,245,96,0.12);color:var(--ink-3)';
+    if(amt<=avg4*1.5)return'background:rgba(201,245,96,0.55);color:#1A2810';
+    return'background:rgba(245,161,95,0.70);color:#2A1500';
+  }
+
+  const fmtAvg='RM '+Math.round(avg4);
+  const DAY_H=['M','T','W','T','F','S','S'];
+
+  el.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-family:var(--serif);font-size:20px;color:var(--ink)">Spend rhythm</div>
+        <div style="font-size:11px;color:var(--ink-3);font-family:var(--mono);background:var(--bg-2);padding:4px 10px;border-radius:var(--r-sm)">4-wk avg ${fmtAvg}</div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-3);margin-bottom:16px">Last 4 weeks${patternLabel?' · <span style="color:var(--ink-2)">'+patternLabel+'</span>':''}</div>
+      <div style="display:grid;grid-template-columns:24px repeat(7,1fr);gap:4px;align-items:center">
+        <div></div>
+        ${DAY_H.map(d=>`<div style="text-align:center;font-size:10px;color:var(--ink-4);font-weight:600;padding-bottom:2px">${d}</div>`).join('')}
+        ${weeks.map((row,wi)=>`
+          <div style="font-size:10px;color:var(--ink-4);font-weight:600;padding-right:4px">W${wi+1}</div>
+          ${row.map(c=>`<div style="${cellBg(c.amt)};border-radius:8px;padding:9px 3px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:500;min-height:36px;display:flex;align-items:center;justify-content:center">${c.amt===null||c.amt===0?'–':Math.round(c.amt)}</div>`).join('')}
+        `).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <div style="font-size:10px;color:var(--ink-4)">Avg daily spend in RM</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-4)">
+          LOW
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line)"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:rgba(201,245,96,0.12)"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:rgba(201,245,96,0.55)"></div>
+          <div style="width:12px;height:12px;border-radius:3px;background:rgba(245,161,95,0.70)"></div>
+          HIGH
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Where It Went ────────────────────────────────────────────────
+// Colour palette matches the dark-theme mockup: lime → gray → orange → dark grays
+const WHERE_PAL=['#C9F560','#8A847A','#F5A15F','#56524B','#3A3835','#2A2825'];
+
+function renderWhereItWent(){
+  const el=document.getElementById('d-where-it-went');
+  if(!el)return;
+
+  const p=PAY_PERIOD.currentPeriod();
+  const currCats={};
+  PAY_PERIOD.filterToPeriod(txs,p).filter(t=>t.type==='expense').forEach(t=>{
+    currCats[t.category]=(currCats[t.category]||0)+t.amount;
+  });
+
+  const prevP=PAY_PERIOD.lastNPeriods(2)[1];
+  const prevCats={};
+  if(prevP){
+    PAY_PERIOD.filterToPeriod(txs,prevP).filter(t=>t.type==='expense').forEach(t=>{
+      prevCats[t.category]=(prevCats[t.category]||0)+t.amount;
+    });
+  }
+
+  const sorted=Object.entries(currCats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!sorted.length){el.innerHTML='';return;}
+
+  const total=sorted.reduce((s,[,v])=>s+v,0);
+  const fmtTotal=total>=1000?'RM '+(total/1000).toFixed(1)+'k':RM(total);
+
+  el.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px">
+        <div style="font-family:var(--serif);font-size:20px;color:var(--ink)">Where it went</div>
+        <div style="font-size:11px;color:var(--ink-3)">Period breakdown · vs last</div>
+      </div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <div style="position:relative;flex-shrink:0;width:180px;height:180px">
+          <canvas id="where-chart" width="180" height="180"></canvas>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center">
+            <div style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px">Total</div>
+            <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.02em">${fmtTotal}</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+          ${sorted.map(([cat,amt],i)=>{
+            const prev=prevCats[cat];
+            const delta=prev?Math.round((amt-prev)/prev*100):null;
+            const shortCat=cat.length>11?cat.slice(0,11)+'…':cat;
+            const deltaHtml=delta===null
+              ?`<span style="color:var(--ink-4);font-size:12px;font-family:var(--mono)">—</span>`
+              :delta>0
+                ?`<span style="color:var(--warn);font-size:13px;font-family:var(--mono);font-weight:600">+${delta}%</span>`
+                :`<span style="color:var(--accent);font-size:13px;font-family:var(--mono);font-weight:600">${delta}%</span>`;
+            return`<div style="display:flex;align-items:center;gap:8px">
+              <div style="width:10px;height:10px;border-radius:3px;flex-shrink:0;background:${WHERE_PAL[i]}"></div>
+              <span style="flex:1;font-size:13px;color:var(--ink-2)">${shortCat}</span>
+              ${deltaHtml}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  if(_whereChart){_whereChart.destroy();_whereChart=null;}
+  const surfaceBg=getComputedStyle(document.body).getPropertyValue('--surface').trim()||'#ffffff';
+  const ctx=document.getElementById('where-chart').getContext('2d');
+  _whereChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:sorted.map(([c])=>c),
+      datasets:[{
+        data:sorted.map(([,v])=>v),
+        backgroundColor:WHERE_PAL.slice(0,sorted.length),
+        borderWidth:2,
+        borderColor:surfaceBg,
+        hoverOffset:4
+      }]
+    },
+    options:{
+      cutout:'68%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{title:()=>'',label:c=>' '+RM(c.raw)}}
+      }
+    }
+  });
 }
 
 // ── Transactions ────────────────────────────────────────────────

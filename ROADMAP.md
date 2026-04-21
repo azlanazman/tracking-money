@@ -1,6 +1,6 @@
 # Lumina — Commercialisation Roadmap
 
-**Version**: 1.1 — April 2026  
+**Version**: 1.2 — April 2026 (Phase R added — Home redesign + nav restructure)  
 **Horizon**: 6 months to launch-ready  
 **Token allocation**: 60% of plan usage for this project
 
@@ -96,6 +96,288 @@ This means **one feature per session**, not one phase per session. The plan is s
 
 ---
 
+## Phase R — Home Tab Redesign
+
+**Duration**: Runs in parallel with / immediately after Phase 2  
+**Goal**: Deliver the redesigned Home tab and nav restructure. Each session is a self-contained component. Build in the order below — R.7 assembles everything last.
+
+### Confirmed design decisions
+- **Activity** = redesigned Transactions screen. Columns: Merchant (+ subtitle/memo), Category, Account, Date (with time), Amount. Type filter tabs: All | Expenses | Income | Savings. "+ Filter" button. Quick Log bar at bottom.
+- **Insights** = single screen with tab switcher: **Spend** (current Analytics) | **Budgets** (current Budget Monitor) | **Forecast** (current Forecast).
+- **Log Transaction full form** = moves under Settings nav as a dedicated section/tab. The `+ Log transaction ⌘N` sidebar CTA stays and routes there.
+- **Coach card** = always visible, never dismissible. Priority 6 (savings lagging) included.
+- **Quick Log bar** = thin wrapper around `submitEntry()`, no new Firestore write path.
+
+### Build order (locked)
+
+```
+R.2 → R.1 → R.4 → R.3 → R.5 → R.6 → R.7
+```
+
+| # | Session Goal | Status | Files to bring | Session prompt |
+|---|---|---|---|---|
+| R.2 | Where It Went — period donut + vs-last deltas | ✅ Done | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+| R.1 | Spend Rhythm — day-of-week heatmap + auto pattern label | ✅ Done | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+| R.4 | Categories card on Home — budget progress mini-panel | ⬜ Not started | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+| R.3 | Coach card — advisory message rule engine | ⬜ Not started | `js/app.js` (paste `renderDashboard` + `calculateHealthScore` functions) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+| R.5 | Quick Log bar — persistent bottom entry | ⬜ Not started | `js/app.js` (paste `submitEntry` function + state globals block) + `index.html` (paste `<main>` closing section) | See full prompt below |
+| R.6 | Navigation restructure — Home / Activity / Insights / Settings | ⬜ Not started | `index.html` (paste full `<aside>` sidebar + all screen `<div id="sc-*">` wrappers) + `js/app.js` (paste `nav()` function + `initDB()` function) | See full prompt below |
+| R.7 | Home tab final assembly | ⬜ Not started | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+
+---
+
+### R.2 — Where It Went (session prompt)
+
+> "In js/app.js, add a `renderWhereItWent()` function. In index.html, add a `<div id='d-where-it-went'>` placeholder inside `sc-dashboard` (exact position: after the Financial Health row, before Spend Rhythm).
+>
+> **Logic** (zero extra Firestore reads — all from `txs[]`):
+> - Current period: `PAY_PERIOD.filterToPeriod(txs, PAY_PERIOD.currentPeriod())`, aggregate expense by category → `{Food: 842, Transit: 318, ...}`
+> - Previous period: `PAY_PERIOD.lastNPeriods(2)[1]`, same aggregation → `{Food: 751, Transit: 345, ...}`
+> - For each category in current period: `delta = (curr - prev) / prev * 100`. If no prev data, delta = null.
+>
+> **Render**:
+> - Card: `background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px`
+> - Header row: left — 'Where it went' (`font-family:var(--serif);font-size:20px`), right — 'Period breakdown · vs last' (`font-size:11px;color:var(--ink-3)`)
+> - Two-column layout: left — Chart.js `doughnut` chart (200×200, `cutout:'72%'`, no legend, no tooltip title, value tooltip shows `RM X`); right — legend rows
+> - Donut centre: 'TOTAL' label + `RM X.Xk` amount (inject via `afterDraw` plugin or absolute-positioned div overlay)
+> - Legend rows (one per category, sorted by spend desc, max 6): category name, delta badge. Delta badge: if positive → `color:var(--warn)` text `+X%`; if negative → `color:var(--accent)` text `-X%`; if null → `color:var(--ink-4)` text `—`. No background on the badge — inline text only.
+> - Donut segment colours: use `PAL` array already in app.js
+> - Store the chart instance in a module-level `_whereChart` variable; destroy it before recreating (same pattern as `anBar`/`anLine`)
+> - Call `renderWhereItWent()` at the end of `renderDashboard()`, after the existing render calls
+> - Do not touch any other screen or function."
+
+---
+
+### R.1 — Spend Rhythm (session prompt)
+
+> "In js/app.js, add a `renderSpendRhythm()` function. In index.html, add a `<div id='d-spend-rhythm'>` placeholder inside `sc-dashboard` (after Where It Went).
+>
+> **Data** (zero extra Firestore reads):
+> - Get the last 28 days of expense transactions from `txs[]` by filtering `t.date >= 28daysAgo && t.type === 'expense'`
+> - Build a 4×7 matrix: rows = W1–W4 (oldest first), columns = M T W T F S S
+> - For each cell, sum all expense amounts on that calendar date. Use `–` and amount 0 for days with no transactions.
+> - 4-week daily average: total of all cell amounts / count of cells with amount > 0
+> - Day-of-week averages: for each column (M–S), average of the 4 weekly values (ignore 0-spend days)
+> - Auto-pattern label: find the column with the highest day-of-week average. If that average is > 1.5× the overall weekly mean: label = `[Dayname]s run hot` (e.g. "Fridays run hot"). If the top 2 columns are Sat+Sun: label = "Weekends run hot". If no column exceeds 1.5×: label = null, subtitle shows "Last 4 weeks" only.
+>
+> **Render**:
+> - Card: same surface/border/radius/padding as Where It Went
+> - Header row: left — 'Spend rhythm' (serif 20px), right — '4-wk avg RM X' (ink-3, 12px, mono)
+> - Subtitle: left — 'Last 4 weeks[· {patternLabel}]' (ink-3, 11px) — omit the label part if null
+> - Grid: CSS grid `grid-template-columns: auto repeat(7, 1fr)`, gap 4px. Row labels W1–W4 in ink-4 at 10px. Column headers M T W T F S S in ink-3 at 10px, centered.
+> - Cell appearance: `border-radius:8px; padding:10px 4px; text-align:center; font-family:var(--mono); font-size:12px`. Three tiers based on amount vs 4-week daily avg:
+>   - Zero/no spend: `background:var(--bg-2); color:var(--ink-4)` — show `–`
+>   - Low (≤ 0.75× avg): `background:rgba(201,245,96,0.08); color:var(--ink-3)`
+>   - Mid (0.75×–1.5× avg): `background:rgba(201,245,96,0.25); color:var(--ink)`
+>   - High (> 1.5× avg): `background:rgba(245,161,95,0.35); color:var(--ink)`
+> - Legend row below grid: 'Avg daily spend in RM' left; 'LOW [dark swatch] [lime swatch] [orange swatch] HIGH' right — swatches are 10×10px divs with the same background colours above
+> - Call `renderSpendRhythm()` at end of `renderDashboard()`. Do not touch any other screen."
+
+---
+
+### R.4 — Categories Card on Home (session prompt)
+
+> "In js/app.js, add a `renderHomeCats()` function. In index.html, add a `<div id='d-home-cats'>` placeholder inside `sc-dashboard` in the right column of the second row (alongside Financial Health).
+>
+> **Logic** (no new Firestore reads — uses `budgets{}` and current-period `txs[]`):
+> - Get all expense categories that have a budget set (`budgets[cat] && budgets[cat].amount > 0`)
+> - For each: `spent = sum of current-period expenses for that category`, `limit = budgets[cat].amount`
+> - Progress bar fill %: `Math.min(spent / limit * 100, 100)`
+> - Bar colour: `var(--accent)` if `spent/limit < 0.85`, `var(--warn)` if `spent/limit >= 0.85`
+> - Sort by `spent/limit` descending (most consumed first), show max 5 categories
+>
+> **Render**:
+> - Card: same surface/border/radius tokens
+> - Header row: left — 'Categories' (serif 18px), right — 'Adjust →' (ink-3, 12px, `onclick="nav('budgets')"`)
+> - Category rows: category name (ink, 13px, font-weight 500), right-aligned `RM X / RM Y` (mono, 11px, ink-3). Below: progress bar full width, height 3px, background var(--line), inner fill var(--accent) or var(--warn), border-radius 99px.
+> - Row gap: 14px. No budget set → hide the card entirely (set display:none on the wrapper)
+> - Call `renderHomeCats()` at end of `renderDashboard()`. Do not touch any other screen."
+
+---
+
+### R.3 — Coach Card (session prompt)
+
+> "In js/app.js, add a `renderCoach()` function. In index.html, add a `<div id='d-coach'>` placeholder inside `sc-dashboard` in the right column of the second row (below Categories card).
+>
+> **Rule engine** — evaluate in priority order, first match wins. All values computed from existing variables already available inside `renderDashboard` scope (`exp`, `inc`, `sav`, `budgetTot`, `daysLeft`, `daily`, `projected`, `dailySafe`):
+>
+> ```
+> topCat = expense category with highest spend in current period (from inP)
+> savGoal = goals.reduce((s,g) => s + (g.monthly||0), 0)
+> savAmt = current period savings total
+>
+> Rule 1: exp > budgetTot && budgetTot > 0
+>   → headline: "You've gone {RM(exp-budgetTot)} over budget."
+>   → sub: "Cut {RM(Math.max(0,(exp-budgetTot)/Math.max(daysLeft,1)))} a day to recover."
+>   → dot: var(--warn)
+>
+> Rule 2: projected > budgetTot && budgetTot > 0 && daysLeft > 3
+>   → headline: "At this rate you'll exceed budget by {RM(projected-budgetTot)}."
+>   → sub: "Ease up on {topCat} this week."
+>   → dot: var(--warn)
+>
+> Rule 3: daily > dailySafe * 1.1 && dailySafe > 0
+>   → headline: "You're spending {RM(daily)}/day. Safe limit is {RM(dailySafe)}."
+>   → sub: "Watch {topCat} this week."
+>   → dot: var(--warn)
+>
+> Rule 4: daily <= dailySafe && daysLeft > 5 && budgetTot > 0
+>   → headline: "You're pacing {RM(dailySafe-daily)} under your daily safe-spend."
+>   → sub: "Keep this rhythm and you'll finish +{RM((dailySafe-daily)*daysLeft)}."
+>   → dot: var(--accent)
+>
+> Rule 5: daysLeft <= 3 && (budgetTot === 0 || exp <= budgetTot)
+>   → headline: "{RM(Math.max(0,budgetTot-exp))} left. {daysLeft} day{daysLeft!==1?'s':''} to payday."
+>   → sub: "You're going to land this one."
+>   → dot: var(--accent)
+>
+> Rule 6: savGoal > 0 && savAmt < savGoal * 0.5 && daysLeft > 10
+>   → headline: "Savings at {Math.round(savAmt/savGoal*100)}% of your goal."
+>   → sub: "{RM(savGoal-savAmt)} still needed this period."
+>   → dot: var(--ink-3)
+>
+> Rule 7 (fallback):
+>   → headline: "Period day {elapsed} of {totalDays}."
+>   → sub: "{RM(exp)} spent so far."
+>   → dot: var(--ink-3)
+> ```
+>
+> **Render**:
+> - Card: `background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px`. In dark theme (`data-theme='dark'`), use `background:#F4F1EA;color:#14120F` to create the high-contrast cream break (detect via `document.body.getAttribute('data-theme')==='dark'`).
+> - Header: dot (8px circle, `background:{ruleColour}`), 'COACH' label (9px, letter-spacing 0.18em, uppercase, ink-3)
+> - Headline: serif 22px, line-height 1.3, ink (or #14120F in dark)
+> - Sub: 13px, ink-3 (or rgba(20,18,15,0.55) in dark), margin-top 8px
+> - Always visible — no dismiss logic
+> - Card hides only if `isLoading` — show a `–` placeholder in that case
+> - Call `renderCoach()` at end of `renderDashboard()`. Do not touch any other screen."
+
+---
+
+### R.5 — Quick Log Bar (session prompt)
+
+> "In index.html, add a sticky quick-log bar at the bottom of `<main>` — outside and below all screen divs, always visible regardless of which screen is active.
+>
+> **HTML** (inside `<main>`, after the last `sc-*` div):
+> ```html
+> <div id='quick-log-bar' style='position:sticky;bottom:0;z-index:50;padding:12px 24px;background:var(--bg);border-top:1px solid var(--line)'>
+>   <div style='display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:12px 20px;max-width:900px;margin:0 auto'>
+>     <span style='font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-3);flex-shrink:0'>+ Quick log</span>
+>     <span style='font-size:13px;color:var(--ink-3);flex-shrink:0;font-family:var(--mono)'>RM</span>
+>     <input id='ql-amt' type='number' min='0' step='0.01' placeholder='0.00' style='width:90px;border:none;outline:none;background:transparent;font-family:var(--mono);font-size:16px;color:var(--ink)'>
+>     <select id='ql-cat' style='border:none;outline:none;background:transparent;font-size:13px;color:var(--ink);flex:1;cursor:pointer'></select>
+>     <input id='ql-memo' type='text' placeholder='Memo (optional)' style='flex:2;border:none;outline:none;background:transparent;font-size:13px;color:var(--ink-3)'>
+>     <button id='ql-btn' onclick='quickLog()' style='background:var(--accent);color:var(--bg);border:none;border-radius:var(--r-sm);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;white-space:nowrap'>Log ↵</button>
+>   </div>
+> </div>
+> ```
+>
+> **In js/app.js**, add:
+> - A module-level `let lastUsedCat = null;` variable
+> - A `refreshQuickLog()` function that populates `#ql-cat` with expense categories from `CATS.expense`, preserving the selected value if it matches a valid category. If `lastUsedCat` is set and valid, select it; otherwise select the first category. Call `refreshQuickLog()` inside `renderDashboard()` and whenever settings snapshot fires (add it to the existing `refreshEntry()` call in the settings snapshot handler).
+> - A `quickLog()` function:
+>   ```
+>   const amt = parseFloat(document.getElementById('ql-amt').value);
+>   if (!amt || amt <= 0) { document.getElementById('ql-amt').focus(); return; }
+>   if (DEMO_MODE) { showDemoToast(); return; }
+>   const cat = document.getElementById('ql-cat').value;
+>   const memo = document.getElementById('ql-memo').value.trim();
+>   lastUsedCat = cat;
+>   const tx = {
+>     type: 'expense',
+>     amount: amt,
+>     category: cat,
+>     subcategory: '',
+>     account: ACCTS[0] || '',
+>     date: new Date().toISOString().slice(0, 10),
+>     description: memo,
+>     createdAt: firebase.firestore.FieldValue.serverTimestamp()
+>   };
+>   uref.collection('transactions').add(tx).then(() => {
+>     document.getElementById('ql-amt').value = '';
+>     document.getElementById('ql-memo').value = '';
+>   }).catch(err => console.error(err));
+>   ```
+> - Add `keydown` listener on `#ql-amt`: if Enter key, call `quickLog()`
+> - Do not modify `submitEntry()` or any other function. Do not touch any screen divs."
+
+---
+
+### R.6 — Navigation Restructure (session prompt)
+
+> "Restructure the app navigation in index.html and js/app.js from 6 items to 4: **Home, Activity, Insights, Settings**.
+>
+> **Sidebar changes** (index.html `<aside>` block):
+> - Replace the 6 nav items with exactly 4. Keep all existing icon/label/onclick patterns:
+>   - `onclick="nav('dashboard')"` → `onclick="nav('home')"`, id `snav-home`, label 'Home', icon `home`
+>   - `onclick="nav('transactions')"` → `onclick="nav('activity')"`, id `snav-activity`, label 'Activity', icon `show_chart`
+>   - New: `onclick="nav('insights')"`, id `snav-insights`, label 'Insights', icon `bar_chart`
+>   - `onclick="nav('settings')"` stays, id `snav-settings`, label 'Settings', icon `settings`
+>   - Remove nav items for: analytics, budgets, forecast, entry
+>   - Keep `+ Log transaction ⌘N` CTA button — change its onclick to `nav('settings')` (full form lives there now)
+>
+> **Screen ID renames** (index.html):
+> - Rename `id="sc-dashboard"` → `id="sc-home"`
+> - Rename `id="sc-transactions"` → `id="sc-activity"`
+> - Keep `id="sc-analytics"`, `id="sc-budgets"`, `id="sc-forecast"`, `id="sc-entry"`, `id="sc-settings"` — their content is unchanged for now; they become sub-screens managed by the Insights and Settings tabs in R.7
+>
+> **New Insights screen** (index.html — add after sc-activity):
+> ```html
+> <div id='sc-insights' class='screen'>
+>   <div style='display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:24px'>
+>     <button id='ins-tab-spend' onclick="switchInsightsTab('spend')" style='...tab style...'>Spend</button>
+>     <button id='ins-tab-budgets' onclick="switchInsightsTab('budgets')" style='...'>Budgets</button>
+>     <button id='ins-tab-forecast' onclick="switchInsightsTab('forecast')" style='...'>Forecast</button>
+>   </div>
+>   <div id='ins-spend' class='ins-pane'></div>
+>   <div id='ins-budgets' class='ins-pane' style='display:none'></div>
+>   <div id='ins-forecast' class='ins-pane' style='display:none'></div>
+> </div>
+> ```
+> Tab style (active): `border-bottom:2px solid var(--accent);color:var(--ink);font-weight:600`. Tab style (inactive): `border-bottom:2px solid transparent;color:var(--ink-3)`. Common: `padding:10px 20px;font-size:14px;background:none;border-top:none;border-left:none;border-right:none;cursor:pointer`.
+>
+> **In js/app.js**:
+> - Rename every internal call to `nav('dashboard')` → `nav('home')`, `nav('transactions')` → `nav('activity')`, `nav('analytics')` → `nav('insights')`, `nav('budgets')` → `nav('insights')`, `nav('forecast')` → `nav('insights')`
+> - In `nav()` function: add cases `'home'` (calls `renderDashboard()`), `'activity'` (calls `renderTx()`), `'insights'` (calls `switchInsightsTab` with the last active tab, defaulting to 'spend')
+> - Remove cases for `'dashboard'`, `'transactions'`, `'analytics'`, `'budgets'`, `'forecast'` (replaced above)
+> - Add `let insTab = 'spend';` module-level variable
+> - Add `switchInsightsTab(tab)` function: sets `insTab = tab`, hides/shows `.ins-pane` divs, updates tab button styles, then calls the appropriate render function: spend → move `sc-analytics` content into `#ins-spend` and call `applyAnalyticsPeriod()`; budgets → move `sc-budgets` content into `#ins-budgets` and call `renderBudgets()`; forecast → move `sc-forecast` content into `#ins-forecast` and call `renderForecast()`
+>   - Actually: instead of moving DOM nodes (fragile), just re-render into the panes. Add `<div id='ins-spend'>` and render Analytics HTML directly into it inside `switchInsightsTab`. Same for budgets and forecast.
+>   - Simpler approach: keep `sc-analytics`, `sc-budgets`, `sc-forecast` as hidden divs and use CSS `display:contents` or just show/hide them inside their respective `ins-pane` wrappers.
+>   - **Simplest correct approach**: each `ins-pane` div IS the old screen div — just move `id='sc-analytics'` → `id='ins-spend'`, `id='sc-budgets'` → `id='ins-budgets'`, `id='sc-forecast'` → `id='ins-forecast'`. Update all render calls accordingly.
+> - Add a Settings sub-section for Log Transaction (see below)
+> - Update `initDB()` call to use `nav('home')` as the default on load
+> - Update all `snav-*` alert badge logic (existing budget alert badge) to point to `snav-insights`
+>
+> **Settings screen — Log Transaction section**:
+> - In `sc-settings`, add a new 'Log Transaction' section at the top (before the Theme section). This is the existing `sc-entry` form content — move the form HTML from `sc-entry` into a collapsible section inside settings. Keep all existing IDs (`e-amt`, `e-date`, `e-cat-grid`, `e-acct`, `e-memo`, `e-submit`, `e-cancel`, `tb-expense`, `tb-income`, `tb-savings`) unchanged so all existing `submitEntry`, `setType`, `refreshEntry` logic works without modification.
+> - `sc-entry` div can be removed from index.html after the move.
+>
+> Do not change any render function logic — only routing, IDs, and nav structure."
+
+---
+
+### R.7 — Home Tab Final Assembly (session prompt)
+
+> "Assemble the final Home tab layout in index.html `sc-home` div and js/app.js `renderDashboard()`.
+>
+> **Target layout** (top to bottom):
+> 1. Greeting header (already exists — `d-greeting`, `d-period-sub`)
+> 2. RunwayHero full-width card (already exists — `d-runway-hero`)
+> 3. Two-column row: left 60% — Financial Health card (already exists — health score ring, sub-signals grid); right 40% — Coach card (`d-coach`, built in R.3)
+> 4. Two-column row: left 60% — Spend Rhythm (`d-spend-rhythm`, built in R.1); right 40% — Where It Went (`d-where-it-went`, built in R.2)
+> 5. Categories card full-width (`d-home-cats`, built in R.4)
+> 6. Remove from Home: the old summary chips row (`d-inc`/`d-exp`/`d-sav`), the liquidity card, the budget runway bars card, the anomaly alert card — these are either replaced by the new components or moved to Insights/Activity
+>
+> **Grid CSS**: use `display:grid;grid-template-columns:3fr 2fr;gap:20px` for rows 3 and 4. On viewport < 1024px, collapse to single column (`@media (max-width:1023px){...grid-template-columns:1fr}`).
+>
+> **Anomaly alert**: move it to the Activity screen (sc-activity) as a dismissible banner above the transaction list, not the Home screen.
+>
+> **Render call order** in `renderDashboard()`: RunwayHero → HealthScore → Coach → SpendRhythm → WhereItWent → HomeCats → SidebarRunway. Remove calls to the old cards being retired.
+>
+> Do not touch the Insights screen, Activity screen, Settings screen, or any render function other than `renderDashboard`."
+
+---
+
 ## Phase 3 — Personalisation
 
 **Duration**: Week 10–12  
@@ -105,7 +387,7 @@ This means **one feature per session**, not one phase per session. The plan is s
 |---|---|---|---|---|
 | 3.1 | Personal spending playbook | ⬜ Not started | `index.html` (paste `sc-settings` div + `renderSettings` + `renderBudgets` budget progress section) | "In index.html, add a Playbook section to the `sc-settings` screen. For each expense category, users can write a personal note — their own reminder of what to check when that category goes high. Store in Firestore under `users/{uid}/settings/playbook` as a map of category to note text. On the budgets screen, when a category shows warning or over-budget status, display its playbook note as a soft tip below the progress bar." |
 | 3.2 | Habit detection — unbudgeted recurring expenses | ⬜ Not started | `index.html` (paste `sc-forecast` div + `renderForecast` function) | "In index.html, add a 'Recurring but Unbudgeted' section to the `sc-forecast` screen. Scan the `txs` array across the last 3+ pay periods using `PAY_PERIOD.lastNPeriods` to find expense categories that appear in every period but have no budget set in `budgets{}`. List them with their average monthly amount and an 'Add to budget' button that switches to the budgets screen and scrolls to the budget input for that category. Show this section only if at least one such category exists." |
-| 3.3 | Daily spending heatmap | ⬜ Not started | `index.html` (paste `sc-analytics` div + `renderAnalytics` function) | "In index.html, add a Heatmap tab to the `sc-analytics` screen showing a calendar grid of the last 3 months. Each day cell is coloured by total spend — white for zero, light indigo for low, through to dark indigo for high spend days. Clicking a day shows a small tooltip listing transactions for that day. Build in plain HTML/CSS/JS using a CSS grid of divs — no external library." |
+| 3.3 | Analytics heatmap — 3-month calendar grid | ⬜ Not started | `index.html` (paste `sc-analytics` div + `renderAnalytics` function) | "In index.html, add a Heatmap tab to the `sc-analytics` screen showing a calendar grid of the last 3 months. Each day cell is coloured by total spend — white for zero, light indigo for low, through to dark indigo for high spend days. Clicking a day shows a small tooltip listing transactions for that day. Build in plain HTML/CSS/JS using a CSS grid of divs — no external library." Note: this is different from R.1 (Spend Rhythm). R.1 is a 4-week rolling day-of-week grid on Home. This is a 3-month calendar on Analytics. Both can coexist. |
 | 3.4 | 12-month compliance history | ⬜ Not started | `index.html` (paste `sc-forecast` div + `renderForecast` function) | "In index.html, add a Budget Track Record section to the `sc-forecast` screen showing the last 12 pay periods as a grid of month badges. Each badge is green if total spending stayed within total budget, red if it went over, grey if no budget was set. Calculate from `txs` and `budgets`. Store the compliance result for each period in Firestore under `users/{uid}/health/history` so the record persists even after transactions are deleted." |
 
 ---
@@ -191,9 +473,10 @@ This means **one feature per session**, not one phase per session. The plan is s
 | Week | Phase | Milestone |
 |---|---|---|
 | 1–2 | Foundation | ✅ Done — SPA built, auth live, data user-scoped |
-| 3–5 | Early Warnings | Anomaly flags, breach alerts, alert badge |
-| 6–9 | Understanding | Health score, waterfall, annotations, reviews |
-| 10–12 | Personalisation | Playbook, habit detection, heatmap, compliance history |
-| 13–16 | Polish | Onboarding, deferred Chart.js, PWA, offline handling |
-| 17–20 | Commercialisation | Landing page, free tier limits, admin view, PDF export |
-| 21+ | Launch | Go/no-go checklist complete — start telling people |
+| 3–5 | Early Warnings | ✅ Done — Anomaly flags, breach alerts, alert badge |
+| 6–9 | Understanding | ✅ Done (2.1–2.3, 2.5–2.7) — Health score, waterfall, annotations, RunwayHero, design tokens |
+| Now | Home Redesign (R) | Spend Rhythm, Where It Went, Coach card, Categories on Home, Quick Log bar, Nav restructure |
+| +4wk | Personalisation (3) | Playbook, habit detection, Analytics heatmap, compliance history |
+| +8wk | Polish (4) | Onboarding, deferred Chart.js, PWA, offline handling, remaining sidebar/surface polish |
+| +12wk | Commercialisation (5) | Landing page, free tier limits, admin view, PDF export |
+| +16wk | Launch | Go/no-go checklist complete — start telling people |

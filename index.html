@@ -340,7 +340,7 @@ input[type=number]{-moz-appearance:textfield}
 <main id="main" class="ml-64 pt-16 min-h-screen pb-12">
 
 <!-- ── DASHBOARD ── -->
-<div id="sc-dashboard" class="screen active p-6 lg:p-8 max-w-2xl slide-in">
+<div id="sc-dashboard" class="screen active p-6 lg:p-8 max-w-5xl slide-in">
 
   <!-- Greeting -->
   <div class="mb-6">
@@ -439,6 +439,12 @@ input[type=number]{-moz-appearance:textfield}
         <button onclick="nav('transactions')" class="text-xs font-bold text-amber-800 hover:underline">Review transaction →</button>
       </div>
     </div>
+  </div>
+
+  <!-- Bottom row: Spend Rhythm (left) + Where It Went (right) -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+    <div id="d-spend-rhythm" class="lg:col-span-3"></div>
+    <div id="d-where-it-went" class="lg:col-span-2"></div>
   </div>
 
   <!-- Add Transaction CTA -->
