@@ -8,7 +8,9 @@
 // ── State ──────────────────────────────────────────────────────
 let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
 let DEMO_MODE=false;
-let curScr='dashboard',editId=null;
+let curScr='home',editId=null;
+let lastUsedCat=null;
+let insTab='spend';
 let anBar=null,anLine=null,anWaterfall=null,fChart=null,_whereChart=null;
 let _rhRaf=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -59,15 +61,26 @@ function nav(scr){
   const sc=document.getElementById('sc-'+scr);if(sc){sc.classList.add('active');sc.classList.add('slide-in');setTimeout(()=>sc.classList.remove('slide-in'),350);}
   const sn=document.getElementById('snav-'+scr);if(sn)sn.classList.add('nav-active');
   curScr=scr;
-  ppEditKey=null; // close any open pay-period tile editor
-  if(scr==='entry'&&!editId)resetEntry();
-  if(scr==='analytics'){applyAnalyticsPeriod();}
-  if(scr==='forecast')renderForecast();
-  if(scr==='budgets')renderBudgets();
-  if(scr==='dashboard')renderDashboard();
-  if(scr==='settings')renderSettings();
-  if(scr==='transactions')renderTx();
+  ppEditKey=null;
+  if(scr==='home')renderDashboard();
+  if(scr==='activity')renderTx();
+  if(scr==='insights')switchInsightsTab(insTab);
+  if(scr==='settings'){if(!editId){resetEntry();closeEntrySection();}renderSettings();}
   window.scrollTo(0,0);
+}
+function switchInsightsTab(tab){
+  insTab=tab;
+  ['spend','budgets','forecast'].forEach(t=>{
+    const pane=document.getElementById('ins-'+t);if(pane)pane.style.display=t===tab?'':'none';
+    const btn=document.getElementById('ins-tab-'+t);if(!btn)return;
+    const active=t===tab;
+    btn.style.borderBottom=active?'2px solid var(--accent)':'2px solid transparent';
+    btn.style.color=active?'var(--ink)':'var(--ink-3)';
+    btn.style.fontWeight=active?'600':'400';
+  });
+  if(tab==='spend')applyAnalyticsPeriod();
+  if(tab==='budgets')renderBudgets();
+  if(tab==='forecast')renderForecast();
 }
 
 // ── Firebase data ────────────────────────────────────────────────
@@ -81,7 +94,7 @@ async function initDB(){
     const demoBanner=document.getElementById('demo-banner');if(demoBanner)demoBanner.classList.toggle('hidden',!DEMO_MODE);
     uref=db.collection('users').doc(uid);
     PAY_PERIOD.init(db,uid);
-    PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='analytics') applyAnalyticsPeriod(); if(curScr==='forecast') renderForecast(); });
+    PAY_PERIOD.onChange(()=>{ renderDashboard(); renderBudgets(); if(curScr==='insights') switchInsightsTab(insTab); });
     uref.collection('settings').doc('preferences').onSnapshot(doc=>{
       if(doc.exists){
         const d=doc.data();
@@ -93,12 +106,12 @@ async function initDB(){
           if(dayEl) dayEl.value=d.payperiod.defaultDay||25;
         }
       }
-      refreshEntry();renderSettings();
+      refreshEntry();refreshQuickLog();renderSettings();
     });
     uref.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
     uref.collection('alerts').onSnapshot(snap=>{alerts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAlerts();});
-    uref.collection('annotations').orderBy('date','asc').onSnapshot(snap=>{annotations=snap.docs.map(d=>({id:d.id,...d.data()}));if(curScr==='analytics')renderAnalytics();if(curScr==='settings')renderSettings();});
+    uref.collection('annotations').orderBy('date','asc').onSnapshot(snap=>{annotations=snap.docs.map(d=>({id:d.id,...d.data()}));if(curScr==='insights')renderAnalytics();if(curScr==='settings')renderSettings();});
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       isLoading=false;
@@ -119,10 +132,7 @@ function setDB(st,msg=''){
 
 // ── Dashboard ────────────────────────────────────────────────────
 function renderDashboard(){
-  if(isLoading){
-    ['d-inc','d-exp','d-sav'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
-    return;
-  }
+  if(isLoading) return;
   const p=PAY_PERIOD.currentPeriod();
   const inP=PAY_PERIOD.filterToPeriod(txs,p);
   const inc=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -135,76 +145,28 @@ function renderDashboard(){
   const firstName=(currentUser&&currentUser.displayName||'').split(/\s+/)[0];
   document.getElementById('d-greeting').textContent=greet+(firstName?', '+firstName:'');
 
-  // Period subheader with days left
+  // Period subheader
   const start=new Date(p.start),end=new Date(p.end);
   const today=new Date(); today.setHours(0,0,0,0);
   const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
   const fmt=d=>d.toLocaleDateString('en-MY',{day:'numeric',month:'short'});
   document.getElementById('d-period-sub').textContent=`${fmt(start)} – ${fmt(end)} · ${daysLeft} day${daysLeft!==1?'s':''} left`;
 
-  // Summary chips
-  document.getElementById('d-inc').textContent=RM(inc);
-  document.getElementById('d-exp').textContent=RM(exp);
-  document.getElementById('d-sav').textContent=RM(sav);
-
-  // Total Liquidity + period-over-period change
-  const bal=inc-exp-sav;
-  document.getElementById('d-liquidity').textContent=RM(bal);
-  const prevP=PAY_PERIOD.lastNPeriods(2)[1];
-  const chEl=document.getElementById('d-liquidity-change');
-  if(prevP){
-    const prevInP=PAY_PERIOD.filterToPeriod(txs,prevP);
-    const prevBal=prevInP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)
-                 -prevInP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)
-                 -prevInP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
-    if(prevBal!==0){
-      const pct=(bal-prevBal)/Math.abs(prevBal)*100;
-      const up=pct>=0;
-      chEl.textContent=(up?'↑':'↓')+' '+Math.abs(pct).toFixed(1)+'% vs last period';
-      chEl.style.color=up?'#1D9E75':'#E24B4A';
-      chEl.classList.remove('hidden');
-    } else { chEl.classList.add('hidden'); }
-  } else { chEl.classList.add('hidden'); }
-
-  // Budget Runway
+  // Budget metrics (shared by RunwayHero, Coach, HealthScore)
   const exC=Object.keys(CATS.expense||{});
   const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
   const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
   const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
   const daily=elapsed>0?exp/elapsed:0;
-  const remaining=Math.max((end-today)/86400000,0);
-  const projected=exp+daily*remaining;
-  const runwayOk=budgetTot===0||projected<=budgetTot;
-  const usedPct=budgetTot>0?Math.min(exp/budgetTot*100,100):0;
-  document.getElementById('d-runway-used-fill').style.width=usedPct.toFixed(1)+'%';
-  document.getElementById('d-runway-used-fill').style.backgroundColor=runwayOk?'#1D9E75':'#E24B4A';
-  document.getElementById('d-runway-used-amt').textContent=budgetTot>0?`${RM(exp)} / ${RM(budgetTot)}`:`${RM(exp)} / no budget`;
-  document.getElementById('d-runway-elapsed-fill').style.width=(elapsed/totalDays*100).toFixed(1)+'%';
-  document.getElementById('d-runway-days').textContent=`Day ${elapsed} of ${totalDays}`;
-  const statusEl=document.getElementById('d-runway-status');
-  statusEl.textContent=runwayOk?'Lasts the full period':'At risk';
-  statusEl.style.color=runwayOk?'#1D9E75':'#E24B4A';
-
-  // Anomaly alert — show worst anomaly from current period
-  const thresholds=unusualThresholds();
-  const anomalies=inP.filter(t=>t.type==='expense'&&thresholds[t.category]>0&&t.amount>2*thresholds[t.category]);
-  anomalies.sort((a,b)=>b.amount-a.amount);
-  const alertEl=document.getElementById('d-alert');
-  if(anomalies.length>0){
-    const a=anomalies[0];
-    const mult=(a.amount/thresholds[a.category]).toFixed(0);
-    document.getElementById('d-alert-title').textContent=`Unusual spend — ${a.subcategory||a.category}`;
-    document.getElementById('d-alert-msg').textContent=`${RM(a.amount)} on ${fd(a.date)}. That's ${mult}× your usual for ${a.category}.`;
-    alertEl.classList.remove('hidden');
-  } else {
-    alertEl.classList.add('hidden');
-  }
 
   renderRunwayHero(daysLeft,totalDays,inc,exp,sav,budgetTot,daily,p.end);
   updateSidebarRunway();
   calculateHealthScore();
+  renderCoach();
   renderSpendRhythm();
   renderWhereItWent();
+  renderHomeCats();
+  refreshQuickLog();
 }
 
 function renderRunwayHero(daysLeft,daysTotal,inc,exp,sav,budgetTot,dailyActual,periodEnd){
@@ -420,6 +382,82 @@ function calculateHealthScore(){
   }
 }
 
+// ── Coach card ───────────────────────────────────────────────────
+function renderCoach(){
+  const el=document.getElementById('d-coach');
+  if(!el) return;
+  if(isLoading){
+    el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px"><span style="color:var(--ink-3)">–</span></div>`;
+    return;
+  }
+  const p=PAY_PERIOD.currentPeriod();
+  const inP=PAY_PERIOD.filterToPeriod(txs,p);
+  const exp=inP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const sav=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const start=new Date(p.start),end=new Date(p.end);
+  const today=new Date();today.setHours(0,0,0,0);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
+  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
+  const budgetTot=Object.keys(CATS.expense||{}).reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  const daily=elapsed>0?exp/elapsed:0;
+  const remaining=Math.max((end-today)/86400000,0);
+  const projected=exp+daily*remaining;
+  const dailySafe=daysLeft>0&&budgetTot>0?(budgetTot-exp)/daysLeft:0;
+  const catSpend={};
+  inP.filter(t=>t.type==='expense'&&t.category).forEach(t=>{catSpend[t.category]=(catSpend[t.category]||0)+t.amount;});
+  const topEntry=Object.entries(catSpend).sort((a,b)=>b[1]-a[1])[0];
+  const topCat=topEntry?topEntry[0]:'spending';
+  const savGoal=(goals||[]).reduce((s,g)=>s+(g.monthly||0),0);
+
+  let headline,sub,dotColor;
+  if(exp>budgetTot&&budgetTot>0){
+    headline=`You've gone ${RM(exp-budgetTot)} over budget.`;
+    sub=`Cut ${RM(Math.max(0,(exp-budgetTot)/Math.max(daysLeft,1)))} a day to recover.`;
+    dotColor='var(--warn)';
+  } else if(projected>budgetTot&&budgetTot>0&&daysLeft>3){
+    headline=`At this rate you'll exceed budget by ${RM(projected-budgetTot)}.`;
+    sub=`Ease up on ${topCat} this week.`;
+    dotColor='var(--warn)';
+  } else if(daily>dailySafe*1.1&&dailySafe>0){
+    headline=`You're spending ${RM(daily)}/day. Safe limit is ${RM(dailySafe)}.`;
+    sub=`Watch ${topCat} this week.`;
+    dotColor='var(--warn)';
+  } else if(daily<=dailySafe&&daysLeft>5&&budgetTot>0){
+    headline=`You're pacing ${RM(dailySafe-daily)} under your daily safe-spend.`;
+    sub=`Keep this rhythm and you'll finish +${RM((dailySafe-daily)*daysLeft)}.`;
+    dotColor='var(--accent)';
+  } else if(daysLeft<=3&&(budgetTot===0||exp<=budgetTot)){
+    headline=`${RM(Math.max(0,budgetTot-exp))} left. ${daysLeft} day${daysLeft!==1?'s':''} to payday.`;
+    sub=`You're going to land this one.`;
+    dotColor='var(--accent)';
+  } else if(savGoal>0&&sav<savGoal*0.5&&daysLeft>10){
+    headline=`Savings at ${Math.round(sav/savGoal*100)}% of your goal.`;
+    sub=`${RM(savGoal-sav)} still needed this period.`;
+    dotColor='var(--ink-3)';
+  } else {
+    headline=`Period day ${elapsed} of ${totalDays}.`;
+    sub=`${RM(exp)} spent so far.`;
+    dotColor='var(--ink-3)';
+  }
+
+  const isDark=document.body.getAttribute('data-theme')==='dark';
+  const cardBg=isDark?'#F4F1EA':'var(--surface)';
+  const cardBorder=isDark?'none':'1px solid var(--line)';
+  const headColor=isDark?'#14120F':'var(--ink)';
+  const subColor=isDark?'rgba(20,18,15,0.55)':'var(--ink-3)';
+  const labelColor=isDark?'rgba(20,18,15,0.45)':'var(--ink-3)';
+
+  el.innerHTML=`<div style="background:${cardBg};border:${cardBorder};border-radius:var(--r-lg);padding:24px">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+      <span style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:${labelColor};font-weight:600">Coach</span>
+    </div>
+    <div style="font-family:var(--serif);font-size:22px;line-height:1.3;color:${headColor};margin-bottom:8px">${headline}</div>
+    <div style="font-size:13px;color:${subColor}">${sub}</div>
+  </div>`;
+}
+
 // ── Spend Rhythm ─────────────────────────────────────────────────
 function renderSpendRhythm(){
   const el=document.getElementById('d-spend-rhythm');
@@ -509,6 +547,46 @@ function renderSpendRhythm(){
         </div>
       </div>
     </div>`;
+}
+
+// ── Categories budget progress ────────────────────────────────────
+function renderHomeCats(){
+  const el=document.getElementById('d-home-cats');
+  if(!el) return;
+  const cats=Object.keys(budgets||{});
+  if(!cats.length){ el.innerHTML=''; return; }
+  const p=PAY_PERIOD.currentPeriod();
+  const spent={};
+  PAY_PERIOD.filterToPeriod(txs,p).filter(t=>t.type==='expense').forEach(t=>{
+    spent[t.category]=(spent[t.category]||0)+t.amount;
+  });
+  const rows=cats
+    .map(c=>({ cat:c, amt:spent[c]||0, budget:(budgets[c]&&budgets[c].amount)||0 }))
+    .filter(r=>r.budget>0)
+    .sort((a,b)=>(b.amt/b.budget)-(a.amt/a.budget))
+    .slice(0,5);
+  if(!rows.length){ el.innerHTML=''; return; }
+  const fmt=n=>'RM '+Math.round(n).toLocaleString('en-MY');
+  const items=rows.map(r=>{
+    const pct=Math.min(r.amt/r.budget*100,100);
+    const barColor=pct>=85?'var(--warn)':'var(--accent)';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <div style="font-size:14px;color:var(--ink)">${r.cat}</div>
+        <div style="font-family:var(--mono);font-size:13px;color:var(--ink-3)">${fmt(r.amt)} / ${fmt(r.budget)}</div>
+      </div>
+      <div style="height:8px;border-radius:4px;overflow:hidden;background:var(--line)">
+        <div style="height:100%;border-radius:4px;width:${pct.toFixed(1)}%;background:${barColor};transition:width 0.4s ease"></div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-family:var(--serif);font-size:26px;color:var(--ink)">Categories</div>
+      <button onclick="nav('insights')" style="font-size:13px;color:var(--ink-3);background:none;border:none;cursor:pointer">Adjust →</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">${items}</div>
+  </div>`;
 }
 
 // ── Where It Went ────────────────────────────────────────────────
@@ -611,6 +689,24 @@ function unusualThresholds(){
 
 function renderTx(){
   if(isLoading){document.getElementById('tx-list').innerHTML=LOADING_HTML;return;}
+  const _thr=unusualThresholds();
+  const _cp=PAY_PERIOD.currentPeriod();
+  const _an=PAY_PERIOD.filterToPeriod(txs,_cp).filter(t=>t.type==='expense'&&_thr[t.category]>0&&t.amount>2*_thr[t.category]).sort((a,b)=>b.amount-a.amount);
+  const _ab=document.getElementById('d-act-anomaly');
+  if(_ab){
+    if(_an.length>0){
+      const a=_an[0];const mult=(a.amount/_thr[a.category]).toFixed(0);
+      _ab.innerHTML=`<div class="flex gap-3 bg-amber-50 border border-amber-100 p-4 rounded-2xl items-start">
+        <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined msym text-amber-600" style="font-size:18px">warning</span></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-amber-800 mb-0.5">Unusual spend — ${a.subcategory||a.category}</p>
+          <p class="text-xs text-amber-700 leading-relaxed">${RM(a.amount)} on ${fd(a.date)}. That's ${mult}× your usual for ${a.category}.</p>
+        </div>
+        <button onclick="document.getElementById('d-act-anomaly').classList.add('hidden')" class="text-amber-400 hover:text-amber-600 flex-shrink-0 ml-2 transition-colors"><span class="material-symbols-outlined msym text-[18px]">close</span></button>
+      </div>`;
+      _ab.classList.remove('hidden');
+    } else { _ab.classList.add('hidden'); }
+  }
   const tf=document.getElementById('tf-type')?.value||'all';
   const cf=document.getElementById('tf-cat')?.value||'all';
   const mf=document.getElementById('tf-month')?.value||'all';
@@ -652,17 +748,48 @@ function txGo(n){txPg=n;renderTx();}
 
 // ── Entry Form ──────────────────────────────────────────────────
 function resetEntry(){editId=null;eType='expense';eCat=null;document.getElementById('e-amt').value='';document.getElementById('e-date').value=new Date().toISOString().slice(0,10);document.getElementById('e-memo').value='';document.getElementById('e-cat-sel').textContent='';document.getElementById('e-mode').textContent='New Entry';document.getElementById('e-submit').textContent='Log Entry';document.getElementById('e-cancel').style.display='none';setType('expense');}
+function refreshQuickLog(){
+  const catSel=document.getElementById('ql-cat');
+  if(!catSel) return;
+  const cats=Object.keys(CATS.expense||{});
+  if(!cats.length){ catSel.innerHTML='<option value="">No categories</option>'; return; }
+  const prevCat=catSel.value;
+  catSel.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const target=lastUsedCat&&cats.includes(lastUsedCat)?lastUsedCat:prevCat&&cats.includes(prevCat)?prevCat:cats[0];
+  catSel.value=target;
+}
+async function quickLog(){
+  const amtEl=document.getElementById('ql-amt');
+  const amt=parseFloat(amtEl.value);
+  if(!amt||amt<=0){ amtEl.focus(); return; }
+  if(DEMO_MODE){ showDemoToast(); return; }
+  const cat=document.getElementById('ql-cat').value;
+  const memo=document.getElementById('ql-memo')?.value.trim()||'';
+  const acct=ACCTS[0]||'';
+  lastUsedCat=cat;
+  const tx={type:'expense',amount:amt,category:cat,subcategory:'',account:acct,
+    date:new Date().toISOString().slice(0,10),description:memo,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  uref.collection('transactions').add(tx).then(()=>{ amtEl.value=''; const m=document.getElementById('ql-memo');if(m)m.value=''; }).catch(err=>console.error(err));
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  ['ql-amt','ql-memo'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('keydown',e=>{ if(e.key==='Enter') quickLog(); });
+  });
+});
+
 function setType(t){eType=t;eCat=null;['expense','income','savings'].forEach(x=>{const b=document.getElementById('tb-'+x);if(!b)return;b.className=x===t?'px-5 py-2 rounded-lg text-sm font-semibold bg-gradient-to-br from-primary to-primary-container text-white transition-all duration-200 shadow-sm shadow-indigo-200':'px-5 py-2 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-white transition-all duration-200';});refreshEntry();}
 function refreshEntry(){
   const as=document.getElementById('e-acct');if(as){const c=as.value;as.innerHTML=ACCTS.map(a=>`<option value="${a}"${a===c?' selected':''}>${a}</option>`).join('');}
   const cats=Object.keys(CATS[eType]||{});
-  document.getElementById('e-cat-grid').innerHTML=cats.map(cat=>`
-    <button onclick="selCat('${cat}')" class="group flex flex-col items-center gap-3 p-5 rounded-xl transition-all duration-200 active:scale-95 ${cat===eCat?'cat-active bg-primary':'bg-surface-container-low hover:bg-primary-fixed'}">
-      <div class="cat-icon w-12 h-12 flex items-center justify-center rounded-full ${cat===eCat?'bg-white/20 text-white':'bg-surface-container-lowest text-on-surface-variant'} group-hover:text-primary transition-colors">
-        <span class="material-symbols-outlined msym">${ICONS[cat]||'category'}</span>
-      </div>
-      <span class="text-xs font-semibold ${cat===eCat?'text-white':'text-slate-600'}">${cat}</span>
-    </button>`).join('');
+  document.getElementById('e-cat-grid').innerHTML=cats.map(cat=>{
+    const sel=cat===eCat;
+    return `<button onclick="selCat('${cat}')" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;border-radius:var(--r-md);border:1px solid ${sel?'var(--accent)':'var(--line)'};background:${sel?'var(--accent-soft)':'var(--surface)'};cursor:pointer;transition:all .2s;width:100%;box-shadow:${sel?'none':'var(--shadow-sm)'}">
+      <span class="material-symbols-outlined msym" style="font-size:22px;color:${sel?'var(--accent)':'var(--ink-3)'}">${ICONS[cat]||'category'}</span>
+      <span style="font-size:11px;font-weight:600;color:${sel?'var(--ink)':'var(--ink-2)'};font-family:var(--sans);line-height:1.2;text-align:center">${cat}</span>
+    </button>`;
+  }).join('');
   updSub();
 }
 function selCat(c){eCat=c;document.getElementById('e-cat-sel').textContent=c;refreshEntry();}
@@ -680,7 +807,7 @@ async function submitEntry(){
   const t={date,amount:amt,account:acct,type:eType,category:cat,subcategory:sub||'',description:memo,createdAt:Date.now()};
   if(editId){if(uref)await uref.collection('transactions').doc(String(editId)).update(t);else{const i=txs.findIndex(x=>String(x.id)===String(editId));if(i!==-1)txs[i]={...txs[i],...t};}}
   else{if(uref)await uref.collection('transactions').add(t);else{t.id=Date.now();txs.unshift(t);}}
-  resetEntry();nav('dashboard');
+  resetEntry();closeEntrySection();nav('home');
 }
 function editTx(id){
   const t=txs.find(x=>String(x.id)===String(id));if(!t)return;
@@ -694,9 +821,22 @@ function editTx(id){
   document.getElementById('e-cancel').style.display='block';
   refreshEntry();
   setTimeout(()=>{const s=document.getElementById('e-acct');if(s)s.value=t.account||'';updSub();setTimeout(()=>{const ss=document.getElementById('e-sub');if(ss)ss.value=t.subcategory||'';},50);},50);
-  nav('entry');
+  nav('settings');
+  setTimeout(()=>openEntrySection(),50);
 }
-function cancelEdit(){editId=null;resetEntry();nav('transactions');}
+function cancelEdit(){editId=null;resetEntry();closeEntrySection();nav('activity');}
+function setEntrySection(open){
+  const body=document.getElementById('entry-section-body');
+  const chev=document.getElementById('entry-section-chevron');
+  const sub=document.getElementById('entry-section-header')?.querySelector('div > div:last-child');
+  if(!body)return;
+  body.style.display=open?'block':'none';
+  if(chev)chev.style.transform=open?'rotate(180deg)':'';
+  if(sub)sub.textContent=open?'':'Tap to expand';
+}
+function toggleEntrySection(){const b=document.getElementById('entry-section-body');setEntrySection(!b||b.style.display==='none');}
+function openEntrySection(){setEntrySection(true);}
+function closeEntrySection(){setEntrySection(false);}
 async function delTx(id){if(DEMO_MODE){showDemoToast();return;}if(!confirm('Delete this transaction?'))return;if(uref)await uref.collection('transactions').doc(String(id)).delete();else{txs=txs.filter(t=>String(t.id)!==String(id));renderTx();renderDashboard();}}
 
 // ── Analytics ───────────────────────────────────────────────────
@@ -851,7 +991,7 @@ function acknowledgeAlert(id){
 
 function getPTxs(){const p=PAY_PERIOD.currentPeriod();return txs.filter(t=>t.type==='expense'&&t.date&&t.date>=p.start&&t.date<=p.end);}
 function renderBudgets(){
-  if(curScr!=='budgets')return;
+  if(curScr!=='insights')return;
   if(isLoading){document.getElementById('b-prog').innerHTML=LOADING_HTML;return;}
   const p=PAY_PERIOD.currentPeriod();
   document.getElementById('b-period-note').textContent='Tracking your spending for '+p.label;
@@ -983,7 +1123,7 @@ async function saveBudgets(){
 
 // ── Forecast ─────────────────────────────────────────────────────
 function renderForecast(){
-  if(curScr!=='forecast')return;
+  if(curScr!=='insights')return;
   if(isLoading){document.getElementById('f-cats').innerHTML=LOADING_HTML;return;}
   if(!txs.length){
     if(fChart){fChart.destroy();fChart=null;}

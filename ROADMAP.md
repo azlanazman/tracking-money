@@ -118,10 +118,10 @@ R.2 → R.1 → R.4 → R.3 → R.5 → R.6 → R.7
 |---|---|---|---|---|
 | R.2 | Where It Went — period donut + vs-last deltas | ✅ Done | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
 | R.1 | Spend Rhythm — day-of-week heatmap + auto pattern label | ✅ Done | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
-| R.4 | Categories card on Home — budget progress mini-panel | ⬜ Not started | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
-| R.3 | Coach card — advisory message rule engine | ⬜ Not started | `js/app.js` (paste `renderDashboard` + `calculateHealthScore` functions) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
-| R.5 | Quick Log bar — persistent bottom entry | ⬜ Not started | `js/app.js` (paste `submitEntry` function + state globals block) + `index.html` (paste `<main>` closing section) | See full prompt below |
-| R.6 | Navigation restructure — Home / Activity / Insights / Settings | ⬜ Not started | `index.html` (paste full `<aside>` sidebar + all screen `<div id="sc-*">` wrappers) + `js/app.js` (paste `nav()` function + `initDB()` function) | See full prompt below |
+| R.4 | Categories card on Home — budget progress mini-panel | ✅ Done | — | — |
+| R.3 | Coach card — advisory message rule engine | ✅ Done | — | — |
+| R.5 | Quick Log bar — persistent bottom entry | ✅ Done | — | Floating pill, fixed bottom, category + memo + log; no account selector |
+| R.6 | Navigation restructure — Home / Activity / Insights / Settings | ✅ Done | — | Nav restructured; Log Transaction collapsible in Settings; fixed div nesting bug (sc-settings was outside #main) |
 | R.7 | Home tab final assembly | ⬜ Not started | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
 
 ---
