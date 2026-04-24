@@ -122,7 +122,8 @@ R.2 → R.1 → R.4 → R.3 → R.5 → R.6 → R.7
 | R.3 | Coach card — advisory message rule engine | ✅ Done | — | — |
 | R.5 | Quick Log bar — persistent bottom entry | ✅ Done | — | Floating pill, fixed bottom, category + memo + log; no account selector |
 | R.6 | Navigation restructure — Home / Activity / Insights / Settings | ✅ Done | — | Nav restructured; Log Transaction collapsible in Settings; fixed div nesting bug (sc-settings was outside #main) |
-| R.7 | Home tab final assembly | ⬜ Not started | `js/app.js` (paste `renderDashboard` function) + `index.html` (paste `sc-dashboard` div) | See full prompt below |
+| R.7 | Home tab final assembly | ✅ Done | — | — |
+| R.8 | Financial Health expanded card | ✅ Done | — | — |
 
 ---
 
@@ -378,6 +379,57 @@ R.2 → R.1 → R.4 → R.3 → R.5 → R.6 → R.7
 
 ---
 
+### R.8 — Financial Health Expanded Card (session prompt)
+
+> "In js/app.js, expand `calculateHealthScore()` to return individual sub-scores and descriptor strings in addition to the existing composite score. Add four new fields to its return value:
+>
+> ```
+> budgetAdherence: { score, bar, descriptor }
+> savingsRate:     { score, bar, descriptor }
+> runway:          { score, bar, descriptor }
+> spendVariance:   { score, bar, descriptor }
+> ```
+>
+> **Sub-score calculations** (all 0–100):
+>
+> - **Budget adherence**: `pctUsed = totalSpent / totalBudget`. `pctElapsed = daysElapsed / totalDays`. If `pctUsed <= pctElapsed`: score = `Math.round(100 - (pctUsed / Math.max(pctElapsed,0.01) - 1) * 100)` clamped 0–100. Descriptor: `'{pctUsed*100|0}% used at day {daysElapsed} of {totalDays}'`.
+>
+> - **Savings rate**: `rate = savAmt / Math.max(incAmt, 1)`. `target = 0.20`. score = `Math.round(Math.min(rate / target, 1) * 100)`. Descriptor: `'{(rate*100).toFixed(1)}% of income · target 20%'`.
+>
+> - **Runway**: days until end of period (`daysLeft`). score = `Math.round(Math.min(daysLeft / 7, 1) * 100)` (full score at 7+ days remaining, 0 at 0 days). Descriptor: `'{daysLeft} day{daysLeft!==1?"s":""} — {daysLeft>7?"safely ahead of":"close to"} payday'`.
+>
+> - **Spend variance**: compute coefficient of variation of daily spend over the current period (`stdDev / mean`). score = `Math.round(Math.max(0, 1 - cv) * 100)`. Descriptor: cv < 0.4 → `'Steady — consistent daily spend'`; cv < 0.8 → `'Moderate — some daily swings'`; otherwise → `'Variable — weekend or event spikes'`.
+>
+> **Composite score**: unchanged — weighted average of the four sub-scores with weights: budgetAdherence 0.30, savingsRate 0.25, runway 0.25, spendVariance 0.20.
+>
+> In index.html, replace the existing health score section inside `sc-home` (the SVG ring block and score label) with the new layout. Keep the outer card wrapper and its existing ID. New inner layout:
+>
+> **Header row** (unchanged): 'Financial health' serif title left, zone badge pill right (AT RISK / WATCH / HEALTHY / EXCELLENT based on score — AT RISK <40, WATCH <60, HEALTHY <80, EXCELLENT ≥80). Badge background: AT RISK `var(--warn)` + white text, WATCH `rgba(var(--warn),0.15)` + `var(--warn)` text, HEALTHY `var(--accent-soft)` + `var(--accent)` text, EXCELLENT `var(--accent)` + `var(--bg)` text.
+>
+> **Subtitle**: 'Composite of 4 weighted signals · updates daily' (12px, `var(--ink-3)`).
+>
+> **Score + zone bar row** (flex, align-items center, gap 24px):
+> - Left: large serif number `id='hs-score'` (font-size 96px, line-height 1, `font-family:var(--serif)`), `/100` in `var(--ink-3)` at 18px beside it.
+> - Right: segmented zone bar + zone labels.
+>   - Bar: 28 equal-width segments in a flex row, gap 3px. Segments at positions 1–14 (AT RISK + WATCH zone, score < 60): `background:var(--line-2)` when inactive, `background:var(--warn)` when score falls in that zone and segment ≤ `Math.round(score/100*28)`. Segments 15–22 (HEALTHY): `background:var(--accent)` when lit. Segments 23–28 (EXCELLENT): `background:var(--accent)` at full opacity. A segment is lit if its index ≤ `Math.round(score/100*28)`. Unlit segments: `background:var(--line)`.
+>   - Each segment: `height:20px; border-radius:3px; flex:1`.
+>   - Zone labels below bar: 'AT RISK · WATCH · HEALTHY · EXCELLENT' in a flex row matching segment proportions, `font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-4)`.
+>
+> **Divider**: `border-top:1px solid var(--line); margin:20px 0`.
+>
+> **2×2 sub-signal grid** (`display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden`). Each cell has `padding:18px; border-right:1px solid var(--line); border-bottom:1px solid var(--line)` (remove right border on col 2, remove bottom border on row 2).
+>
+> Each sub-card cell:
+> - Row 1: signal name left (`font-size:13px; font-weight:500; color:var(--ink)`), sub-score right (`font-size:22px; font-family:var(--mono); color:var(--accent)`).
+> - Progress bar: full width, height 3px, `background:var(--line); border-radius:99px`. Fill: `background:var(--accent)` if sub-score ≥ 60, `background:var(--warn)` if < 60; width = `{sub-score}%`.
+> - Descriptor: `font-size:11px; color:var(--ink-3); margin-top:6px`.
+>
+> In `renderDashboard()`, replace the existing `hs-score`, `hs-label`, `hs-ring`, `hs-detail` write calls with calls to the new sub-signal cell IDs: `hs-ba-score`, `hs-ba-bar`, `hs-ba-desc`, `hs-sr-score`, `hs-sr-bar`, `hs-sr-desc`, `hs-rw-score`, `hs-rw-bar`, `hs-rw-desc`, `hs-sv-score`, `hs-sv-bar`, `hs-sv-desc`, and the top-level `hs-score` (number) and `hs-badge` (zone pill).
+>
+> Do not touch the Coach card, Categories card, Spend Rhythm, Where It Went, or any other screen."
+
+---
+
 ## Phase 3 — Personalisation
 
 **Duration**: Week 10–12  
@@ -475,7 +527,7 @@ R.2 → R.1 → R.4 → R.3 → R.5 → R.6 → R.7
 | 1–2 | Foundation | ✅ Done — SPA built, auth live, data user-scoped |
 | 3–5 | Early Warnings | ✅ Done — Anomaly flags, breach alerts, alert badge |
 | 6–9 | Understanding | ✅ Done (2.1–2.3, 2.5–2.7) — Health score, waterfall, annotations, RunwayHero, design tokens |
-| Now | Home Redesign (R) | Spend Rhythm, Where It Went, Coach card, Categories on Home, Quick Log bar, Nav restructure |
+| Now | Home Redesign (R) | ✅ R.1–R.8 Done — all Home tab sessions complete |
 | +4wk | Personalisation (3) | Playbook, habit detection, Analytics heatmap, compliance history |
 | +8wk | Polish (4) | Onboarding, deferred Chart.js, PWA, offline handling, remaining sidebar/surface polish |
 | +12wk | Commercialisation (5) | Landing page, free tier limits, admin view, PDF export |

@@ -280,97 +280,95 @@ function updateSidebarRunway(){
 function calculateHealthScore(){
   const p=PAY_PERIOD.currentPeriod();
   const inP=PAY_PERIOD.filterToPeriod(txs,p);
-  const ptxs=inP.filter(t=>t.type==='expense');
+  const expTxs=inP.filter(t=>t.type==='expense');
   const exC=Object.keys(CATS.expense||{});
-
-  // Signal 1 — Budget compliance (30 pts)
-  const spent=ptxs.reduce((s,t)=>s+t.amount,0);
-  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
-  let s1=15;
-  if(budgetTot>0){
-    const r=spent/budgetTot;
-    if(r<=0.80)s1=30;
-    else if(r<=1.00)s1=Math.round(30-(r-0.80)/0.20*12);
-    else if(r<=1.10)s1=8;
-    else s1=0;
-  }
-
-  // Signal 2 — Burn rate safety (30 pts)
-  let s2=15;
-  if(budgetTot>0){
-    const start=new Date(p.start),end=new Date(p.end),today=new Date();
-    const elapsed=Math.max((today-start)/86400000,1);
-    const remaining=Math.max((end-today)/86400000,0);
-    const daily=spent/elapsed;
-    const projected=spent+daily*remaining;
-    const daysShort=projected>budgetTot?Math.round((projected-budgetTot)/daily):0;
-    if(daysShort<=0)s2=30;
-    else if(daysShort<=3)s2=18;
-    else if(daysShort<=7)s2=8;
-    else s2=0;
-  }
-
-  // Signal 3 — Savings on track (25 pts)
+  const spent=expTxs.reduce((s,t)=>s+t.amount,0);
+  const incAmt=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const savAmt=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
-  const savGoal=(goals||[]).reduce((s,g)=>s+(g.monthly||0),0);
-  let s3=12;
-  if(savGoal>0){
-    const r=savAmt/savGoal;
-    if(r>=1.00)s3=25;
-    else if(r>=0.50)s3=Math.round(12+(r-0.50)/0.50*13);
-    else if(r>0)s3=6;
-    else s3=0;
+  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+
+  const start=new Date(p.start),end=new Date(p.end);
+  const today=new Date();today.setHours(0,0,0,0);
+  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
+  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+
+  // Signal 1 — Budget adherence (0–100)
+  let ba=75,baDesc='No budget set';
+  if(budgetTot>0){
+    const pctUsed=spent/budgetTot;
+    const pctElapsed=elapsed/totalDays;
+    ba=Math.max(0,Math.min(100,Math.round(100-(Math.max(0,pctUsed-pctElapsed)/Math.max(pctElapsed,0.01))*100)));
+    baDesc=`${Math.round(pctUsed*100)}% used at day ${elapsed} of ${totalDays}`;
   }
 
-  // Signal 4 — Fixed cost ratio (15 pts)
-  const FIXED=['Loan','Bills','Takaful','CC','Subs'];
-  const hist3=PAY_PERIOD.lastNPeriods(4).slice(1);
-  let s4=8;
-  if(hist3.length>=1){
-    const h3txs=txs.filter(t=>hist3.some(hp=>t.date>=hp.start&&t.date<=hp.end));
-    const fixedExp=h3txs.filter(t=>t.type==='expense'&&FIXED.includes(t.category)).reduce((s,t)=>s+t.amount,0);
-    const h3inc=h3txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    if(h3inc>0){
-      const r=fixedExp/h3inc;
-      if(r<=0.40)s4=15;
-      else if(r<=0.50)s4=12;
-      else if(r<=0.60)s4=7;
-      else if(r<=0.70)s4=3;
-      else s4=0;
-    }
+  // Signal 2 — Savings rate (0–100)
+  const srRate=incAmt>0?savAmt/incAmt:0;
+  const srScore=Math.round(Math.min(srRate/0.20,1)*100);
+  const srDesc=`${(srRate*100).toFixed(1)}% of income · target 20%`;
+
+  // Signal 3 — Runway (0–100)
+  const rwScore=Math.round(Math.min(daysLeft/7,1)*100);
+  const rwDesc=`${daysLeft} day${daysLeft!==1?'s':''} — ${daysLeft>=7?'safely ahead of':'close to'} payday`;
+
+  // Signal 4 — Spend variance (0–100): coefficient of variation of daily spend
+  let svScore=75,svDesc='Steady — consistent daily spend';
+  const dayMap={};
+  expTxs.forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+t.amount;});
+  const dayVals=Object.values(dayMap);
+  if(dayVals.length>=3){
+    const mean=dayVals.reduce((a,b)=>a+b,0)/dayVals.length;
+    const cv=mean>0?Math.sqrt(dayVals.reduce((a,b)=>a+(b-mean)**2,0)/dayVals.length)/mean:0;
+    svScore=Math.max(0,Math.round((1-Math.min(cv,1))*100));
+    svDesc=cv<0.4?'Steady — consistent daily spend':cv<0.8?'Moderate — some daily swings':'Variable — weekend or event spikes';
   }
 
-  const score=s1+s2+s3+s4;
-  const colour=score>=80?'#1D9E75':score>=60?'#BA7517':'#E24B4A';
-  const label=score>=80?'Healthy':score>=60?'Fair':'At risk';
+  // Composite (weighted)
+  const score=Math.round(ba*0.30+srScore*0.25+rwScore*0.25+svScore*0.20);
 
-  // Detail — lowest signal wins; tie-break: burn > budget > savings > fixed
-  const sigs=[
-    {s:s2,msg:'Budget projected to run out before period ends.'},
-    {s:s1,msg:'Spending is tracking over budget this period.'},
-    {s:s3,msg:'No savings recorded yet this period.'},
-    {s:s4,msg:'Fixed commitments are taking up a high share of income.'},
-  ];
-  const minS=Math.min(...sigs.map(x=>x.s));
-  const detail=minS>20?'All signals looking good — keep it up.':sigs.find(x=>x.s===minS).msg;
+  // Zone + badge colours
+  const zone=score>=80?'Excellent':score>=60?'Healthy':score>=40?'Watch':'At Risk';
+  const badgeBg=score>=80?'var(--accent)':score>=60?'var(--accent-soft)':score>=40?'rgba(184,87,43,0.12)':'var(--warn)';
+  const badgeColor=score>=80?'var(--bg)':score>=60?'var(--accent)':'var(--warn)';
 
-  // Update DOM
-  const circ=175.93;
-  const ring=document.getElementById('hs-ring');
+  // DOM — composite
   const sc=document.getElementById('hs-score');
-  const lbl=document.getElementById('hs-label');
-  const det=document.getElementById('hs-detail');
-  if(!ring||!sc||!lbl||!det)return;
-  ring.setAttribute('stroke',colour);
-  ring.setAttribute('stroke-dashoffset',(circ*(1-score/100)).toFixed(2));
+  const badge=document.getElementById('hs-badge');
+  const zoneBar=document.getElementById('hs-zone-bar');
+  if(!sc||!badge||!zoneBar)return;
   sc.textContent=score;
-  lbl.textContent=label;
-  lbl.style.color=colour;
-  det.textContent=detail;
+  badge.textContent=zone;
+  badge.style.background=badgeBg;
+  badge.style.color=badgeColor;
+
+  // Segmented zone bar (28 segments; AT RISK 0–10, WATCH 11–15, HEALTHY 16–21, EXCELLENT 22–27)
+  const lit=Math.round(score/100*28);
+  zoneBar.innerHTML=Array.from({length:28},(_,i)=>{
+    const bg=i>=lit?'var(--line)':i<11?'var(--warn)':i<16?'rgba(184,87,43,0.55)':'var(--accent)';
+    return `<div style="flex:1;height:20px;border-radius:3px;background:${bg}"></div>`;
+  }).join('');
+
+  // DOM — sub-signals
+  function setSig(prefix,sigScore,desc){
+    const s=document.getElementById(`hs-${prefix}-score`);
+    const b=document.getElementById(`hs-${prefix}-bar`);
+    const d=document.getElementById(`hs-${prefix}-desc`);
+    if(!s||!b||!d)return;
+    s.textContent=sigScore;
+    const c=sigScore>=60?'var(--accent)':'var(--warn)';
+    s.style.color=c;
+    b.style.width=sigScore+'%';
+    b.style.background=c;
+    d.textContent=desc;
+  }
+  setSig('ba',ba,baDesc);
+  setSig('sr',srScore,srDesc);
+  setSig('rw',rwScore,rwDesc);
+  setSig('sv',svScore,svDesc);
 
   // Persist to Firestore (non-blocking)
   if(uref){
-    const entry={period:p.start,score,label,breakdown:{budgetCompliance:s1,burnRate:s2,savings:s3,fixedCostRatio:s4},calculatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const entry={period:p.start,score,zone,breakdown:{budgetAdherence:ba,savingsRate:srScore,runway:rwScore,spendVariance:svScore},calculatedAt:firebase.firestore.FieldValue.serverTimestamp()};
     const href=uref.collection('health').doc('history');
     href.get().then(doc=>{
       const periods=doc.exists?(doc.data().periods||[]):[];
