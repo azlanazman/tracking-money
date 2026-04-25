@@ -362,48 +362,17 @@ input[type=number]{-moz-appearance:textfield}
         <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
           <div style="display:flex;align-items:baseline;gap:4px;flex-shrink:0">
             <span id="hs-score" style="font-family:var(--serif);font-size:80px;line-height:1;color:var(--ink)">—</span>
-            <span style="font-size:16px;color:var(--ink-3)">/100</span>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:16px;color:var(--ink-3)">/100</span>
+              <span id="hs-delta" style="font-size:11px;color:var(--ink-3)">—</span>
+              <button onclick="nav('insights')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;text-align:left;white-space:nowrap">See breakdown →</button>
+            </div>
           </div>
           <div style="flex:1;min-width:0">
             <div id="hs-zone-bar" style="display:flex;gap:3px;margin-bottom:6px"></div>
             <div style="display:flex;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-4);justify-content:space-between">
               <span>At Risk</span><span>Watch</span><span>Healthy</span><span>Excellent</span>
             </div>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--line);margin-bottom:14px"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden">
-          <div style="padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-              <span style="font-size:12px;font-weight:500;color:var(--ink)">Budget adherence</span>
-              <span id="hs-ba-score" style="font-size:20px;font-family:var(--mono);color:var(--accent)">—</span>
-            </div>
-            <div style="height:3px;background:var(--line);border-radius:99px;margin-bottom:6px"><div id="hs-ba-bar" style="height:100%;border-radius:99px;background:var(--accent);width:0%"></div></div>
-            <p id="hs-ba-desc" style="font-size:11px;color:var(--ink-3)">—</p>
-          </div>
-          <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-              <span style="font-size:12px;font-weight:500;color:var(--ink)">Savings rate</span>
-              <span id="hs-sr-score" style="font-size:20px;font-family:var(--mono);color:var(--accent)">—</span>
-            </div>
-            <div style="height:3px;background:var(--line);border-radius:99px;margin-bottom:6px"><div id="hs-sr-bar" style="height:100%;border-radius:99px;background:var(--accent);width:0%"></div></div>
-            <p id="hs-sr-desc" style="font-size:11px;color:var(--ink-3)">—</p>
-          </div>
-          <div style="padding:14px 16px;border-right:1px solid var(--line)">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-              <span style="font-size:12px;font-weight:500;color:var(--ink)">Runway</span>
-              <span id="hs-rw-score" style="font-size:20px;font-family:var(--mono);color:var(--accent)">—</span>
-            </div>
-            <div style="height:3px;background:var(--line);border-radius:99px;margin-bottom:6px"><div id="hs-rw-bar" style="height:100%;border-radius:99px;background:var(--accent);width:0%"></div></div>
-            <p id="hs-rw-desc" style="font-size:11px;color:var(--ink-3)">—</p>
-          </div>
-          <div style="padding:14px 16px">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-              <span style="font-size:12px;font-weight:500;color:var(--ink)">Spend variance</span>
-              <span id="hs-sv-score" style="font-size:20px;font-family:var(--mono);color:var(--accent)">—</span>
-            </div>
-            <div style="height:3px;background:var(--line);border-radius:99px;margin-bottom:6px"><div id="hs-sv-bar" style="height:100%;border-radius:99px;background:var(--accent);width:0%"></div></div>
-            <p id="hs-sv-desc" style="font-size:11px;color:var(--ink-3)">—</p>
           </div>
         </div>
       </div>
@@ -451,7 +420,6 @@ input[type=number]{-moz-appearance:textfield}
     </select>
     <span id="tx-cnt" class="ml-auto self-center text-xs font-bold text-slate-400 uppercase tracking-wider"></span>
   </div>
-  <div id="d-act-anomaly" class="hidden mb-5"></div>
   <div id="tx-list" class="space-y-2.5"><div class="p-8 text-center text-sm text-slate-400">Loading…</div></div>
   <div class="flex justify-between items-center mt-5">
     <span id="tx-info" class="text-xs text-slate-400 font-semibold"></span>
@@ -474,6 +442,8 @@ input[type=number]{-moz-appearance:textfield}
 
   <!-- Spend pane (Analytics) -->
   <div id="ins-spend" class="ins-pane">
+  <!-- Anomaly banner -->
+  <div id="ins-anomaly-banner"></div>
   <!-- Period narrative -->
   <div id="ins-narrative"></div>
   <div class="flex flex-wrap justify-between items-end gap-4 mb-8">

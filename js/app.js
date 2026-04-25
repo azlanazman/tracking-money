@@ -86,53 +86,49 @@ function renderInsightsHub(){
 
   const pStart=new Date(p.start);
   const periodLabel=pStart.toLocaleDateString('en-MY',{month:'short',year:'numeric'});
-  const today=new Date();today.setHours(0,0,0,0);
-  const end=new Date(p.end);
-  const start=new Date(p.start);
-  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
 
-  // Quick composite health score (same weights as calculateHealthScore, no DOM writes)
-  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
-  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
-  let ba=75;
-  if(budgetTot>0){
-    const pu=exp/budgetTot,pe=elapsed/totalDays;
-    ba=Math.max(0,Math.min(100,Math.round(100-(Math.max(0,pu-pe)/Math.max(pe,0.01))*100)));
+  // Health score via pure helper
+  const hs=scoreForPeriod(inP,p);
+  const {score:healthScore,ba,baDesc,srScore,srDesc,rwScore,rwDesc,svScore,svDesc,spent,incAmt,savAmt,budgetTot,daysLeft,meanDailySpend}=hs;
+
+  // Delta vs last period
+  const prevPeriods=PAY_PERIOD.lastNPeriods(2);
+  let deltaHTML='';
+  if(prevPeriods.length>=2){
+    const prevInP=PAY_PERIOD.filterToPeriod(txs,prevPeriods[1]);
+    const prevScore=scoreForPeriod(prevInP,prevPeriods[1]).score;
+    const delta=healthScore-prevScore;
+    const col=delta>=0?'var(--accent)':'var(--warn)';
+    deltaHTML=`<span style="font-size:12px;color:${col};font-weight:500">${delta>=0?'↑ +':'↓ '}${Math.abs(delta)} pts from last period</span>`;
   }
-  const srScore=Math.round(Math.min((inc>0?sav/inc:0)/0.20,1)*100);
-  const rwScore=Math.round(Math.min(daysLeft/7,1)*100);
-  const dayMap={};
-  inP.filter(t=>t.type==='expense').forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+t.amount;});
-  const dayVals=Object.values(dayMap);
-  let svScore=75;
-  if(dayVals.length>=3){
-    const mean=dayVals.reduce((a,b)=>a+b,0)/dayVals.length;
-    const cv=mean>0?Math.sqrt(dayVals.reduce((a,b)=>a+(b-mean)**2,0)/dayVals.length)/mean:0;
-    svScore=Math.max(0,Math.round((1-Math.min(cv,1))*100));
-  }
-  const healthScore=Math.round(ba*0.30+srScore*0.25+rwScore*0.25+svScore*0.20);
 
   // Priority signal — first match wins
   let signal='';
   let breachedCat=null,breachPct=0;
   for(const c of exC){
-    const limit=(budgets[c]&&budgets[c].amount)||0;
-    if(!limit)continue;
+    const limit=(budgets[c]&&budgets[c].amount)||0;if(!limit)continue;
     const catSpent=inP.filter(t=>t.type==='expense'&&t.category===c).reduce((s,t)=>s+t.amount,0);
     if(catSpent>limit){breachedCat=c;breachPct=Math.round(catSpent/limit*100);break;}
   }
-  if(breachedCat){
-    signal=`${breachedCat} budget is ${breachPct}% used with ${daysLeft} day${daysLeft!==1?'s':''} left.`;
-  }else if(srPct<10){
-    signal=`Savings rate is below target — you have ${RM(Math.max(0,surplus))} surplus available.`;
-  }else if(healthScore<60){
-    signal=`Health score is ${healthScore} — see Budgets tab for guidance.`;
-  }else{
-    signal=`Finances look stable. ${daysLeft} day${daysLeft!==1?'s':''} to payday.`;
-  }
+  if(breachedCat) signal=`${breachedCat} budget is ${breachPct}% used with ${daysLeft} day${daysLeft!==1?'s':''} left.`;
+  else if(srPct<10) signal=`Savings rate is below target — you have ${RM(Math.max(0,surplus))} surplus available.`;
+  else if(healthScore<60) signal=`Health score is ${healthScore} — review the breakdown below.`;
+  else signal=`Finances look stable. ${daysLeft} day${daysLeft!==1?'s':''} to payday.`;
+
+  // Per-signal tips
+  const dailyLeft=budgetTot>0&&daysLeft>0?Math.max(0,(budgetTot-spent)/daysLeft):0;
+  const srGap=Math.max(0,Math.round(incAmt*0.2-savAmt));
+  const varianceCap=meanDailySpend>0?Math.round(meanDailySpend*1.3):0;
+  const signals=[
+    {label:'Budget adherence',score:ba,desc:baDesc,tip:budgetTot>0?`Spend ${RM(dailyLeft)}/day or less to finish on track`:'Set a budget to track adherence'},
+    {label:'Savings rate',score:srScore,desc:srDesc,tip:srGap>0?`Transfer ${RM(srGap)} more this period to hit 20%`:'You\'re at or above your 20% savings target'},
+    {label:'Runway',score:rwScore,desc:rwDesc,tip:`${daysLeft} day${daysLeft!==1?'s':''} left — ${RM(dailyLeft)}/day remaining in budget`},
+    {label:'Spend variance',score:svScore,desc:svDesc,tip:varianceCap>0?`Keep daily spend within ${RM(varianceCap)} to reduce variance`:'Not enough daily data yet to assess variance'},
+  ];
 
   const surplusCol=surplus>=0?'var(--accent)':'var(--warn)';
   const budgetCol=onTrack?'var(--accent)':'var(--warn)';
+  const scoreCol=healthScore>=60?'var(--accent)':'var(--warn)';
 
   el.innerHTML=`
     <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px 28px;margin-bottom:24px">
@@ -151,9 +147,31 @@ function renderInsightsHub(){
           <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:${budgetCol}">${onTrack?'On track':'Over budget'}</span>
         </div>
       </div>
-      <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:20px">
         <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);flex-shrink:0">Most important right now</span>
         <span style="font-size:14px;color:var(--ink-2)">${signal}</span>
+      </div>
+      <div style="border-top:1px solid var(--line);padding-top:16px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4)">Financial Health</span>
+          <span style="font-family:var(--mono);font-size:18px;font-weight:600;color:${scoreCol}">${healthScore}<span style="font-size:12px;color:var(--ink-3)">/100</span></span>
+          ${deltaHTML}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden">
+          ${signals.map((s,i)=>{
+            const isRight=i%2===1,isBottom=i<2;
+            const border=`${isRight?'':'border-right:1px solid var(--line);'}${isBottom?'border-bottom:1px solid var(--line);':''}`;
+            const col=s.score>=60?'var(--accent)':'var(--warn)';
+            return `<div style="padding:12px 14px;${border}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+                <span style="font-size:11px;font-weight:500;color:var(--ink)">${s.label}</span>
+                <span style="font-family:var(--mono);font-size:16px;color:${col}">${s.score}</span>
+              </div>
+              <p style="font-size:11px;color:var(--ink-3);margin:0 0 4px">${s.desc}</p>
+              <p style="font-size:11px;color:var(--ink-4);margin:0;font-style:italic">${s.tip}</p>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
     </div>`;
 }
@@ -252,6 +270,18 @@ function renderDashboard(){
   renderRunwayHero(daysLeft,totalDays,inc,exp,sav,budgetTot,daily,p.end);
   updateSidebarRunway();
   calculateHealthScore();
+  // Delta vs last period for hs-delta on Home card
+  const _periods=PAY_PERIOD.lastNPeriods(2);
+  if(_periods.length>=2){
+    const _curr=scoreForPeriod(PAY_PERIOD.filterToPeriod(txs,_periods[0]),_periods[0]);
+    const _prev=scoreForPeriod(PAY_PERIOD.filterToPeriod(txs,_periods[1]),_periods[1]);
+    const _delta=_curr.score-_prev.score;
+    const _deltaEl=document.getElementById('hs-delta');
+    if(_deltaEl){
+      _deltaEl.textContent=(_delta>=0?'↑ +':' ↓ ')+Math.abs(_delta)+' pts from last period';
+      _deltaEl.style.color=_delta>=0?'var(--accent)':'var(--warn)';
+    }
+  }
   renderCoach();
   renderSpendRhythm();
   renderWhereItWent();
@@ -365,6 +395,51 @@ function updateSidebarRunway(){
   if(daysEl) daysEl.textContent=daysLeft+' day'+(daysLeft!==1?'s':'');
   if(barEl) barEl.style.width=pct+'%';
   if(datesEl) datesEl.innerHTML=`<span>${fmt(p.start)}</span><span>${fmt(p.end)}</span>`;
+}
+
+// Pure helper — same math as calculateHealthScore but no DOM writes; works on any period slice
+function scoreForPeriod(filteredTxs, period){
+  const expTxs=filteredTxs.filter(t=>t.type==='expense');
+  const incAmt=filteredTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const savAmt=filteredTxs.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const spent=expTxs.reduce((s,t)=>s+t.amount,0);
+  const exC=Object.keys(CATS.expense||{});
+  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+
+  const start=new Date(period.start),end=new Date(period.end);
+  const today=new Date();today.setHours(0,0,0,0);
+  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
+  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+
+  let ba=75,baDesc='No budget set';
+  if(budgetTot>0){
+    const pctUsed=spent/budgetTot,pctElapsed=elapsed/totalDays;
+    ba=Math.max(0,Math.min(100,Math.round(100-(Math.max(0,pctUsed-pctElapsed)/Math.max(pctElapsed,0.01))*100)));
+    baDesc=`${Math.round(pctUsed*100)}% used at day ${elapsed} of ${totalDays}`;
+  }
+
+  const srRate=incAmt>0?savAmt/incAmt:0;
+  const srScore=Math.round(Math.min(srRate/0.20,1)*100);
+  const srDesc=`${(srRate*100).toFixed(1)}% of income · target 20%`;
+
+  const rwScore=Math.round(Math.min(daysLeft/7,1)*100);
+  const rwDesc=`${daysLeft} day${daysLeft!==1?'s':''} — ${daysLeft>=7?'safely ahead of':'close to'} payday`;
+
+  let svScore=75,svDesc='Steady — consistent daily spend';
+  const dayMap={};
+  expTxs.forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+t.amount;});
+  const dayVals=Object.values(dayMap);
+  let meanDailySpend=0;
+  if(dayVals.length>=3){
+    meanDailySpend=dayVals.reduce((a,b)=>a+b,0)/dayVals.length;
+    const cv=meanDailySpend>0?Math.sqrt(dayVals.reduce((a,b)=>a+(b-meanDailySpend)**2,0)/dayVals.length)/meanDailySpend:0;
+    svScore=Math.max(0,Math.round((1-Math.min(cv,1))*100));
+    svDesc=cv<0.4?'Steady — consistent daily spend':cv<0.8?'Moderate — some daily swings':'Variable — weekend or event spikes';
+  }
+
+  const score=Math.round(ba*0.30+srScore*0.25+rwScore*0.25+svScore*0.20);
+  return{score,ba,baDesc,srScore,srDesc,rwScore,rwDesc,svScore,svDesc,spent,incAmt,savAmt,budgetTot,daysLeft,totalDays,meanDailySpend};
 }
 
 function calculateHealthScore(){
@@ -775,26 +850,81 @@ function unusualThresholds(){
   return out;
 }
 
+function detectAnomalies(){
+  // Find most recent period with expense data (demo data may end before current period)
+  const periods=PAY_PERIOD.lastNPeriods(5);
+  let currIdx=-1;
+  for(let i=0;i<periods.length;i++){
+    if(txs.some(t=>t.type==='expense'&&t.date>=periods[i].start&&t.date<=periods[i].end)){currIdx=i;break;}
+  }
+  if(currIdx===-1||currIdx+3>=periods.length)return[];
+  const p=periods[currIdx];
+  const histPeriods=periods.slice(currIdx+1,currIdx+4);
+  // Current period totals by category
+  const currTotals={};
+  txs.filter(t=>t.type==='expense'&&t.date>=p.start&&t.date<=p.end).forEach(t=>currTotals[t.category]=(currTotals[t.category]||0)+t.amount);
+  // History averages: average period total per category across 3 prior periods
+  const hTotals={};
+  histPeriods.forEach(hp=>{
+    const pt={};
+    txs.filter(t=>t.type==='expense'&&t.date>=hp.start&&t.date<=hp.end).forEach(t=>pt[t.category]=(pt[t.category]||0)+t.amount);
+    Object.keys(pt).forEach(c=>{if(!hTotals[c])hTotals[c]=[];hTotals[c].push(pt[c]);});
+  });
+  const hAvg={};Object.keys(hTotals).forEach(c=>hAvg[c]=hTotals[c].reduce((s,v)=>s+v,0)/hTotals[c].length);
+  // Days elapsed for budget pace
+  const start=new Date(p.start+'T00:00:00');
+  const end=new Date(p.end+'T00:00:00');
+  const today=new Date();
+  const totalDays=Math.round((end-start)/(864e5))+1;
+  const daysElapsed=Math.min(Math.max(Math.round((today-start)/(864e5))+1,1),totalDays);
+  const pctElapsed=daysElapsed/totalDays;
+  const anomalies=[];
+  // Spike: current-period category total > 2× 3-period average
+  for(const cat of Object.keys(currTotals)){
+    const curr=currTotals[cat];
+    const ha=hAvg[cat];
+    if(ha>0&&curr>2*ha){
+      anomalies.push({type:'spike',category:cat,message:`${cat} is ${(curr/ha).toFixed(1)}× your usual — ${RM(curr)} vs avg ${RM(ha)}`,action:{label:'Review',fn:`navActivityCat('${cat}')`}});
+    }
+  }
+  // Budget pace: spending outpacing time elapsed by >25%
+  for(const cat of Object.keys(budgets)){
+    const b=budgets[cat];
+    if(!b||!b.amount||b.amount<=0)continue;
+    const spent=currTotals[cat]||0;
+    if(spent===0)continue;
+    const pctSpent=spent/b.amount;
+    if(pctSpent>pctElapsed+0.25){
+      const daysLeft=totalDays-daysElapsed;
+      anomalies.push({type:'budget_pace',category:cat,message:`${cat} is ${Math.round((pctSpent-pctElapsed)*100)}% ahead of budget pace — ${daysLeft} day${daysLeft!==1?'s':''} left`,action:{label:'See budget',fn:"switchInsightsTab('budgets')"}});
+    }
+  }
+  return anomalies;
+}
+
+function renderAnomalyBanner(){
+  const el=document.getElementById('ins-anomaly-banner');
+  if(!el)return;
+  if(isLoading){el.innerHTML='';return;}
+  const anomalies=detectAnomalies();
+  if(!anomalies.length){el.innerHTML='';return;}
+  el.innerHTML=anomalies.map(a=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(184,87,43,0.08);border-left:3px solid var(--warn);border-radius:var(--r-sm);margin-bottom:8px">
+      <span style="color:var(--warn);font-size:16px;flex-shrink:0">⚠</span>
+      <span style="font-size:13px;color:var(--ink-2);flex:1">${a.message}</span>
+      <button onclick="${a.action.fn}" style="font-size:12px;font-weight:500;color:var(--warn);background:none;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0">${a.action.label} →</button>
+    </div>`).join('');
+}
+
+function navActivityCat(cat){
+  const tSel=document.getElementById('tf-type');const cSel=document.getElementById('tf-cat');
+  if(tSel)tSel.value='expense';
+  if(cSel)cSel.value=cat;
+  nav('activity');
+}
+
 function renderTx(){
   if(isLoading){document.getElementById('tx-list').innerHTML=LOADING_HTML;return;}
-  const _thr=unusualThresholds();
-  const _cp=PAY_PERIOD.currentPeriod();
-  const _an=PAY_PERIOD.filterToPeriod(txs,_cp).filter(t=>t.type==='expense'&&_thr[t.category]>0&&t.amount>2*_thr[t.category]).sort((a,b)=>b.amount-a.amount);
-  const _ab=document.getElementById('d-act-anomaly');
-  if(_ab){
-    if(_an.length>0){
-      const a=_an[0];const mult=(a.amount/_thr[a.category]).toFixed(0);
-      _ab.innerHTML=`<div class="flex gap-3 bg-amber-50 border border-amber-100 p-4 rounded-2xl items-start">
-        <div class="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"><span class="material-symbols-outlined msym text-amber-600" style="font-size:18px">warning</span></div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-bold text-amber-800 mb-0.5">Unusual spend — ${a.subcategory||a.category}</p>
-          <p class="text-xs text-amber-700 leading-relaxed">${RM(a.amount)} on ${fd(a.date)}. That's ${mult}× your usual for ${a.category}.</p>
-        </div>
-        <button onclick="document.getElementById('d-act-anomaly').classList.add('hidden')" class="text-amber-400 hover:text-amber-600 flex-shrink-0 ml-2 transition-colors"><span class="material-symbols-outlined msym text-[18px]">close</span></button>
-      </div>`;
-      _ab.classList.remove('hidden');
-    } else { _ab.classList.add('hidden'); }
-  }
   const tf=document.getElementById('tf-type')?.value||'all';
   const cf=document.getElementById('tf-cat')?.value||'all';
   const mf=document.getElementById('tf-month')?.value||'all';
@@ -1032,6 +1162,7 @@ function renderPeriodNarrative(){
 }
 
 function renderAnalytics(){
+  renderAnomalyBanner();
   renderPeriodNarrative();
   if(isLoading){document.getElementById('an-table').innerHTML=LOADING_HTML;return;}
   const tp=document.getElementById('an-type')?.value||'expense';
