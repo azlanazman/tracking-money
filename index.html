@@ -462,6 +462,9 @@ input[type=number]{-moz-appearance:textfield}
 <!-- ── INSIGHTS ── -->
 <div id="sc-insights" class="screen p-6 lg:p-8 max-w-6xl slide-in">
 
+  <!-- Insights hub -->
+  <div id="ins-hub"></div>
+
   <!-- Tab bar -->
   <div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:24px">
     <button id="ins-tab-spend" onclick="switchInsightsTab('spend')" style="padding:10px 20px;font-size:14px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--ink);font-weight:600;cursor:pointer">Spend</button>
@@ -471,6 +474,8 @@ input[type=number]{-moz-appearance:textfield}
 
   <!-- Spend pane (Analytics) -->
   <div id="ins-spend" class="ins-pane">
+  <!-- Period narrative -->
+  <div id="ins-narrative"></div>
   <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
     <div>
       <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-1.5">Data Intelligence</p>
@@ -644,6 +649,9 @@ input[type=number]{-moz-appearance:textfield}
       <div id="f-cats" class="space-y-3"></div>
     </div>
   </div>
+
+  <!-- Recurring but unbudgeted -->
+  <div id="f-recurring"></div>
 
   <!-- Strategic opportunities -->
   <div class="bg-gradient-to-br from-primary to-primary-container text-white p-8 rounded-3xl relative overflow-hidden amb-lg">

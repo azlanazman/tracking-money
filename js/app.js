@@ -64,10 +64,100 @@ function nav(scr){
   ppEditKey=null;
   if(scr==='home')renderDashboard();
   if(scr==='activity')renderTx();
-  if(scr==='insights')switchInsightsTab(insTab);
+  if(scr==='insights'){renderInsightsHub();switchInsightsTab(insTab);}
   if(scr==='settings'){if(!editId){resetEntry();closeEntrySection();}renderSettings();}
   window.scrollTo(0,0);
 }
+function renderInsightsHub(){
+  const el=document.getElementById('ins-hub');
+  if(!el)return;
+  if(isLoading){el.innerHTML='';return;}
+
+  const p=PAY_PERIOD.currentPeriod();
+  const inP=PAY_PERIOD.filterToPeriod(txs,p);
+  const inc=inP.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=inP.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const sav=inP.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const surplus=inc-exp-sav;
+  const srPct=inc>0?Math.round(sav/inc*100):0;
+  const exC=Object.keys(CATS.expense||{});
+  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  const onTrack=budgetTot===0||exp<=budgetTot;
+
+  const pStart=new Date(p.start);
+  const periodLabel=pStart.toLocaleDateString('en-MY',{month:'short',year:'numeric'});
+  const today=new Date();today.setHours(0,0,0,0);
+  const end=new Date(p.end);
+  const start=new Date(p.start);
+  const daysLeft=Math.max(Math.ceil((end-today)/86400000),0);
+
+  // Quick composite health score (same weights as calculateHealthScore, no DOM writes)
+  const totalDays=Math.max(Math.round((end-start)/86400000)+1,1);
+  const elapsed=Math.min(Math.max(Math.round((today-start)/86400000)+1,1),totalDays);
+  let ba=75;
+  if(budgetTot>0){
+    const pu=exp/budgetTot,pe=elapsed/totalDays;
+    ba=Math.max(0,Math.min(100,Math.round(100-(Math.max(0,pu-pe)/Math.max(pe,0.01))*100)));
+  }
+  const srScore=Math.round(Math.min((inc>0?sav/inc:0)/0.20,1)*100);
+  const rwScore=Math.round(Math.min(daysLeft/7,1)*100);
+  const dayMap={};
+  inP.filter(t=>t.type==='expense').forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+t.amount;});
+  const dayVals=Object.values(dayMap);
+  let svScore=75;
+  if(dayVals.length>=3){
+    const mean=dayVals.reduce((a,b)=>a+b,0)/dayVals.length;
+    const cv=mean>0?Math.sqrt(dayVals.reduce((a,b)=>a+(b-mean)**2,0)/dayVals.length)/mean:0;
+    svScore=Math.max(0,Math.round((1-Math.min(cv,1))*100));
+  }
+  const healthScore=Math.round(ba*0.30+srScore*0.25+rwScore*0.25+svScore*0.20);
+
+  // Priority signal — first match wins
+  let signal='';
+  let breachedCat=null,breachPct=0;
+  for(const c of exC){
+    const limit=(budgets[c]&&budgets[c].amount)||0;
+    if(!limit)continue;
+    const catSpent=inP.filter(t=>t.type==='expense'&&t.category===c).reduce((s,t)=>s+t.amount,0);
+    if(catSpent>limit){breachedCat=c;breachPct=Math.round(catSpent/limit*100);break;}
+  }
+  if(breachedCat){
+    signal=`${breachedCat} budget is ${breachPct}% used with ${daysLeft} day${daysLeft!==1?'s':''} left.`;
+  }else if(srPct<10){
+    signal=`Savings rate is below target — you have ${RM(Math.max(0,surplus))} surplus available.`;
+  }else if(healthScore<60){
+    signal=`Health score is ${healthScore} — see Budgets tab for guidance.`;
+  }else{
+    signal=`Finances look stable. ${daysLeft} day${daysLeft!==1?'s':''} to payday.`;
+  }
+
+  const surplusCol=surplus>=0?'var(--accent)':'var(--warn)';
+  const budgetCol=onTrack?'var(--accent)':'var(--warn)';
+
+  el.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px 28px;margin-bottom:24px">
+      <h2 style="font-family:var(--serif);font-size:22px;color:var(--ink);margin:0 0 16px">Your finances, ${periodLabel}</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div style="display:flex;flex-direction:column;gap:3px;background:var(--bg-2);border-radius:var(--r-sm);padding:10px 16px;min-width:120px">
+          <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-3)">Net Surplus</span>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:${surplusCol}">${surplus<0?'−':''}${RM(Math.abs(surplus))}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;background:var(--bg-2);border-radius:var(--r-sm);padding:10px 16px;min-width:120px">
+          <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-3)">Savings Rate</span>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--ink)">${srPct}%</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;background:var(--bg-2);border-radius:var(--r-sm);padding:10px 16px;min-width:120px">
+          <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-3)">Budget</span>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:${budgetCol}">${onTrack?'On track':'Over budget'}</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);flex-shrink:0">Most important right now</span>
+        <span style="font-size:14px;color:var(--ink-2)">${signal}</span>
+      </div>
+    </div>`;
+}
+
 function switchInsightsTab(tab){
   insTab=tab;
   ['spend','budgets','forecast'].forEach(t=>{
@@ -901,7 +991,48 @@ function renderWaterfall(inR){
   wfWrap.innerHTML=`<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">${ribbons.join('')}${leftSVG}${rightSVG}</svg>`;
 }
 
+function renderPeriodNarrative(){
+  const el=document.getElementById('ins-narrative');
+  if(!el)return;
+  const periods=PAY_PERIOD.lastNPeriods(4);
+  if(periods.length<2){el.innerHTML='';return;}
+  // Use the most recent period that has expense data, so the card is useful
+  // even at the start of a new pay cycle when the current period is empty
+  let currIdx=-1;
+  for(let i=0;i<periods.length-1;i++){
+    if(txs.some(t=>t.type==='expense'&&t.date>=periods[i].start&&t.date<=periods[i].end)){currIdx=i;break;}
+  }
+  if(currIdx===-1){el.innerHTML='';return;}
+  const [curr,prev]=[periods[currIdx],periods[currIdx+1]];
+  const sumByCat=p=>{const m={};txs.filter(t=>t.type==='expense'&&t.date>=p.start&&t.date<=p.end).forEach(t=>m[t.category]=(m[t.category]||0)+t.amount);return m;};
+  const c=sumByCat(curr),p=sumByCat(prev);
+  if(!Object.keys(p).length){el.innerHTML='';return;}
+
+  const rows=[];
+  // Increases and decreases
+  const deltas=Object.keys(c).filter(cat=>p[cat]>0).map(cat=>({cat,delta:c[cat]-p[cat],curr:c[cat],prev:p[cat]}));
+  deltas.sort((a,b)=>b.delta-a.delta);
+  if(deltas.length){
+    const top=deltas[0];
+    if(top.delta>0) rows.push(`<span style="color:var(--warn);font-weight:600">↑</span> <strong>${top.cat}</strong> up ${RM(top.delta)} (${RM(top.prev)} → ${RM(top.curr)})`);
+    const bot=deltas[deltas.length-1];
+    if(bot.delta<0) rows.push(`<span style="color:var(--accent);font-weight:600">↓</span> <strong>${bot.cat}</strong> down ${RM(Math.abs(bot.delta))} (${RM(bot.prev)} → ${RM(bot.curr)})`);
+  }
+  // New categories (in current, not in previous)
+  Object.keys(c).filter(cat=>!p[cat]).forEach(cat=>{
+    if(rows.length<4) rows.push(`<span style="color:var(--ink-3);font-weight:600">★</span> New: <strong>${cat}</strong> (${RM(c[cat])} — first time this period)`);
+  });
+
+  if(!rows.length){el.innerHTML='';return;}
+  el.innerHTML=`
+    <div style="background:var(--bg-2);border-radius:var(--r-md);padding:16px 20px;margin-bottom:24px">
+      <p style="font-family:var(--serif);font-size:16px;color:var(--ink);margin:0 0 10px">vs last period</p>
+      ${rows.slice(0,4).map(r=>`<p style="font-size:13px;color:var(--ink-2);margin:0 0 6px;line-height:1.5">${r}</p>`).join('')}
+    </div>`;
+}
+
 function renderAnalytics(){
+  renderPeriodNarrative();
   if(isLoading){document.getElementById('an-table').innerHTML=LOADING_HTML;return;}
   const tp=document.getElementById('an-type')?.value||'expense';
   const inR=t=>(!anStart||t.date>=anStart)&&(!anEnd||t.date<=anEnd);
@@ -1120,6 +1251,47 @@ async function saveBudgets(){
 }
 
 // ── Forecast ─────────────────────────────────────────────────────
+function renderRecurringUnbudgeted(){
+  const el=document.getElementById('f-recurring');
+  if(!el)return;
+  // Need at least 3 past periods to detect a pattern
+  const periods=PAY_PERIOD.lastNPeriods(4).slice(1).reverse();
+  if(periods.length<3){el.innerHTML='';return;}
+
+  const exC=Object.keys(CATS.expense||{});
+  const hits=[];
+  for(const cat of exC){
+    if(budgets[cat]&&budgets[cat].amount>0)continue; // already budgeted
+    const amts=periods.map(p=>
+      txs.filter(t=>t.type==='expense'&&t.category===cat&&t.date>=p.start&&t.date<=p.end)
+         .reduce((s,t)=>s+t.amount,0)
+    );
+    if(amts.every(a=>a>0)) hits.push({cat,avg:amts.reduce((a,b)=>a+b,0)/amts.length});
+  }
+
+  if(!hits.length){el.innerHTML='';return;}
+
+  hits.sort((a,b)=>b.avg-a.avg);
+  const rows=hits.map(h=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">
+      <div style="flex:1">
+        <span style="font-size:14px;font-weight:500;color:var(--ink)">${h.cat}</span>
+        <span style="font-size:12px;color:var(--ink-3);margin-left:8px">~${RM(h.avg)}/period</span>
+      </div>
+      <button onclick="switchInsightsTab('budgets')" style="font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-soft);border:none;border-radius:var(--r-sm);padding:6px 12px;cursor:pointer;white-space:nowrap">Add to budget</button>
+    </div>`).join('');
+
+  el.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px 28px;margin-bottom:28px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <h3 style="font-family:var(--serif);font-size:18px;color:var(--ink);margin:0">Recurring but unbudgeted</h3>
+        <span style="font-size:11px;color:var(--ink-3)">${hits.length} categor${hits.length===1?'y':'ies'} · last 3 periods</span>
+      </div>
+      <p style="font-size:13px;color:var(--ink-3);margin:0 0 16px">These categories appear every period but have no budget set — silent leaks.</p>
+      <div style="border-top:1px solid var(--line)">${rows}</div>
+    </div>`;
+}
+
 function renderForecast(){
   if(curScr!=='insights')return;
   if(isLoading){document.getElementById('f-cats').innerHTML=LOADING_HTML;return;}
@@ -1177,6 +1349,7 @@ function renderForecast(){
   if(tpE&&tpE[1]>0)ops.push(`<strong>${tpE[0]}</strong> is your largest spending category at <strong>${RM(tpE[1])}</strong> per period. A 10% reduction would free up <strong>${RM(tpE[1]*.1)}</strong> monthly.`);
   if(aI>0)ops.push(`Your current savings rate is approximately <strong>${((aS/aI)*100).toFixed(1)}%</strong>. Financial benchmarks recommend 20–30% for accelerated wealth accumulation.`);
   document.getElementById('f-ops').innerHTML=ops.map(o=>`<p class="flex gap-2"><span class="opacity-60 mt-0.5 flex-shrink-0">·</span><span>${o}</span></p>`).join('');
+  renderRecurringUnbudgeted();
 }
 
 // ── Settings ─────────────────────────────────────────────────────
