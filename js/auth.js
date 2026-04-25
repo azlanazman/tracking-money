@@ -99,6 +99,7 @@ async function handleEmailAuth(e){
     }
     // onAuthStateChanged will handle showing the app
   } catch(err){
+    console.error('[Lumina auth]', err);
     btn.disabled=false;
     btn.textContent=authMode==='signup'?'Create Account':'Sign In';
     const msgs={
@@ -109,8 +110,10 @@ async function handleEmailAuth(e){
       'auth/weak-password':'Password must be at least 6 characters.',
       'auth/too-many-requests':'Too many attempts. Please wait a moment and try again.',
       'auth/invalid-credential':'Incorrect email or password.',
+      'auth/invalid-login-credentials':'Incorrect email or password.',
+      'auth/missing-password':'Please enter your password.',
     };
-    showAuthError(msgs[err.code]||'Sign in failed. Please try again.');
+    showAuthError(msgs[err.code]||`Sign in failed (${err.code||'unknown'}). Please try again.`);
     document.getElementById('auth-email').classList.add('error');
     document.getElementById('auth-password').classList.add('error');
   }

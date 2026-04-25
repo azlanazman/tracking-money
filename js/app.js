@@ -81,8 +81,8 @@ function renderInsightsHub(){
   const surplus=inc-exp-sav;
   const srPct=inc>0?Math.round(sav/inc*100):0;
   const exC=Object.keys(CATS.expense||{});
-  const budgetTot=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
-  const onTrack=budgetTot===0||exp<=budgetTot;
+  const budgetTotEarly=exC.reduce((s,c)=>s+((budgets[c]&&budgets[c].amount)||0),0);
+  const onTrack=budgetTotEarly===0||exp<=budgetTotEarly;
 
   const pStart=new Date(p.start);
   const periodLabel=pStart.toLocaleDateString('en-MY',{month:'short',year:'numeric'});
@@ -1436,12 +1436,34 @@ function renderForecast(){
   const p3=PAY_PERIOD.lastNPeriods(4).slice(1).reverse();
   const mtt=(tp,ps)=>ps.map(p=>txs.filter(t=>t.type===tp&&t.date&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));
   const aI=avg(mtt('income',p3)),aE=avg(mtt('expense',p3)),aS=avg(mtt('savings',p3));
+  // All available past periods with data (up to 12) — used for quality + stdDev
+  const allP=PAY_PERIOD.lastNPeriods(13).slice(1).reverse();
+  const allPWithData=allP.filter(p=>txs.some(t=>t.date&&t.date>=p.start&&t.date<=p.end));
+  const N=allPWithData.length;
+  const allExpAmts=allPWithData.map(p=>txs.filter(t=>t.type==='expense'&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));
+  const meanExp=N?allExpAmts.reduce((s,v)=>s+v,0)/N:aE;
+  const stdDevExp=N>=2?Math.sqrt(allExpAmts.reduce((s,v)=>s+Math.pow(v-meanExp,2),0)/N):0;
   const tG=goals.reduce((s,g)=>s+(g.monthly||0),0),surp=aI-aE-tG;
   document.getElementById('f-inc').textContent=RM(aI);
   document.getElementById('f-exp').textContent=RM(aE);
   const se=document.getElementById('f-surp');se.textContent=RM(Math.abs(surp));se.className=`text-2xl font-bold font-headline ${surp>=0?'text-primary':'text-tertiary'}`;
   const oT=goals.filter(g=>(g.monthly||0)<=Math.max(surp,0)).length;
   document.getElementById('f-goals').textContent=goals.length?`${oT} / ${goals.length}`:'— / —';
+  // Quality pill
+  const qEl=document.getElementById('ins-forecast-quality');
+  if(qEl){
+    let qColor,qBg,qText;
+    if(N<3){qColor='var(--warn)';qBg='rgba(184,87,43,0.1)';qText=`Low confidence — ${N} period${N!==1?'s':''} of data. Forecasts improve after 3+.`;}
+    else if(N<6){qColor='var(--ink-3)';qBg='rgba(107,101,89,0.1)';qText=`Moderate confidence — ${N} periods of data`;}
+    else{qColor='var(--accent)';qBg='rgba(43,95,62,0.1)';qText=`High confidence — ${N} periods of data`;}
+    qEl.innerHTML=`<span style="display:inline-flex;align-items:center;gap:6px;background:${qBg};color:${qColor};border-radius:99px;padding:4px 12px;font-size:12px;font-weight:500">${qText}</span>`;
+  }
+  // Range annotation
+  const rangeEl=document.getElementById('f-range');
+  if(rangeEl){
+    if(N>=2&&stdDevExp>0){rangeEl.textContent=`Forecast range: ${RM(Math.max(0,aE-stdDevExp))} – ${RM(aE+stdDevExp)} / period`;rangeEl.style.display='';}
+    else{rangeEl.style.display='none';}
+  }
   // Build 3 future period labels by advancing the current period key month-by-month
   const toLabel=p=>{const pts=p.label.split(' – ');return pts[pts.length-1];};
   const curP=PAY_PERIOD.currentPeriod();
@@ -1464,11 +1486,13 @@ function renderForecast(){
   const fcData=[aI,aI,aI],fcExp=[aE,aE,aE],fcSav=[tG||aS,tG||aS,tG||aS];
   if(fChart){fChart.destroy();fChart=null;}
   const fc=document.getElementById('f-chart')?.getContext('2d');
-  if(fc)fChart=new Chart(fc,{type:'bar',data:{labels:allLabels,datasets:[
-    {label:'Income',  data:[...aInc,...fcData],backgroundColor:['#3525cdcc','#3525cdcc','#3525cdcc','#3525cd44','#3525cd44','#3525cd44'],borderColor:['#3525cd','#3525cd','#3525cd','#3525cd66','#3525cd66','#3525cd66'],borderWidth:1.5,borderRadius:5},
-    {label:'Expenses',data:[...aExp,...fcExp], backgroundColor:['#7e3000cc','#7e3000cc','#7e3000cc','#7e300044','#7e300044','#7e300044'],borderColor:['#7e3000','#7e3000','#7e3000','#7e300066','#7e300066','#7e300066'],borderWidth:1.5,borderRadius:5},
-    {label:'Savings', data:[...aSav,...fcSav], backgroundColor:['#58579bcc','#58579bcc','#58579bcc','#58579b44','#58579b44','#58579b44'],borderColor:['#58579b','#58579b','#58579b','#58579b66','#58579b66','#58579b66'],borderWidth:1.5,borderRadius:5}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10}},grid:{color:'#f2f4f6'}}}}});
+  // Open circles for forecast points, filled for actuals
+  const ptBg=(col)=>[...Array(3).fill(col),...Array(3).fill('#fff')];
+  if(fc)fChart=new Chart(fc,{type:'line',data:{labels:allLabels,datasets:[
+    {label:'Income',  data:[...aInc,...fcData],borderColor:'#3525cd',backgroundColor:'rgba(53,37,205,0.07)',fill:true,tension:0.35,borderWidth:2,pointRadius:4,pointBackgroundColor:ptBg('#3525cd'),pointBorderColor:'#3525cd',pointBorderWidth:2,segment:{borderDash:ctx=>ctx.p0DataIndex>=2?[6,3]:undefined}},
+    {label:'Expenses',data:[...aExp,...fcExp], borderColor:'#B8572B',backgroundColor:'rgba(184,87,43,0.07)',fill:true,tension:0.35,borderWidth:2,pointRadius:4,pointBackgroundColor:ptBg('#B8572B'),pointBorderColor:'#B8572B',pointBorderWidth:2,segment:{borderDash:ctx=>ctx.p0DataIndex>=2?[6,3]:undefined}},
+    {label:'Savings', data:[...aSav,...fcSav], borderColor:'#58579b',backgroundColor:'transparent',fill:false,tension:0.35,borderWidth:2,pointRadius:4,pointBackgroundColor:ptBg('#58579b'),pointBorderColor:'#58579b',pointBorderWidth:2,segment:{borderDash:ctx=>ctx.p0DataIndex>=2?[6,3]:undefined}}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10,family:'Inter'},boxWidth:10,padding:10}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${RM(ctx.parsed.y)}`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{callback:v=>'RM'+v.toLocaleString(),font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'}}}}});
   const exC=Object.keys(CATS.expense||{});
   const cr=exC.map(c=>{const monthly=p3.map(p=>txs.filter(t=>t.type==='expense'&&t.category===c&&t.date>=p.start&&t.date<=p.end).reduce((s,t)=>s+t.amount,0));const av=avg(monthly);if(!av)return null;const rc=monthly[monthly.length-1],pr=avg(monthly.slice(0,-1)),df=pr>0?(rc-pr)/pr*100:0;const tc=Math.abs(df)<5?'text-slate-500':df>0?'text-tertiary':'text-primary',tt=Math.abs(df)<5?'Stable':df>0?`↑${df.toFixed(0)}%`:`↓${Math.abs(df).toFixed(0)}%`;return`<div class="flex items-center gap-3 py-2"><div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div><span class="flex-1 text-sm font-medium text-slate-700">${c}</span><span class="text-sm font-bold text-slate-800">${RM(av)}</span><span class="text-xs font-bold ${tc}">${tt}</span></div>`;}).filter(Boolean);
   document.getElementById('f-cats').innerHTML=cr.length?cr.join(''):'<p class="text-xs text-slate-400">Add more data for category forecast.</p>';
