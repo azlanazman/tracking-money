@@ -478,6 +478,7 @@ input[type=number]{-moz-appearance:textfield}
   <div class="flex gap-1.5 mb-6 bg-surface-container p-1 rounded-xl w-fit">
     <button id="an-tab-trends" onclick="switchAnTab('trends')" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-white text-primary shadow-sm transition-all">Trends</button>
     <button id="an-tab-waterfall" onclick="switchAnTab('waterfall')" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all">Waterfall</button>
+    <button id="an-tab-heatmap" onclick="switchAnTab('heatmap')" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all">Heatmap</button>
   </div>
   <!-- Trends view -->
   <div id="an-trends">
@@ -503,6 +504,17 @@ input[type=number]{-moz-appearance:textfield}
       <p class="text-xs text-slate-400 mb-5">Where your income goes this period</p>
       <div id="an-wf-wrap"></div>
       <div id="an-wf-empty" class="hidden py-6 text-sm text-slate-400 text-center">No income data for selected period.</div>
+    </div>
+  </div>
+  <!-- Heatmap view -->
+  <div id="an-heatmap" class="hidden">
+    <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <h3 class="text-base font-bold text-slate-900 font-headline">Daily Spend Heatmap</h3>
+        <span style="font-size:11px;color:var(--ink-4)">Last 3 months · expenses only</span>
+      </div>
+      <div id="an-hm-grid"></div>
+      <div id="an-hm-detail" style="display:none;margin-top:16px;padding:14px 16px;background:var(--bg-2);border-radius:var(--r-md)"></div>
     </div>
   </div>
   </div><!-- end ins-spend -->

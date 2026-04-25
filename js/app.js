@@ -10,7 +10,7 @@ let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
 let DEMO_MODE=false;
 let curScr='home',editId=null;
 let lastUsedCat=null;
-let insTab='spend';
+let insTab='spend',_hmMonthOffset=0;
 let anBar=null,anLine=null,anWaterfall=null,fChart=null,_whereChart=null;
 let _rhRaf=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -1098,10 +1098,148 @@ function switchAnTab(tab){
   const inactive='px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all';
   document.getElementById('an-tab-trends').className=tab==='trends'?active:inactive;
   document.getElementById('an-tab-waterfall').className=tab==='waterfall'?active:inactive;
+  document.getElementById('an-tab-heatmap').className=tab==='heatmap'?active:inactive;
   document.getElementById('an-trends').classList.toggle('hidden',tab!=='trends');
   document.getElementById('an-waterfall').classList.toggle('hidden',tab!=='waterfall');
-  document.getElementById('an-type').classList.toggle('hidden',tab==='waterfall');
-  renderAnalytics();
+  document.getElementById('an-heatmap').classList.toggle('hidden',tab!=='heatmap');
+  // Hide period + type selectors for heatmap (fixed 3-month window, expenses only)
+  document.getElementById('an-type').classList.toggle('hidden',tab==='waterfall'||tab==='heatmap');
+  document.getElementById('an-period').classList.toggle('hidden',tab==='heatmap');
+  if(tab==='heatmap'){_hmMonthOffset=0;renderHeatmap();}
+  else renderAnalytics();
+}
+
+function renderHeatmap(){
+  const grid=document.getElementById('an-hm-grid');
+  const detail=document.getElementById('an-hm-detail');
+  if(!grid)return;
+  if(isLoading){grid.innerHTML=LOADING_HTML;return;}
+
+  // Build day→amount map for expenses only (all time — used for colour thresholds)
+  const dayMap={};
+  txs.filter(t=>t.type==='expense').forEach(t=>{
+    dayMap[t.date]=(dayMap[t.date]||0)+t.amount;
+  });
+
+  // Percentile thresholds across all non-zero days
+  const nonZero=Object.values(dayMap).filter(v=>v>0).sort((a,b)=>a-b);
+  const p25=nonZero[Math.floor(nonZero.length*0.25)]||0;
+  const p75=nonZero[Math.floor(nonZero.length*0.75)]||0;
+
+  function cellColor(amt){
+    if(!amt) return 'var(--bg-2)';
+    if(amt<=p25) return 'rgba(43,95,62,0.15)';
+    if(amt<=p75) return 'rgba(43,95,62,0.42)';
+    return 'rgba(43,95,62,0.82)';
+  }
+  function textColor(amt){
+    if(!amt||amt<=p25) return 'var(--ink-4)';
+    if(amt<=p75) return 'var(--ink-2)';
+    return 'var(--surface)';
+  }
+
+  const DAY_LABELS=['M','T','W','T','F','S','S'];
+  const now=new Date();
+  const todayStr=now.toISOString().slice(0,10);
+  const MAX_OFFSET=2; // how far back user can page (3 months total)
+
+  // Current page: month at offset 0 = this month, 1 = last month, 2 = two months ago
+  const d=new Date(now.getFullYear(),now.getMonth()-_hmMonthOffset,1);
+  const year=d.getFullYear(),month=d.getMonth();
+  const monthName=d.toLocaleDateString('en-MY',{month:'long',year:'numeric'});
+
+  // Month total for the header
+  const mm0=String(month+1).padStart(2,'0');
+  const monthTotal=txs.filter(t=>t.type==='expense'&&t.date.startsWith(`${year}-${mm0}`)).reduce((s,t)=>s+t.amount,0);
+
+  // Nav buttons
+  const canPrev=_hmMonthOffset<MAX_OFFSET;
+  const canNext=_hmMonthOffset>0;
+  const navBtn=(label,fn,enabled)=>`<button onclick="${fn}()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:${enabled?'var(--ink)':'var(--ink-4)'};cursor:${enabled?'pointer':'default'};font-size:16px;display:flex;align-items:center;justify-content:center" ${enabled?'':'disabled'}>${label}</button>`;
+
+  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div>
+      <span style="font-size:15px;font-weight:600;color:var(--ink)">${monthName}</span>
+      <span style="font-size:12px;color:var(--ink-4);margin-left:10px;font-family:var(--mono)">${RM(monthTotal)}</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:11px;color:var(--ink-4)">${_hmMonthOffset===0?'Current month':_hmMonthOffset===1?'1 month ago':'2 months ago'}</span>
+      ${navBtn('←','hmPrev',canPrev)}
+      ${navBtn('→','hmNext',canNext)}
+    </div>
+  </div>`;
+
+  // Day-of-week header
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px">`;
+  DAY_LABELS.forEach(lbl=>{
+    html+=`<div style="text-align:center;font-size:10px;color:var(--ink-4);font-weight:500;padding-bottom:2px">${lbl}</div>`;
+  });
+  html+=`</div>`;
+
+  // Calendar grid
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  let startDow=new Date(year,month,1).getDay();
+  startDow=(startDow+6)%7; // Mon=0
+  html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">`;
+  for(let i=0;i<startDow;i++) html+=`<div></div>`;
+  for(let day=1;day<=daysInMonth;day++){
+    const dd=String(day).padStart(2,'0');
+    const dateStr=`${year}-${mm0}-${dd}`;
+    const amt=dayMap[dateStr]||0;
+    const isFuture=dateStr>todayStr;
+    const isToday=dateStr===todayStr;
+    const bg=isFuture?'transparent':cellColor(amt);
+    const fg=isFuture?'var(--ink-4)':textColor(amt);
+    const border=isToday?`2px solid var(--accent)`:`2px solid transparent`;
+    html+=`<div onclick="hmSelectDay('${dateStr}',${amt})" data-hm="${dateStr}"
+      style="aspect-ratio:1;border-radius:8px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:12px;color:${fg};cursor:${isFuture?'default':'pointer'};font-family:var(--mono);${isFuture?'opacity:0.25':''}">
+      ${day}
+    </div>`;
+  }
+  html+=`</div>`;
+
+  // Legend
+  html+=`<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+    <span style="font-size:11px;color:var(--ink-4)">No spend</span>
+    <div style="display:flex;gap:3px">
+      <div style="width:14px;height:14px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line)"></div>
+      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.15)"></div>
+      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.42)"></div>
+      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.82)"></div>
+    </div>
+    <span style="font-size:11px;color:var(--ink-4)">High spend</span>
+  </div>`;
+
+  grid.innerHTML=html;
+  detail.style.display='none';
+
+  window.hmPrev=function(){if(_hmMonthOffset<MAX_OFFSET){_hmMonthOffset++;renderHeatmap();}};
+  window.hmNext=function(){if(_hmMonthOffset>0){_hmMonthOffset--;renderHeatmap();}};
+
+  window.hmSelectDay=function(dateStr,amt){
+    if(dateStr>todayStr) return;
+    document.querySelectorAll('[data-hm]').forEach(el=>{
+      el.style.outline=el.dataset.hm===dateStr?'2px solid var(--accent)':'none';
+      el.style.outlineOffset='2px';
+    });
+    const dayTxs=txs.filter(t=>t.type==='expense'&&t.date===dateStr).sort((a,b)=>b.amount-a.amount);
+    const label=new Date(dateStr+'T00:00:00').toLocaleDateString('en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    if(!dayTxs.length){
+      detail.style.display='block';
+      detail.innerHTML=`<p style="font-size:13px;color:var(--ink-3);margin:0">${label} — no expenses recorded</p>`;
+      return;
+    }
+    const rows=dayTxs.map(t=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:13px;color:var(--ink-2)">${t.category}${t.description?` · <span style="color:var(--ink-4)">${t.description}</span>`:''}</span>
+      <span style="font-size:13px;font-family:var(--mono);color:var(--ink);font-weight:500">${RM(t.amount)}</span>
+    </div>`).join('');
+    detail.style.display='block';
+    detail.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink)">${label}</span>
+        <span style="font-size:13px;font-family:var(--mono);color:var(--warn);font-weight:600">${RM(amt)} total</span>
+      </div>${rows}`;
+  };
 }
 
 function renderWaterfall(inR){
@@ -1205,6 +1343,7 @@ function renderPeriodNarrative(){
 function renderAnalytics(){
   renderAnomalyBanner();
   renderPeriodNarrative();
+  if(document.getElementById('an-heatmap')&&!document.getElementById('an-heatmap').classList.contains('hidden')){renderHeatmap();return;}
   if(isLoading){document.getElementById('an-table').innerHTML=LOADING_HTML;return;}
   const tp=document.getElementById('an-type')?.value||'expense';
   const inR=t=>(!anStart||t.date>=anStart)&&(!anEnd||t.date<=anEnd);
