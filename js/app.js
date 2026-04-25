@@ -38,6 +38,30 @@ const LOADING_HTML='<div class="flex flex-col items-center justify-center py-16 
 const fd=d=>new Date(d+'T00:00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'});
 const avg=arr=>{const nz=arr.filter(v=>v>0);return nz.length?nz.reduce((s,v)=>s+v,0)/nz.length:0};
 
+// ── Malaysia context helpers ─────────────────────────
+function gregorianToHijri(gy,gm,gd){
+  const jd=Math.floor((1461*(gy+4800+Math.floor((gm-14)/12)))/4)+
+           Math.floor((367*(gm-2-12*Math.floor((gm-14)/12)))/12)-
+           Math.floor((3*Math.floor((gy+4900+Math.floor((gm-14)/12))/100))/4)+gd-32075;
+  let l=jd-1948440+10632;
+  const n=Math.floor((l-1)/10631);
+  l=l-10631*n+354;
+  const j=Math.floor((10985-l)/5316)*Math.floor((50*l)/17719)+Math.floor(l/5670)*Math.floor((43*l)/15238);
+  l=l-Math.floor((30-j)/15)*Math.floor((17719*j)/50)-Math.floor(j/16)*Math.floor((15238*j)/43)+29;
+  return{year:30*n+j-30,month:Math.floor((24*l)/709),day:l-Math.floor((709*Math.floor((24*l)/709))/24)};
+}
+
+function getMalaysiaContext(date){
+  const h=gregorianToHijri(date.getFullYear(),date.getMonth()+1,date.getDate());
+  if(h.month===9) return 'Ramadan — expect higher food and charity spend this month';
+  if(h.month===10&&h.day<=7) return 'Hari Raya Aidilfitri — festive spending period; food, travel, and clothing typically spike';
+  const m={1:'New Year — spending spike typical this month',2:'Chinese New Year — expect 1.5–2× food and shopping spend',
+    4:'School holidays — travel and entertainment may rise',6:'School holidays + mid-year sales season',
+    8:'Merdeka / National Day — sales period',10:'Deepavali — festive spending period',
+    11:'Singles Day and year-end sales (Shopee, Lazada)',12:'Year-end bonus season — typically a high spend month'};
+  return m[date.getMonth()+1]||null;
+}
+
 function showDemoToast(){
   const existing=document.getElementById('demo-toast');if(existing)return;
   const t=document.createElement('div');
@@ -1154,10 +1178,27 @@ function renderPeriodNarrative(){
   });
 
   if(!rows.length){el.innerHTML='';return;}
+
+  // Malaysia calendar context + upcoming user annotations
+  const ctx=getMalaysiaContext(new Date());
+  const today=new Date().toISOString().slice(0,10);
+  const in30=new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10);
+  const upcoming=annotations.filter(a=>a.date>today&&a.date<=in30).sort((a,b)=>a.date<b.date?-1:1).slice(0,3);
+  const footerLines=[];
+  if(ctx) footerLines.push(`📍 ${ctx}`);
+  upcoming.forEach(a=>{
+    const label=new Date(a.date+'T00:00:00').toLocaleDateString('en-MY',{day:'numeric',month:'short'});
+    footerLines.push(`📌 ${a.label} (${label})`);
+  });
+  const footer=footerLines.length
+    ?`<p style="font-size:12px;color:var(--ink-4);margin:8px 0 0;border-top:1px solid var(--line);padding-top:8px;line-height:1.8">${footerLines.join('<br>')}</p>`
+    :'';
+
   el.innerHTML=`
     <div style="background:var(--bg-2);border-radius:var(--r-md);padding:16px 20px;margin-bottom:24px">
       <p style="font-family:var(--serif);font-size:16px;color:var(--ink);margin:0 0 10px">vs last period</p>
       ${rows.slice(0,4).map(r=>`<p style="font-size:13px;color:var(--ink-2);margin:0 0 6px;line-height:1.5">${r}</p>`).join('')}
+      ${footer}
     </div>`;
 }
 
