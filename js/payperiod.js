@@ -38,7 +38,12 @@ window.PAY_PERIOD = (() => {
   function onChange(fn) { _listeners.push(fn); }
 
   // ── Format a Date as YYYY-MM-DD ──
-  function toYMD(d) { return d.toISOString().slice(0, 10); }
+  function toYMD(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 
   // ── Format a Date as readable string e.g. "25 Feb 2026" ──
   function toLabel(d) {

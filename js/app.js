@@ -329,7 +329,7 @@ function calculateHealthScore(){
   // Zone + badge colours
   const zone=score>=80?'Excellent':score>=60?'Healthy':score>=40?'Watch':'At Risk';
   const badgeBg=score>=80?'var(--accent)':score>=60?'var(--accent-soft)':score>=40?'rgba(184,87,43,0.12)':'var(--warn)';
-  const badgeColor=score>=80?'var(--bg)':score>=60?'var(--accent)':'var(--warn)';
+  const badgeColor=score>=80?'var(--bg)':score>=60?'var(--accent)':score>=40?'var(--warn)':'#fff';
 
   // DOM — composite
   const sc=document.getElementById('hs-score');
