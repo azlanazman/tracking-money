@@ -6,8 +6,9 @@
 // ══════════════════════════════════════════════════════
 
 // ── State ──────────────────────────────────────────────────────
-let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[];
+let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[],healthHistory={};
 let DEMO_MODE=false;
+let _lockChecked=false;
 let curScr='home',editId=null;
 let lastUsedCat=null;
 let insTab='spend',_hmMonthOffset=0;
@@ -219,6 +220,8 @@ function switchInsightsTab(tab){
 
 async function initDB(){
   isLoading=true;
+  _lockChecked=false;
+  healthHistory={};
   try{
     setDB('connecting');
     const uid=currentUser.uid;
@@ -244,10 +247,16 @@ async function initDB(){
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
     uref.collection('alerts').onSnapshot(snap=>{alerts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAlerts();});
     uref.collection('annotations').orderBy('date','asc').onSnapshot(snap=>{annotations=snap.docs.map(d=>({id:d.id,...d.data()}));if(curScr==='insights')renderAnalytics();if(curScr==='settings')renderSettings();});
+    uref.collection('health').doc('history').onSnapshot(doc=>{
+      healthHistory=doc.exists?(doc.data().periods||{}):{};
+      if(!isLoading)checkAndLockPeriod();
+      if(curScr==='insights'&&insTab==='forecast')renderBudgetTrackRecord();
+    });
     uref.collection('transactions').orderBy('createdAt','desc').onSnapshot(snap=>{
       txs=snap.docs.map(d=>({id:d.id,...d.data()}));
       isLoading=false;
       setDB('connected',txs.length+' RECORDS');
+      checkAndLockPeriod();
       renderDashboard();renderTx();renderBudgets();
     },err=>{isLoading=false;setDB('error');console.error(err);});
   }catch(e){
@@ -1603,6 +1612,82 @@ function renderRecurringUnbudgeted(){
     </div>`;
 }
 
+async function checkAndLockPeriod(){
+  if(DEMO_MODE||_lockChecked)return;
+  _lockChecked=true;
+  const periods=PAY_PERIOD.lastNPeriods(2);
+  if(periods.length<2)return;
+  const justClosed=periods[1];
+  const key=justClosed.key;
+  if(healthHistory[key]?.isLocked)return;
+  const periodTxs=PAY_PERIOD.filterToPeriod(txs,justClosed);
+  if(!periodTxs.length)return;
+  const totalSpent=periodTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const totalBudget=Object.values(budgets).reduce((s,b)=>s+(b.amount||0),0);
+  const status=totalBudget>0?(totalSpent<=totalBudget?'green':'red'):'grey';
+  const record={status,totalSpent,totalBudget,lockedAt:new Date().toISOString(),isLocked:true};
+  try{
+    await uref.collection('health').doc('history').set({periods:{[key]:record}},{merge:true});
+    healthHistory[key]=record;
+  }catch(e){console.error('[Lumina] checkAndLockPeriod',e);}
+}
+
+function renderBudgetTrackRecord(){
+  const el=document.getElementById('ins-track-record');
+  if(!el)return;
+  if(isLoading){el.innerHTML='';return;}
+  const allPeriods=PAY_PERIOD.lastNPeriods(13).slice(1).reverse();
+  const hasData=p=>healthHistory[p.key]||PAY_PERIOD.filterToPeriod(txs,p).length>0;
+  const periods=[...allPeriods.filter(hasData),...allPeriods.filter(p=>!hasData(p))];
+  const curBudgetTot=Object.values(budgets).reduce((s,b)=>s+(b.amount||0),0);
+  let lockedCount=0,greenCount=0;
+  const badges=periods.map(p=>{
+    const stored=healthHistory[p.key];
+    let status,showTilde=false;
+    if(stored){
+      status=stored.status;
+      lockedCount++;
+      if(status==='green')greenCount++;
+      if(stored.totalBudget>0&&curBudgetTot>0){
+        const diff=Math.abs(stored.totalBudget-curBudgetTot)/stored.totalBudget;
+        if(diff>0.1)showTilde=true;
+      }
+    }else{
+      const pTxs=PAY_PERIOD.filterToPeriod(txs,p);
+      if(!pTxs.length){status='grey';}
+      else{
+        const spent=pTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+        status=curBudgetTot>0?(spent<=curBudgetTot?'green':'red'):'grey';
+      }
+      showTilde=true;
+    }
+    const [y,m]=p.key.split('-').map(Number);
+    const label=`${MONTHS_SHORT[m-1]} '${String(y).slice(2)}`;
+    const C={
+      green:{bg:'rgba(43,95,62,0.1)',border:'var(--accent)',text:'var(--accent)',sym:'✓'},
+      red:  {bg:'rgba(184,87,43,0.1)',border:'var(--warn)',text:'var(--warn)',sym:'✗'},
+      grey: {bg:'var(--bg-2)',border:'var(--line)',text:'var(--ink-4)',sym:'—'}
+    }[status];
+    return `<div style="background:${C.bg};border:1px solid ${C.border};border-radius:var(--r-sm);padding:8px 10px;text-align:center;min-width:52px">
+      <div style="font-size:10px;font-family:var(--mono);color:${C.text};font-weight:600;white-space:nowrap">${showTilde?'~':''}${label}</div>
+      <div style="font-size:14px;color:${C.text};margin-top:2px;line-height:1">${C.sym}</div>
+    </div>`;
+  });
+  let streak=0;
+  for(const p of [...periods].reverse()){if(healthHistory[p.key]?.status==='green')streak++;else break;}
+  const subText=lockedCount===0?'Compliance tracked from this period forward':
+    streak>0?`${streak} period${streak!==1?'s':''} on track in a row`:
+    `${greenCount} of ${lockedCount} period${lockedCount!==1?'s':''} within budget`;
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
+      <h3 style="font-family:var(--serif);font-size:18px;color:var(--ink)">Budget Track Record</h3>
+      <span style="font-size:11px;color:var(--ink-4)">Last 12 periods</span>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);margin-bottom:16px">${subText} &nbsp;·&nbsp; <span style="opacity:0.7">~ = estimated against current budget</span></p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${badges.join('')}</div>
+  </div>`;
+}
+
 function renderForecast(){
   if(curScr!=='insights')return;
   if(isLoading){document.getElementById('f-cats').innerHTML=LOADING_HTML;return;}
@@ -1685,6 +1770,7 @@ function renderForecast(){
   if(aI>0)ops.push(`Your current savings rate is approximately <strong>${((aS/aI)*100).toFixed(1)}%</strong>. Financial benchmarks recommend 20–30% for accelerated wealth accumulation.`);
   document.getElementById('f-ops').innerHTML=ops.map(o=>`<p class="flex gap-2"><span class="opacity-60 mt-0.5 flex-shrink-0">·</span><span>${o}</span></p>`).join('');
   renderRecurringUnbudgeted();
+  renderBudgetTrackRecord();
 }
 
 // ── Settings ─────────────────────────────────────────────────────
