@@ -303,30 +303,20 @@ input[type=number]{-moz-appearance:textfield}
 </aside>
 
 <!-- ══════ TOP BAR ══════ -->
-<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 glass-nav z-40 flex items-center justify-between px-8 border-b border-slate-100/50">
-  <div class="flex items-center gap-6">
-    <!-- Page title -->
-    <h2 id="pg-title" class="text-base font-bold tracking-tight text-slate-900 font-headline hidden md:block">Financial Intelligence</h2>
-    <!-- Search -->
-    <div class="relative group">
-      <span class="material-symbols-outlined msym absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] group-focus-within:text-indigo-600 transition-colors">search</span>
-      <input placeholder="Search transactions…" class="bg-surface-container border-none rounded-full pl-9 pr-4 py-2 text-sm w-60 focus:ring-2 focus:ring-primary/20 outline-none transition-all" type="text"/>
-    </div>
-    <!-- Top nav links -->
-    <nav class="hidden md:flex gap-5 text-sm font-medium font-headline">
-      <a class="text-indigo-600 font-semibold" href="#">Overview</a>
-      <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Market</a>
-      <a class="text-slate-500 hover:text-indigo-500 transition-colors duration-300" href="#">Reports</a>
-    </nav>
-  </div>
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 glass-nav z-40 flex items-center justify-end px-8 border-b">
   <div class="flex items-center gap-3">
     <span id="demo-banner" class="hidden px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider rounded-full border border-amber-200">Demo Mode</span>
-    <button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all duration-200">
-      <span class="material-symbols-outlined msym">notifications</span>
-    </button>
-    <button class="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-all duration-200">
-      <span class="material-symbols-outlined msym">dark_mode</span>
-    </button>
+    <!-- Theme toggle -->
+    <div style="position:relative">
+      <button id="theme-toggle-btn" onclick="toggleThemeDropdown(event)" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink-3);transition:background .15s">
+        <span class="material-symbols-outlined" style="font-size:16px;font-variation-settings:'FILL' 0,'wght' 300">palette</span>
+      </button>
+      <div id="theme-drop" style="display:none;position:absolute;top:42px;right:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:6px;min-width:128px;box-shadow:var(--shadow-md);z-index:200">
+        <button class="theme-btn" data-theme="" onclick="setTheme('');closeThemeDropdown()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;border-radius:8px;font-size:13px;font-family:var(--sans);cursor:pointer">Minimal</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark');closeThemeDropdown()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;border-radius:8px;font-size:13px;font-family:var(--sans);cursor:pointer">Dark</button>
+        <button class="theme-btn" data-theme="warm" onclick="setTheme('warm');closeThemeDropdown()" style="display:block;width:100%;text-align:left;padding:8px 12px;border:none;border-radius:8px;font-size:13px;font-family:var(--sans);cursor:pointer">Warm</button>
+      </div>
+    </div>
     <div id="top-avatar" onclick="nav('settings')" class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white text-xs font-bold cursor-pointer" title="">A</div>
   </div>
 </header>
@@ -508,11 +498,7 @@ input[type=number]{-moz-appearance:textfield}
   </div>
   <!-- Heatmap view -->
   <div id="an-heatmap" class="hidden">
-    <div class="bg-surface-container-lowest p-7 rounded-3xl amb-card">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-        <h3 class="text-base font-bold text-slate-900 font-headline">Daily Spend Heatmap</h3>
-        <span style="font-size:11px;color:var(--ink-4)">Last 3 months · expenses only</span>
-      </div>
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px">
       <div id="an-hm-grid"></div>
       <div id="an-hm-detail" style="display:none;margin-top:16px;padding:14px 16px;background:var(--bg-2);border-radius:var(--r-md)"></div>
     </div>
@@ -746,25 +732,6 @@ input[type=number]{-moz-appearance:textfield}
       </div>
       </div><!-- end entry-section-body -->
     </div><!-- end entry-section -->
-    <!-- Theme -->
-    <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-      <h3 class="text-sm font-bold text-slate-900 font-headline mb-1">Appearance</h3>
-      <p class="text-xs text-slate-400 mb-4">Choose how Lumina looks. Your preference is saved to this device.</p>
-      <div class="flex gap-2">
-        <button class="theme-btn" data-theme="" onclick="setTheme('')"
-          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
-          Minimal
-        </button>
-        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')"
-          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
-          Dark
-        </button>
-        <button class="theme-btn" data-theme="warm" onclick="setTheme('warm')"
-          style="flex:1;padding:10px 0;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
-          Warm
-        </button>
-      </div>
-    </div>
     <!-- Pay Period -->
     <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
       <div class="flex items-start justify-between mb-5">

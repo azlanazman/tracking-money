@@ -501,6 +501,69 @@ I.7 → I.3 → I.4 → I.2 → I.6 → I.5 → I.1 → I.8
 
 ---
 
+## Phase RD — Visual Redesign
+
+**Goal**: Modernise the app chrome and Home tab to match the new mockup direction — editorial feel, dark hero card, stripped-back top bar.
+
+| # | Session Goal | Status | Files to bring |
+|---|---|---|---|
+| RD.1 | Top bar + RunwayHero card redesign | ✅ Done | `index.html` (paste `<header>` block + `sc-home` div) + `js/app.js` (paste `renderRunwayHero` function + `renderDashboard` function) |
+| RD.2 | Heatmap UI reskin — match Spend Rhythm design | ✅ Done | `js/app.js` (paste `renderHeatmap` function) |
+| RD.3 | Spend Swarm — replace Spend Rhythm heatmap with scatter plot | ⬜ Not started | `js/app.js` (paste `renderSpendRhythm` function) |
+
+### RD.1 — Confirmed design decisions
+
+- **Top bar**: strip to right-side only — palette icon (opens floating dropdown: Minimal / Dark / Warm, persists to `localStorage`, closes on outside click) + avatar. Removed: "Financial Intelligence" label, search bar, Overview/Market/Reports nav, bell, moon toggle.
+- **Theme dropdown**: `toggleThemeDropdown()` / `closeThemeDropdown()` in `app.js`. Replaces the Appearance section in `sc-settings` — removed entirely. `syncThemeBtns()` updated to use `accent-soft` active state (no border styling).
+- **RunwayHero card** (`renderRunwayHero()`):
+  - Background: `var(--bg-2)` + `radial-gradient` accent-soft overlay — theme-responsive, not hardcoded
+  - SVG arc ring removed entirely; `_rhRaf` reused for count-up animation only
+  - **Masthead row** (bottom rule): `{DAY}, {MON} {D}` + `DAY {elapsed} / {total}` left · `GOOD {TIME}, {FIRSTNAME}` right
+  - **Two-column grid** (`1.05fr 1fr`, gap 48px, align-items end):
+    - Left: `RUNWAY · DAYS TO PAYDAY` label → 185px italic serif number (count-up, 1.6s easeOut) + inline `days` / `UNTIL {END}` → sentence (serif 24px)
+    - Right (flex column, gap 16): sparkline card (`var(--surface)` + border, gradient area fill, hollow dots) + stats card (3-column grid with `var(--line)` dividers)
+  - **3-stat labels**: `PER DAY` · `SPENT` · `NET CASH`
+  - **PER DAY subtext**: `under target by RM {diff}` (accent) / `over by RM {diff}` (warn) / `no budget set`
+  - **NET CASH subtext**: `surplus` (accent) / `deficit` (warn) — sign-aware
+  - **Timeline**: `space-between` flex — start / `TODAY · DAY {elapsed}` / end; 4px bar with accent dot marker at progress point
+
+### RD.2 — Confirmed design decisions
+
+- **Pure UI reskin — no logic or data changes**
+- **Card wrapper**: wrap `an-hm-grid` content in `background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px` — same shell as Spend Rhythm
+- **Header row**: serif 20px month name left · mono pill (month total `RM X`) right · nav arrows (`←` / `→`) inline with the pill, same circular button style as current but matching Spend Rhythm sizing
+- **Day column headers**: `font-size:10px;color:var(--ink-4);font-weight:600` — add `font-weight:600` to match
+- **Cell colours** — replace `rgba(43,95,62,...)` green palette with Spend Rhythm palette:
+  - No spend / future: `background:var(--bg-2);color:var(--ink-4)`
+  - Low (≤ p25): `background:rgba(201,245,96,0.12);color:var(--ink-3)`
+  - Mid (p25–p75): `background:rgba(201,245,96,0.55);color:#1A2810`
+  - High (> p75): `background:rgba(245,161,95,0.70);color:#2A1500`
+- **Cell sizing**: replace `aspect-ratio:1` with `min-height:36px;padding:9px 3px` to match Spend Rhythm cell proportions
+- **Legend**: match Spend Rhythm layout exactly — "No spend" left, `LOW [4 swatches] HIGH` right, same 12×12px swatch sizing
+- **Detail panel** (`an-hm-detail`): unchanged — logic and layout stays as-is
+
+### RD.3 — Confirmed design decisions
+
+- **Replaces**: 4-week day-of-week heatmap grid in `renderSpendRhythm()`
+- **Scope**: `js/app.js` — `renderSpendRhythm()` function only; no changes to `index.html` or any other function
+- **Card background**: dark `#131A13` hardcoded — immune to theme token changes (same principle as RunwayHero `#1C2B1A`)
+- **Title**: "Spend swarm" in italic serif 20px, white (`#F0EDE8`)
+- **Subtitle**: "Every transaction · day × amount · clusters reveal habits" — 11px, muted
+- **Entries count pill**: top right, mono font, `rgba(255,255,255,0.08)` background
+- **SVG scatter plot** (inline, `viewBox="0 0 560 200"`, `width="100%"`):
+  - X axis: period start → today (current pay period, expenses only)
+  - Y axis: 0 → `ceil(maxAmt / 100) * 100` (nice round max)
+  - 3 horizontal dotted gridlines at 1/3, 2/3, and max — labels left-gutter in mono
+  - X-axis date labels every 5 days (Apr 1, Apr 5, …) — mono, muted
+  - One circle per expense transaction: `cx=dateToX(t.date)`, `cy=amtToY(t.amount)`, `r = max(3, min(12, 3 + sqrt(amt/niceMax) * 9))`
+  - Dot color by category — deterministic mapping to `SWARM_PAL = ['#C9F560','#F5A15F','#7B9EBC','#9B9590','#C4A882','#8FB896','#E8A598','#B0A8E0']`
+  - Outlier callout (highest single transaction): dark rect + dashed connector line + "OUTLIER" small-caps label + `RM X on [date]` + description (sliced to 22 chars)
+- **Legend row**: below SVG — flex row of 8px colored circles + category names, mono 10px, muted
+- **Empty state**: hide SVG, show "No expense transactions this period yet." in muted text
+- **Data source**: `PAY_PERIOD.filterToPeriod(txs, PAY_PERIOD.currentPeriod())` filtered to `type === 'expense'` and `date <= today` — zero new Firestore reads
+
+---
+
 ## Phase 5 — Commercialisation Readiness
 
 **Duration**: Week 17–20  

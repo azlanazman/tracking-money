@@ -327,89 +327,155 @@ function renderRunwayHero(daysLeft,daysTotal,inc,exp,sav,budgetTot,dailyActual,p
   const el=document.getElementById('d-runway-hero');
   if(!el)return;
 
-  const dailySafe=daysLeft>0?Math.max(0,(budgetTot-exp)/daysLeft):0;
-  const pacing=budgetTot===0||dailyActual<=dailySafe;
+  const hasBudget=budgetTot>0;
+  const dailySafe=daysLeft>0&&hasBudget?Math.max(0,(budgetTot-exp)/daysLeft):0;
+  const pacing=!hasBudget||dailyActual<=dailySafe;
   const pacingDiff=Math.abs(dailySafe-dailyActual);
-  const pct=daysTotal>0?daysLeft/daysTotal:0;
-  const endFmt=new Date(periodEnd).toLocaleDateString('en-MY',{day:'numeric',month:'short'});
-
-  // SVG ring geometry
-  const sz=220,stroke=11,r=(sz-stroke)/2;
-  const circ=2*Math.PI*r;
   const elapsed=daysTotal-daysLeft;
+  const pct=hasBudget?Math.round(exp/budgetTot*100):null;
+  const liquidity=inc-exp-sav;
+  const pctElapsed=Math.round(elapsed/Math.max(daysTotal,1)*100);
 
-  // Day tick marks
-  const ticks=Array.from({length:daysTotal},(_,i)=>{
-    const a=(i/daysTotal)*2*Math.PI-Math.PI/2;
-    const past=i<elapsed;
-    const x1=(sz/2+Math.cos(a)*(r-stroke/2-5)).toFixed(1);
-    const y1=(sz/2+Math.sin(a)*(r-stroke/2-5)).toFixed(1);
-    const x2=(sz/2+Math.cos(a)*(r-stroke/2-1)).toFixed(1);
-    const y2=(sz/2+Math.sin(a)*(r-stroke/2-1)).toFixed(1);
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${past?'var(--ink-4)':'var(--line)'}" stroke-width="1" stroke-linecap="round" ${past?'opacity="0.55"':''}/>`;
-  }).join('');
+  // Date strings
+  const today=new Date();
+  const DAY_N=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const MON_N=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const dayStr=`${DAY_N[today.getDay()]}, ${MON_N[today.getMonth()]} ${today.getDate()}`;
+  const p=PAY_PERIOD.currentPeriod();
+  const sd=new Date(p.start+'T00:00:00');
+  const ed=new Date(periodEnd+'T00:00:00');
+  const startFmt=`${sd.getDate()} ${MON_N[sd.getMonth()]}`;
+  const endFmt=`${ed.getDate()} ${MON_N[ed.getMonth()]}`;
 
-  const sentenceHTML=pacing
-    ?`You can spend <span style="color:var(--accent);font-style:italic">${RM(dailySafe)}</span> a day and finish green.`
-    :`Slow down <span style="font-style:italic">${RM(pacingDiff)}</span> a day to recover the period.`;
+  // Greeting
+  const hr=today.getHours();
+  const greetWord=hr<12?'MORNING':hr<17?'AFTERNOON':'EVENING';
+  const firstName=(currentUser&&currentUser.displayName||'').split(/\s+/)[0].toUpperCase();
+
+  // Last 7-day sparkline
+  const spark=Array.from({length:7},(_,i)=>{
+    const d=new Date(today);d.setDate(today.getDate()-(6-i));
+    const ymd=d.toISOString().slice(0,10);
+    return txs.filter(t=>t.type==='expense'&&t.date===ymd).reduce((s,t)=>s+t.amount,0);
+  });
+  const spark7Total=spark.reduce((s,v)=>s+v,0);
+  const sparkMax=Math.max(...spark,1);
+  // Sparkline SVG (240×48 viewBox matching mockup)
+  const SVW=240,SVH=48;
+  const spMax=Math.max(...spark,1)*1.1;
+  const spPts=spark.map((v,i)=>[(i/6*SVW).toFixed(1),( SVH-(v/spMax)*SVH).toFixed(1)]);
+  const pathD=spPts.map((p,i)=>(i===0?'M':'L')+p[0]+','+p[1]).join(' ');
+  const areaD=pathD+` L${SVW},${SVH} L0,${SVH} Z`;
+
+  // Sentence
+  const sentenceTxt=pacing
+    ?`You're ${daysLeft} day${daysLeft!==1?'s':''} from payday with ${RM(dailySafe)}/day of breathing room.`
+    :`Ease up ${RM(pacingDiff)}/day to finish the period on budget.`;
 
   el.innerHTML=`
-    <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:36px 40px;position:relative;overflow:hidden">
-      <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 85% 15%,var(--accent-soft),transparent 55%);opacity:0.7"></div>
-      <div style="position:relative;display:flex;align-items:center;gap:40px;flex-wrap:wrap">
-        <div style="position:relative;width:${sz}px;height:${sz}px;flex-shrink:0">
-          <svg width="${sz}" height="${sz}">
-            <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="var(--line)" stroke-width="${stroke}"/>
-            ${ticks}
-            <circle id="rh-arc" cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none"
-              stroke="var(--accent)" stroke-width="${stroke}" stroke-linecap="round"
-              stroke-dasharray="${circ.toFixed(2)}"
-              stroke-dashoffset="${circ.toFixed(2)}"
-              transform="rotate(-90 ${sz/2} ${sz/2})"/>
-          </svg>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px">Runway</div>
-            <div id="rh-days" style="font-family:var(--serif);font-style:italic;font-size:96px;line-height:0.85;letter-spacing:-0.04em;color:var(--ink)">0</div>
-            <div style="font-size:12px;color:var(--ink-3);margin-top:10px">days to <span style="color:var(--ink)">${endFmt}</span></div>
-          </div>
-        </div>
-        <div style="flex:1;min-width:200px">
-          <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px">${pacing?'On track':'Pacing hot'}</div>
-          <div style="font-family:var(--serif);font-size:28px;line-height:1.25;color:var(--ink);margin-bottom:20px;letter-spacing:-0.01em">${sentenceHTML}</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);padding-top:16px">
-            <div>
-              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Spent</div>
-              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(exp)}</div>
-            </div>
-            <div style="padding-left:16px;border-left:1px solid var(--line)">
-              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Income</div>
-              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(inc)}</div>
-            </div>
-            <div style="padding-left:16px;border-left:1px solid var(--line)">
-              <div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px">Saved</div>
-              <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink)">${RM(sav)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+  <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-lg);padding:36px 44px 40px;overflow:hidden;position:relative">
+    <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 90% 10%,var(--accent-soft),transparent 55%),radial-gradient(circle at 5% 90%,rgba(184,87,43,0.05),transparent 50%);opacity:0.9"></div>
+    <div style="position:relative">
 
-  // Animate arc + count-up
-  const targetOffset=circ*(1-pct);
-  const arcEl=document.getElementById('rh-arc');
+    <!-- Masthead: date+period left · greeting right (with bottom rule) -->
+    <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:28px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-size:10px;letter-spacing:0.22em;color:var(--accent);font-family:var(--mono);font-weight:500">${dayStr}</span>
+        <span style="font-size:10px;letter-spacing:0.16em;color:var(--ink-4);font-family:var(--mono)">DAY ${elapsed} / ${daysTotal}</span>
+      </div>
+      ${firstName?`<span style="font-size:10px;letter-spacing:0.22em;color:var(--ink-3);font-family:var(--mono)">GOOD ${greetWord}, ${firstName}</span>`:''}
+    </div>
+
+    <!-- Cover: left=number col, right=sparkline+stats col -->
+    <div style="display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:end">
+
+      <!-- Left: label + big number + sentence -->
+      <div>
+        <div style="font-size:11px;letter-spacing:0.22em;color:var(--ink-3);font-family:var(--mono);margin-bottom:14px">RUNWAY · DAYS TO PAYDAY</div>
+        <div style="display:flex;align-items:baseline;gap:18px;margin-bottom:14px">
+          <span id="rh-days" style="font-family:var(--serif);font-style:italic;font-size:185px;line-height:0.78;color:var(--ink);letter-spacing:-0.05em">0</span>
+          <div style="padding-bottom:14px">
+            <div style="font-family:var(--serif);font-style:italic;font-size:28px;color:var(--ink-2);line-height:1">days</div>
+            <div style="font-size:11px;letter-spacing:0.16em;color:var(--ink-3);font-family:var(--mono);margin-top:6px">UNTIL ${endFmt}</div>
+          </div>
+        </div>
+        <div style="font-family:var(--serif);font-size:24px;line-height:1.25;color:var(--ink);max-width:480px;letter-spacing:-0.01em">${sentenceTxt}</div>
+      </div>
+
+      <!-- Right: sparkline card + stats card -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Sparkline card -->
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:10px;letter-spacing:0.18em;color:var(--ink-3);font-family:var(--mono)">LAST 7 DAYS</span>
+            <span style="font-family:var(--mono);font-size:13px;color:var(--ink-2)">${RM(spark7Total)}</span>
+          </div>
+          <svg width="100%" height="${SVH}" viewBox="0 0 ${SVW} ${SVH}" preserveAspectRatio="none" style="display:block">
+            <defs>
+              <linearGradient id="rhSparkGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.32"/>
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="${areaD}" fill="url(#rhSparkGrad)"/>
+            <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>
+            ${spPts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.2" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.4"/>`).join('')}
+          </svg>
+        </div>
+
+        <!-- Stats card -->
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;grid-template-columns:repeat(3,1fr)">
+          <div>
+            <div style="font-size:9px;letter-spacing:0.18em;color:var(--ink-3);font-family:var(--mono);margin-bottom:6px">PER DAY</div>
+            <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink)">${hasBudget?RM(dailySafe):'—'}</div>
+            <div style="font-size:10px;color:${pacing?'var(--accent)':'var(--warn)'};margin-top:3px;line-height:1.3">${hasBudget?(pacing?'under target by '+RM(pacingDiff):'over by '+RM(pacingDiff)):'no budget set'}</div>
+          </div>
+          <div style="padding-left:16px;border-left:1px solid var(--line)">
+            <div style="font-size:9px;letter-spacing:0.18em;color:var(--ink-3);font-family:var(--mono);margin-bottom:6px">SPENT</div>
+            <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink)">${pct!==null?pct+'%':'—'}</div>
+            <div style="font-size:10px;color:var(--ink-3);margin-top:3px;line-height:1.3">${RM(exp)}${hasBudget?' / '+RM(budgetTot):''}</div>
+          </div>
+          <div style="padding-left:16px;border-left:1px solid var(--line)">
+            <div style="font-size:9px;letter-spacing:0.18em;color:var(--ink-3);font-family:var(--mono);margin-bottom:6px">NET CASH</div>
+            <div style="font-family:var(--mono);font-size:16px;font-weight:500;color:var(--ink)">${RM(liquidity)}</div>
+            <div style="font-size:10px;color:${liquidity>=0?'var(--accent)':'var(--warn)'};margin-top:3px">${liquidity>=0?'surplus':'deficit'}</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Timeline bar with dot marker -->
+    <div style="margin-top:28px">
+      <div style="display:flex;justify-content:space-between;font-size:9px;font-family:var(--mono);letter-spacing:0.14em;color:var(--ink-4);margin-bottom:8px">
+        <span>${startFmt}</span>
+        <span style="color:var(--ink-2)">${'TODAY · DAY '+elapsed}</span>
+        <span>${endFmt}</span>
+      </div>
+      <div style="height:4px;background:var(--line);border-radius:2px;position:relative;overflow:visible">
+        <div style="width:${pctElapsed}%;height:100%;background:var(--ink-2);border-radius:2px;transition:width 1.4s cubic-bezier(0.2,0.8,0.2,1)"></div>
+        <div style="position:absolute;top:50%;left:${pctElapsed}%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--bg-2)"></div>
+      </div>
+    </div>
+
+    </div>
+  </div>`;
+
+  // Count-up animation for the days number
   const daysEl=document.getElementById('rh-days');
-  const duration=1600;
-  let startTs=null;
-  function easeOut(t){return t===1?1:1-Math.pow(2,-10*t);}
-  function tick(ts){
-    if(!startTs)startTs=ts;
-    const progress=Math.min((ts-startTs)/duration,1);
-    const e=easeOut(progress);
-    if(arcEl)arcEl.setAttribute('stroke-dashoffset',(circ-(circ-targetOffset)*e).toFixed(2));
-    if(daysEl)daysEl.textContent=Math.round(daysLeft*e);
-    if(progress<1){_rhRaf=requestAnimationFrame(tick);}else{_rhRaf=null;}
+  if(daysEl){
+    const duration=1600,delay=120;
+    let startTs=null;
+    function easeOut(t){return 1-Math.pow(2,-10*t);}
+    function tick(ts){
+      if(!startTs)startTs=ts;
+      const progress=Math.min((ts-startTs)/duration,1);
+      daysEl.textContent=Math.round(daysLeft*easeOut(progress));
+      if(progress<1){_rhRaf=requestAnimationFrame(tick);}else{_rhRaf=null;}
+    }
+    setTimeout(()=>{_rhRaf=requestAnimationFrame(tick);},delay);
   }
-  _rhRaf=requestAnimationFrame(tick);
 }
 
 function updateSidebarRunway(){
@@ -1135,16 +1201,12 @@ function renderHeatmap(){
   const p25=nonZero[Math.floor(nonZero.length*0.25)]||0;
   const p75=nonZero[Math.floor(nonZero.length*0.75)]||0;
 
-  function cellColor(amt){
-    if(!amt) return 'var(--bg-2)';
-    if(amt<=p25) return 'rgba(43,95,62,0.15)';
-    if(amt<=p75) return 'rgba(43,95,62,0.42)';
-    return 'rgba(43,95,62,0.82)';
-  }
-  function textColor(amt){
-    if(!amt||amt<=p25) return 'var(--ink-4)';
-    if(amt<=p75) return 'var(--ink-2)';
-    return 'var(--surface)';
+  function cellStyle(amt,isFuture){
+    if(isFuture) return 'background:transparent;color:var(--ink-4)';
+    if(!amt) return 'background:var(--bg-2);color:var(--ink-4)';
+    if(amt<=p25) return 'background:rgba(201,245,96,0.12);color:var(--ink-3)';
+    if(amt<=p75) return 'background:rgba(201,245,96,0.55);color:#1A2810';
+    return 'background:rgba(245,161,95,0.70);color:#2A1500';
   }
 
   const DAY_LABELS=['M','T','W','T','F','S','S'];
@@ -1164,24 +1226,22 @@ function renderHeatmap(){
   // Nav buttons
   const canPrev=_hmMonthOffset<MAX_OFFSET;
   const canNext=_hmMonthOffset>0;
-  const navBtn=(label,fn,enabled)=>`<button onclick="${fn}()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:${enabled?'var(--ink)':'var(--ink-4)'};cursor:${enabled?'pointer':'default'};font-size:16px;display:flex;align-items:center;justify-content:center" ${enabled?'':'disabled'}>${label}</button>`;
+  const navBtn=(label,fn,enabled)=>`<button onclick="${fn}()" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:${enabled?'var(--ink)':'var(--ink-4)'};cursor:${enabled?'pointer':'default'};font-size:13px;display:flex;align-items:center;justify-content:center" ${enabled?'':'disabled'}>${label}</button>`;
 
-  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-    <div>
-      <span style="font-size:15px;font-weight:600;color:var(--ink)">${monthName}</span>
-      <span style="font-size:12px;color:var(--ink-4);margin-left:10px;font-family:var(--mono)">${RM(monthTotal)}</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span style="font-size:11px;color:var(--ink-4)">${_hmMonthOffset===0?'Current month':_hmMonthOffset===1?'1 month ago':'2 months ago'}</span>
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <div style="font-family:var(--serif);font-size:20px;color:var(--ink)">${monthName}</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:11px;color:var(--ink-3);font-family:var(--mono);background:var(--bg-2);padding:4px 10px;border-radius:var(--r-sm)">${RM(monthTotal)}</div>
       ${navBtn('←','hmPrev',canPrev)}
       ${navBtn('→','hmNext',canNext)}
     </div>
-  </div>`;
+  </div>
+  <div style="font-size:11px;color:var(--ink-3);margin-bottom:16px">${_hmMonthOffset===0?'Current month':_hmMonthOffset===1?'Last month':'2 months ago'} · expenses only</div>`;
 
   // Day-of-week header
   html+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:5px">`;
   DAY_LABELS.forEach(lbl=>{
-    html+=`<div style="text-align:center;font-size:10px;color:var(--ink-4);font-weight:500;padding-bottom:2px">${lbl}</div>`;
+    html+=`<div style="text-align:center;font-size:10px;color:var(--ink-4);font-weight:600;padding-bottom:2px">${lbl}</div>`;
   });
   html+=`</div>`;
 
@@ -1197,26 +1257,25 @@ function renderHeatmap(){
     const amt=dayMap[dateStr]||0;
     const isFuture=dateStr>todayStr;
     const isToday=dateStr===todayStr;
-    const bg=isFuture?'transparent':cellColor(amt);
-    const fg=isFuture?'var(--ink-4)':textColor(amt);
-    const border=isToday?`2px solid var(--accent)`:`2px solid transparent`;
+    const border=isToday?`2px solid var(--accent)`:`1px solid transparent`;
     html+=`<div onclick="hmSelectDay('${dateStr}',${amt})" data-hm="${dateStr}"
-      style="aspect-ratio:1;border-radius:8px;background:${bg};border:${border};display:flex;align-items:center;justify-content:center;font-size:12px;color:${fg};cursor:${isFuture?'default':'pointer'};font-family:var(--mono);${isFuture?'opacity:0.25':''}">
+      style="${cellStyle(amt,isFuture)};border-radius:8px;border:${border};min-height:36px;padding:9px 3px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;cursor:${isFuture?'default':'pointer'};${isFuture?'opacity:0.3':''}">
       ${day}
     </div>`;
   }
   html+=`</div>`;
 
   // Legend
-  html+=`<div style="display:flex;align-items:center;gap:8px;margin-top:16px">
-    <span style="font-size:11px;color:var(--ink-4)">No spend</span>
-    <div style="display:flex;gap:3px">
-      <div style="width:14px;height:14px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line)"></div>
-      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.15)"></div>
-      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.42)"></div>
-      <div style="width:14px;height:14px;border-radius:3px;background:rgba(43,95,62,0.82)"></div>
+  html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+    <div style="font-size:10px;color:var(--ink-4)">No spend</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-4)">
+      LOW
+      <div style="width:12px;height:12px;border-radius:3px;background:var(--bg-2);border:1px solid var(--line)"></div>
+      <div style="width:12px;height:12px;border-radius:3px;background:rgba(201,245,96,0.12)"></div>
+      <div style="width:12px;height:12px;border-radius:3px;background:rgba(201,245,96,0.55)"></div>
+      <div style="width:12px;height:12px;border-radius:3px;background:rgba(245,161,95,0.70)"></div>
+      HIGH
     </div>
-    <span style="font-size:11px;color:var(--ink-4)">High spend</span>
   </div>`;
 
   grid.innerHTML=html;
@@ -2048,14 +2107,24 @@ function setTheme(val){
 function syncThemeBtns(val){
   document.querySelectorAll('.theme-btn').forEach(b=>{
     const active=b.dataset.theme===val;
-    b.style.background=active?'var(--accent)':'transparent';
-    b.style.color=active?'#fff':'var(--ink-2)';
-    b.style.borderColor=active?'var(--accent)':'var(--line)';
+    b.style.background=active?'var(--accent-soft)':'transparent';
+    b.style.color=active?'var(--accent)':'var(--ink-2)';
+    b.style.fontWeight=active?'600':'400';
   });
+}
+function toggleThemeDropdown(e){
+  if(e)e.stopPropagation();
+  const drop=document.getElementById('theme-drop');
+  if(drop)drop.style.display=drop.style.display==='none'?'block':'none';
+}
+function closeThemeDropdown(){
+  const drop=document.getElementById('theme-drop');
+  if(drop)drop.style.display='none';
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
   initTheme();
   initFirebase(); // defined in auth.js, loaded after this file
+  document.addEventListener('click',()=>closeThemeDropdown());
 });
