@@ -6,12 +6,12 @@
 // ══════════════════════════════════════════════════════
 
 // ── State ──────────────────────────────────────────────────────
-let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[],healthHistory={};
+let db=null,uref=null,txs=[],budgets={},goals=[],alerts=[],annotations=[],healthHistory={},commitments=[];
 let DEMO_MODE=false;
 let _lockChecked=false;
 let curScr='home',editId=null;
 let lastUsedCat=null;
-let insTab='spend',_hmMonthOffset=0;
+let insTab='spend',_hmMonthOffset=0,_budgetTab='settings',_commFormOpen=false;
 let anBar=null,anLine=null,anWaterfall=null,fChart=null,_whereChart=null;
 let _rhRaf=null;
 let txPg=1,txPS=20,anStart='',anEnd='';
@@ -245,6 +245,7 @@ async function initDB(){
     });
     uref.collection('budgets').doc('settings').get().then(doc=>{if(doc.exists)budgets=doc.data();renderBudgets();});
     uref.collection('goals').doc('list').get().then(doc=>{if(doc.exists)goals=(doc.data().goals||[]);});
+    uref.collection('commitments').doc('list').onSnapshot(doc=>{commitments=doc.exists?(doc.data().items||[]):[];if(curScr==='insights'&&insTab==='budgets'&&_budgetTab==='commitments')renderCommitments();});
     uref.collection('alerts').onSnapshot(snap=>{alerts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAlerts();});
     uref.collection('annotations').orderBy('date','asc').onSnapshot(snap=>{annotations=snap.docs.map(d=>({id:d.id,...d.data()}));if(curScr==='insights')renderAnalytics();if(curScr==='settings')renderSettings();});
     uref.collection('health').doc('history').onSnapshot(doc=>{
@@ -672,51 +673,33 @@ function renderCoach(){
   const topCat=topEntry?topEntry[0]:'spending';
   const savGoal=(goals||[]).reduce((s,g)=>s+(g.monthly||0),0);
 
-  let headline,sub,dotColor;
+  let headline,ctaDest;
   if(exp>budgetTot&&budgetTot>0){
     headline=`You've gone ${RM(exp-budgetTot)} over budget.`;
-    sub=`Cut ${RM(Math.max(0,(exp-budgetTot)/Math.max(daysLeft,1)))} a day to recover.`;
-    dotColor='var(--warn)';
+    ctaDest='budgets';
   } else if(projected>budgetTot&&budgetTot>0&&daysLeft>3){
     headline=`At this rate you'll exceed budget by ${RM(projected-budgetTot)}.`;
-    sub=`Ease up on ${topCat} this week.`;
-    dotColor='var(--warn)';
+    ctaDest='budgets';
   } else if(daily>dailySafe*1.1&&dailySafe>0){
     headline=`You're spending ${RM(daily)}/day. Safe limit is ${RM(dailySafe)}.`;
-    sub=`Watch ${topCat} this week.`;
-    dotColor='var(--warn)';
+    ctaDest='budgets';
   } else if(daily<=dailySafe&&daysLeft>5&&budgetTot>0){
     headline=`You're pacing ${RM(dailySafe-daily)} under your daily safe-spend.`;
-    sub=`Keep this rhythm and you'll finish +${RM((dailySafe-daily)*daysLeft)}.`;
-    dotColor='var(--accent)';
+    ctaDest='budgets';
   } else if(daysLeft<=3&&(budgetTot===0||exp<=budgetTot)){
     headline=`${RM(Math.max(0,budgetTot-exp))} left. ${daysLeft} day${daysLeft!==1?'s':''} to payday.`;
-    sub=`You're going to land this one.`;
-    dotColor='var(--accent)';
+    ctaDest='budgets';
   } else if(savGoal>0&&sav<savGoal*0.5&&daysLeft>10){
     headline=`Savings at ${Math.round(sav/savGoal*100)}% of your goal.`;
-    sub=`${RM(savGoal-sav)} still needed this period.`;
-    dotColor='var(--ink-3)';
+    ctaDest='entry';
   } else {
-    headline=`Period day ${elapsed} of ${totalDays}.`;
-    sub=`${RM(exp)} spent so far.`;
-    dotColor='var(--ink-3)';
+    headline=`Period day ${elapsed} of ${totalDays}. ${RM(exp)} spent so far.`;
+    ctaDest='entry';
   }
 
-  const isDark=document.body.getAttribute('data-theme')==='dark';
-  const cardBg=isDark?'#F4F1EA':'var(--surface)';
-  const cardBorder=isDark?'none':'1px solid var(--line)';
-  const headColor=isDark?'#14120F':'var(--ink)';
-  const subColor=isDark?'rgba(20,18,15,0.55)':'var(--ink-3)';
-  const labelColor=isDark?'rgba(20,18,15,0.45)':'var(--ink-3)';
-
-  el.innerHTML=`<div style="background:${cardBg};border:${cardBorder};border-radius:var(--r-lg);padding:24px">
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:14px">
-      <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
-      <span style="font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:${labelColor};font-weight:600">Coach</span>
-    </div>
-    <div style="font-family:var(--serif);font-size:22px;line-height:1.3;color:${headColor};margin-bottom:8px">${headline}</div>
-    <div style="font-size:13px;color:${subColor}">${sub}</div>
+  el.innerHTML=`<div style="background:#F4F1EA;border-radius:var(--r-lg);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <div style="font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.35;color:#14120F">${headline}</div>
+    <button onclick="nav('${ctaDest}')" style="flex-shrink:0;font-size:13px;color:rgba(20,18,15,0.5);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">Apply suggestion →</button>
   </div>`;
 }
 
@@ -1524,16 +1507,32 @@ function renderBudgets(){
   // Burn rate
   renderBurnRate(p,spent,tot,ptxs,exC);
   // Budget form
-  document.getElementById('b-form').innerHTML=exC.map(c=>{const b=budgets[c]||{amount:0,threshold:80};return`<div class="flex items-center gap-2.5 py-1.5">
-    <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div>
-    <span class="flex-1 text-xs font-semibold text-slate-700 truncate">${c}</span>
-    <input type="number" id="bg-${c}" value="${b.amount||''}" placeholder="0" min="0" step="0.01" class="w-24 bg-surface-container-low border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold text-on-surface text-right outline-none focus:ring-2 focus:ring-primary/20"/>
-    <select id="bt-${c}" class="bg-surface-container-low border border-slate-100 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-500 outline-none">
-      <option value="70" ${b.threshold==70?'selected':''}>70%</option>
-      <option value="80" ${b.threshold==80?'selected':''}>80%</option>
-      <option value="90" ${b.threshold==90?'selected':''}>90%</option>
-      <option value="100" ${b.threshold==100?'selected':''}>100%</option>
-    </select></div>`;}).join('');
+  const hasAnyCommitments=commitments.length>0;
+  document.getElementById('b-form').innerHTML=
+    (hasAnyCommitments?`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--line)">
+      <span style="font-size:11px;color:var(--ink-3)"><span class="material-symbols-outlined msym" style="font-size:12px;vertical-align:-2px">lock</span> Floor = minimum from commitments &nbsp;·&nbsp; ⋯ Variable = manual</span>
+    </div>`:'')
+    +exC.map(c=>{
+      const b=budgets[c]||{amount:0,threshold:80};
+      const floor=_commFloor(c);
+      const isLocked=floor>0;
+      const inputVal=isLocked?Math.max(b.amount||0,floor):(b.amount||'');
+      return`<div class="flex items-center gap-2.5 py-1.5">
+        <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${PAL[exC.indexOf(c)%PAL.length]}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="text-xs font-semibold text-slate-700 truncate">${c}</div>
+          ${isLocked
+            ?`<div style="font-size:9px;color:var(--ink-4);display:flex;align-items:center;gap:2px;margin-top:1px"><span class="material-symbols-outlined msym" style="font-size:10px">lock</span>Floor ${RM(floor)}</div>`
+            :`<div style="font-size:9px;color:var(--ink-4);margin-top:1px">⋯ variable</div>`}
+        </div>
+        <input type="number" id="bg-${c}" value="${inputVal}" placeholder="0" min="${isLocked?floor:0}" step="0.01" class="w-24 bg-surface-container-low border border-slate-100 rounded-lg px-2.5 py-1.5 text-xs font-bold text-on-surface text-right outline-none focus:ring-2 focus:ring-primary/20"/>
+        <select id="bt-${c}" class="bg-surface-container-low border border-slate-100 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-500 outline-none">
+          <option value="70" ${b.threshold==70?'selected':''}>70%</option>
+          <option value="80" ${b.threshold==80?'selected':''}>80%</option>
+          <option value="90" ${b.threshold==90?'selected':''}>90%</option>
+          <option value="100" ${b.threshold==100?'selected':''}>100%</option>
+        </select></div>`;
+    }).join('');
   // Progress
   const bdgd=exC.filter(c=>budgets[c]&&budgets[c].amount>0);
   const unb=exC.filter(c=>!budgets[c]||!budgets[c].amount).filter(c=>ptxs.filter(t=>t.category===c).reduce((s,t)=>s+t.amount,0)>0);
@@ -1545,11 +1544,13 @@ function renderBudgets(){
     if(st==='over'&&uref){const aid=`${c}-${p.start.slice(0,7)}`;if(!alerts.find(a=>a.category===c&&a.period===p.start.slice(0,7)))uref.collection('alerts').doc(aid).set({category:c,period:p.start.slice(0,7),status:'open',amount_over:sp-bv,createdAt:Date.now()});}
     const fc=st==='over'?'#7e3000':st==='warning'?'#b45309':'#3525cd';
     const clr=PAL[exC.indexOf(c)%PAL.length];
+    const commTotal=_commFloor(c);
     return`<div class="bg-surface-container-lowest p-4 rounded-2xl amb-card">
       <div class="flex justify-between items-center mb-2.5">
         <div class="flex items-center gap-2.5">
           <div class="w-2 h-2 rounded-full" style="background:${clr}"></div>
           <span class="text-sm font-semibold text-slate-800">${c}</span>
+          ${commTotal>0?`<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-4);background:var(--bg-2);border-radius:99px;padding:2px 7px;display:flex;align-items:center;gap:2px"><span class="material-symbols-outlined msym" style="font-size:10px">lock</span>Locked</span>`:''}
         </div>
         <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${st==='over'?'bg-error-container text-on-error-container':st==='warning'?'bg-tertiary-fixed text-on-tertiary-fixed':'bg-primary-fixed text-on-primary-fixed-variant'}">${st==='over'?'Over Budget':st==='warning'?thr+'% Alert':'On Track'}</span>
       </div>
@@ -1624,9 +1625,242 @@ function renderBurnRate(p,spent,tot,ptxs,exC){
 }
 async function saveBudgets(){
   if(DEMO_MODE){showDemoToast();return;}
-  const nb={};Object.keys(CATS.expense||{}).forEach(c=>{const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);if(e)nb[c]={amount:parseFloat(e.value)||0,threshold:parseInt(te?.value)||80};});
-  budgets=nb;if(uref){try{await uref.collection('budgets').doc('settings').set(nb);}catch(e){}}else localStorage.setItem('budgets',JSON.stringify(nb));
-  const m=document.getElementById('b-save-msg');m.textContent='Allocations saved ✓';setTimeout(()=>m.textContent='',2500);renderBudgets();
+  const nb={};let clamped=0;
+  Object.keys(CATS.expense||{}).forEach(c=>{
+    const e=document.getElementById('bg-'+c),te=document.getElementById('bt-'+c);
+    if(!e)return;
+    const floor=_commFloor(c);
+    let amt=parseFloat(e.value)||0;
+    if(floor>0&&amt<floor){amt=floor;e.value=floor.toFixed(2);clamped++;}
+    nb[c]={amount:amt,threshold:parseInt(te?.value)||80};
+  });
+  budgets=nb;
+  if(uref){try{await uref.collection('budgets').doc('settings').set(nb);}catch(e){}}
+  else localStorage.setItem('budgets',JSON.stringify(nb));
+  const m=document.getElementById('b-save-msg');
+  m.textContent=clamped>0?`Saved — ${clamped} categor${clamped===1?'y':'ies'} held at floor`:'Allocations saved ✓';
+  setTimeout(()=>m.textContent='',3000);renderBudgets();
+}
+
+async function _syncCommitmentBudgets(updatedCommitments){
+  if(!uref)return;
+  const exC=Object.keys(CATS.expense||{});
+  const nb={...budgets};
+  let changed=false;
+  exC.forEach(c=>{
+    const floor=updatedCommitments.filter(x=>x.category===c).reduce((s,x)=>s+(x.amount||0),0);
+    if(floor>0){
+      const cur=(nb[c]&&nb[c].amount)||0;
+      if(cur<floor){nb[c]={...(nb[c]||{threshold:80}),amount:floor};changed=true;}
+    }
+  });
+  if(changed){budgets=nb;try{await uref.collection('budgets').doc('settings').set(nb);}catch(e){console.error('[Lumina] syncCommitmentBudgets',e);}}
+}
+
+// ── Budget sub-tabs ──────────────────────────────────────────────
+function switchBudgetTab(tab){
+  _budgetTab=tab;
+  document.getElementById('b-tab-settings').style.display=tab==='settings'?'':'none';
+  document.getElementById('b-tab-commitments').style.display=tab==='commitments'?'':'none';
+  const active='border-bottom:2px solid var(--accent);color:var(--ink);font-weight:600';
+  const inactive='border-bottom:2px solid transparent;color:var(--ink-3);font-weight:500';
+  document.getElementById('btab-settings').style.cssText=`padding:10px 20px;font-size:14px;background:none;border:none;cursor:pointer;font-family:var(--sans);${tab==='settings'?active:inactive}`;
+  document.getElementById('btab-commitments').style.cssText=`padding:10px 20px;font-size:14px;background:none;border:none;cursor:pointer;font-family:var(--sans);${tab==='commitments'?active:inactive}`;
+  if(tab==='commitments')renderCommitments();
+}
+
+// ── Commitments ──────────────────────────────────────────────────
+function renderCommitments(){
+  const el=document.getElementById('comm-list');
+  const sumEl=document.getElementById('comm-summary');
+  const periodEl=document.getElementById('comm-period-label');
+  if(!el)return;
+  if(isLoading){el.innerHTML=LOADING_HTML;return;}
+  const p=PAY_PERIOD.currentPeriod();
+  if(periodEl)periodEl.textContent=fd(p.start)+' – '+fd(p.end);
+  const paidMap={};
+  txs.forEach(t=>{if(t.commitmentId&&t.date>=p.start&&t.date<=p.end)paidMap[t.commitmentId]=t;});
+  const total=commitments.reduce((s,c)=>s+(c.amount||0),0);
+  const paidAmt=commitments.filter(c=>paidMap[c.id]).reduce((s,c)=>s+(c.amount||0),0);
+  const paidCount=commitments.filter(c=>paidMap[c.id]).length;
+  const outstanding=total-paidAmt;
+  const pct=total>0?Math.round(paidAmt/total*100):0;
+  if(sumEl)sumEl.innerHTML=`
+    <div class="lum-card p-5 mb-2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;font-weight:600;color:var(--ink-2)">${paidCount} of ${commitments.length} paid</span>
+        <span style="font-size:13px;color:var(--ink-3)">${pct}% complete</span>
+      </div>
+      <div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:16px">
+        <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px;transition:width .7s ease"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="text-align:center">
+          <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Total</div>
+          <div style="font-family:var(--serif);font-size:22px;color:var(--ink)">${RM(total)}</div>
+        </div>
+        <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+          <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Paid</div>
+          <div style="font-family:var(--serif);font-size:22px;color:var(--accent)">${RM(paidAmt)}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Outstanding</div>
+          <div style="font-family:var(--serif);font-size:22px;color:${outstanding>0?'var(--warn)':'var(--ink-3)'}">${RM(outstanding)}</div>
+        </div>
+      </div>
+    </div>`;
+  if(commitments.length===0){
+    el.innerHTML=`<div class="lum-card p-10 text-center">
+      <span class="material-symbols-outlined msym" style="font-size:40px;color:var(--ink-4);display:block;margin-bottom:12px">checklist</span>
+      <p style="font-weight:600;color:var(--ink-2);margin-bottom:4px">No commitments yet</p>
+      <p style="font-size:13px;color:var(--ink-3)">Add recurring bills, loans and subscriptions to track them each pay period.</p>
+    </div>`;
+    return;
+  }
+  const grouped={};
+  commitments.forEach(c=>{if(!grouped[c.category])grouped[c.category]=[];grouped[c.category].push(c);});
+  const catKeys=Object.keys(CATS.expense||{});
+  el.innerHTML=Object.keys(grouped).map(cat=>{
+    const idx=catKeys.indexOf(cat);
+    const clr=PAL[idx>=0?idx%PAL.length:0];
+    const icon=ICONS[cat]||'category';
+    const items=grouped[cat];
+    const catTotal=items.reduce((s,c)=>s+(c.amount||0),0);
+    const catPaid=items.filter(c=>paidMap[c.id]).reduce((s,c)=>s+(c.amount||0),0);
+    return`<div class="mb-6">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:32px;height:32px;border-radius:10px;background:${clr}20;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <span class="material-symbols-outlined msym" style="font-size:16px;color:${clr}">${icon}</span>
+        </div>
+        <span style="font-weight:600;font-size:14px;color:var(--ink)">${cat}</span>
+        <span style="font-size:11px;color:var(--ink-4)">${RM(catPaid)} / ${RM(catTotal)}</span>
+      </div>
+      <div class="space-y-2">${items.map(c=>_commCard(c,paidMap[c.id],clr)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function _commCard(c,paidTx,clr){
+  const isPaid=!!paidTx;
+  const dueText=c.dueDay?`Due ${c.dueDay}${_ord(c.dueDay)}`:'';
+  return`<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 16px 16px 20px;border-left:3px solid ${isPaid?'#16a34a':clr};opacity:${isPaid?'0.72':'1'};transition:all .2s">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:14px;color:var(--ink)">${c.name}</span>
+          ${c.subcategory?`<span style="font-size:11px;color:var(--ink-4);background:var(--bg-2);padding:2px 8px;border-radius:99px">${c.subcategory}</span>`:''}
+          ${dueText?`<span style="font-size:11px;color:var(--ink-4)">${dueText}</span>`:''}
+        </div>
+        ${isPaid
+          ?`<div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:500">✓ Paid ${fd(paidTx.date)}${c.account?' · '+c.account:''}</div>`
+          :`<div style="font-size:11px;color:var(--ink-4);margin-top:3px">${c.account||''}</div>`}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">${RM(c.amount)}</div>
+        ${isPaid
+          ?`<button onclick="unmarkCommitmentPaid('${c.id}')" style="font-size:11px;color:var(--ink-4);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Undo</button>`
+          :`<button onclick="markCommitmentPaid('${c.id}')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--sans)">Pay ✓</button>`}
+      </div>
+      <button onclick="deleteCommitment('${c.id}')" style="background:none;border:none;cursor:pointer;color:var(--ink-4);padding:4px;flex-shrink:0;opacity:0.4;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">
+        <span class="material-symbols-outlined msym text-[16px]">close</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function _ord(n){const s=['th','st','nd','rd'],v=n%100;return s[(v-20)%10]||s[v]||s[0];}
+function _commFloor(cat,list){return(list||commitments).filter(x=>x.category===cat).reduce((s,x)=>s+(x.amount||0),0);}
+
+function toggleCommitmentForm(){
+  _commFormOpen=!_commFormOpen;
+  const el=document.getElementById('comm-form');
+  if(!el)return;
+  if(_commFormOpen){el.style.display='';_renderCommForm();}
+  else el.style.display='none';
+}
+
+function _renderCommForm(){
+  const cats=Object.keys(CATS.expense||{});
+  const el=document.getElementById('comm-form');
+  if(!el)return;
+  el.innerHTML=`
+    <h3 style="font-family:var(--serif);font-size:18px;color:var(--ink);margin-bottom:16px">New Commitment</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Name</label>
+        <input id="cf-name" type="text" placeholder="e.g. PTPTN Loan" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none"></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Amount (RM)</label>
+        <input id="cf-amt" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--mono);outline:none"></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Category</label>
+        <select id="cf-cat" onchange="_commUpdSub()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+          ${cats.map(c=>`<option value="${c}">${c}</option>`).join('')}
+        </select></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Subcategory</label>
+        <select id="cf-sub" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+          <option value="">— none —</option>
+        </select></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Due Day</label>
+        <input id="cf-due" type="number" min="1" max="31" placeholder="e.g. 25" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--mono);outline:none"></div>
+      <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Account</label>
+        <select id="cf-acct" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+          ${ACCTS.map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="saveCommitment()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans)">Add Commitment</button>
+      <button onclick="toggleCommitmentForm()" style="background:var(--bg-2);color:var(--ink-3);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans)">Cancel</button>
+    </div>`;
+  _commUpdSub();
+}
+
+function _commUpdSub(){
+  const cat=document.getElementById('cf-cat')?.value;
+  const el=document.getElementById('cf-sub');
+  if(!el)return;
+  const subs=(CATS.expense&&cat&&CATS.expense[cat])||[];
+  el.innerHTML=subs.length?subs.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">— none —</option>';
+}
+
+async function saveCommitment(){
+  if(DEMO_MODE){showDemoToast();return;}
+  const name=document.getElementById('cf-name')?.value?.trim();
+  const amount=parseFloat(document.getElementById('cf-amt')?.value);
+  const category=document.getElementById('cf-cat')?.value;
+  const subcategory=document.getElementById('cf-sub')?.value||'';
+  const dueDay=parseInt(document.getElementById('cf-due')?.value)||null;
+  const account=document.getElementById('cf-acct')?.value||'';
+  if(!name||isNaN(amount)||amount<=0||!category){alert('Please fill in name, amount, and category.');return;}
+  const c={id:Date.now().toString(),name,amount,category,subcategory,dueDay,account};
+  const updated=[...commitments,c];
+  if(uref){await uref.collection('commitments').doc('list').set({items:updated});await _syncCommitmentBudgets(updated);}
+  else{commitments=updated;renderCommitments();}
+  toggleCommitmentForm();
+}
+
+async function deleteCommitment(id){
+  if(DEMO_MODE){showDemoToast();return;}
+  if(!confirm('Remove this commitment?'))return;
+  const updated=commitments.filter(c=>c.id!==id);
+  if(uref){await uref.collection('commitments').doc('list').set({items:updated});await _syncCommitmentBudgets(updated);}
+  else{commitments=updated;renderCommitments();}
+}
+
+async function markCommitmentPaid(id){
+  if(DEMO_MODE){showDemoToast();return;}
+  const c=commitments.find(x=>x.id===id);
+  if(!c)return;
+  const t={date:new Date().toISOString().slice(0,10),amount:c.amount,account:c.account||'',type:'expense',category:c.category,subcategory:c.subcategory||'',description:c.name,commitmentId:id,createdAt:Date.now()};
+  if(uref)await uref.collection('transactions').add(t);
+  else{t.id=Date.now();txs.unshift(t);renderCommitments();renderDashboard();renderTx();}
+}
+
+async function unmarkCommitmentPaid(id){
+  if(DEMO_MODE){showDemoToast();return;}
+  const p=PAY_PERIOD.currentPeriod();
+  const tx=txs.find(t=>t.commitmentId===id&&t.date>=p.start&&t.date<=p.end);
+  if(!tx)return;
+  if(!confirm('Remove this payment record?'))return;
+  if(uref)await uref.collection('transactions').doc(tx.id).delete();
+  else{txs=txs.filter(t=>t.id!==tx.id);renderCommitments();renderDashboard();renderTx();}
 }
 
 // ── Forecast ─────────────────────────────────────────────────────

@@ -26,7 +26,7 @@ Everything lives in a single-page app (`index.html`) with these screens, navigat
 - **Analytics** (`sc-analytics`) — Stacked bar + line charts by category, period selector (this period / last period / last 30 / last 90 / all time), category breakdown table
 - **Transactions** (`sc-transactions`) — Paginated transaction list with filters by type, category, and month; edit and delete actions
 - **Log Transaction** (`sc-entry`) — Add/edit transaction form; type toggle (expense / income / savings), category and subcategory selectors, date, amount, account, memo
-- **Budget Monitor** (`sc-budgets`) — Gauge showing total budget consumption, per-category progress bars with status badges (On Track / Alert / Over Budget), burn rate widget, budget allocation form, unbudgeted spending section
+- **Budget Monitor** (`ins-budgets`) — Two sub-tabs: **Settings** (gauge, burn rate, per-category limits with 🔒 floor labels, progress bars, Save Allocations) and **Commitments** (monthly payment checklist grouped by category; Pay ✓ creates a transaction record; progress summary with paid/outstanding totals; Add Commitment inline form). Floor budget: adding/removing a commitment auto-syncs the category budget minimum to Firestore via `_syncCommitmentBudgets()`; `saveBudgets()` clamps below-floor entries; `_commFloor(cat)` centralises floor calculation
 - **Forecast** (`sc-forecast`) — 3-month rolling averages for income/expense/savings, savings goals, projected surplus/shortfall
 - **Settings** (`sc-settings`) — Accounts list, category/subcategory manager (expense/income/savings tabs), pay period configuration with per-month override grid
 
@@ -113,6 +113,9 @@ users/{uid}/settings/preferences    — accounts[], categories{ expense{}, incom
 users/{uid}/settings/payperiod      — { defaultDay, overrides }
 users/{uid}/budgets/settings        — { [category]: { amount, threshold } }
 users/{uid}/goals/list              — { goals: [{ id, name, emoji, monthly }] }
+users/{uid}/commitments/list        — { items: [{ id, name, category, subcategory, amount, dueDay, account }] }
+                                      Adding/removing items auto-syncs a floor budget via _syncCommitmentBudgets()
+                                      Paid status detected from txs with commitmentId field in current period
 
 [planned]
 users/{uid}/alerts/{id}             — type, category, period, status (open/acknowledged), createdAt

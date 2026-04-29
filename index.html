@@ -372,14 +372,16 @@ input[type=number]{-moz-appearance:textfield}
 
     </div>
 
-    <!-- Right column: Coach → Categories → Where It Went -->
+    <!-- Right column: Categories → Where It Went -->
     <div style="display:flex;flex-direction:column;gap:20px">
-      <div id="d-coach"></div>
       <div id="d-home-cats"></div>
       <div id="d-where-it-went"></div>
     </div>
 
   </div>
+
+  <!-- Coach — full-width bottom bar -->
+  <div id="d-coach" class="mt-5"></div>
 
 </div>
 
@@ -513,9 +515,6 @@ input[type=number]{-moz-appearance:textfield}
       <h2 class="text-3xl font-bold tracking-tight font-headline">Budget Monitor</h2>
       <p id="b-period-note" class="text-slate-500 text-sm mt-1">Loading period…</p>
     </div>
-    <div class="flex gap-3">
-      <button onclick="saveBudgets()" class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 transition-all">Save Allocations</button>
-    </div>
   </div>
 
   <!-- Top Stats Bento -->
@@ -552,7 +551,6 @@ input[type=number]{-moz-appearance:textfield}
         <h3 class="text-lg font-bold mb-2 font-headline leading-tight">Smart Insight</h3>
         <p id="b-insight" class="text-on-primary-container text-sm leading-relaxed">Loading…</p>
       </div>
-      <p id="b-save-msg" class="relative z-10 mt-5 text-sm font-bold text-white/80"></p>
     </div>
   </div>
 
@@ -569,17 +567,43 @@ input[type=number]{-moz-appearance:textfield}
   <!-- Burn Rate Banner -->
   <div id="b-burnrate" class="mb-6 px-5 py-3.5 rounded-2xl flex items-center gap-3 flex-wrap text-sm font-medium"></div>
 
-  <!-- Budget Form + Progress -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
-    <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
-      <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Set Category Limits</h3>
-      <div id="b-form" class="space-y-3"><div class="text-sm text-slate-400 text-center py-4">Loading…</div></div>
-    </div>
-    <div>
-      <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Progress</h3>
-      <div id="b-prog" class="space-y-3.5"><div class="p-8 text-center text-sm text-slate-400">Set budgets to see progress</div></div>
+  <!-- Budget sub-tabs -->
+  <div style="display:flex;border-bottom:1px solid var(--line);margin-bottom:20px">
+    <button id="btab-settings" onclick="switchBudgetTab('settings')" style="padding:10px 20px;font-size:14px;font-weight:600;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--ink);cursor:pointer;font-family:var(--sans)">Settings</button>
+    <button id="btab-commitments" onclick="switchBudgetTab('commitments')" style="padding:10px 20px;font-size:14px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-3);cursor:pointer;font-family:var(--sans)">Commitments</button>
+  </div>
+
+  <!-- Settings tab -->
+  <div id="b-tab-settings">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-7">
+      <div class="bg-surface-container-lowest rounded-2xl p-7 amb-card">
+        <h3 class="text-sm font-bold text-slate-900 font-headline mb-5">Set Category Limits</h3>
+        <div id="b-form" class="space-y-3"><div class="text-sm text-slate-400 text-center py-4">Loading…</div></div>
+        <div class="mt-5 flex items-center gap-4">
+          <button onclick="saveBudgets()" class="px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:opacity-90 transition-all">Save Allocations</button>
+          <p id="b-save-msg" class="text-sm font-bold text-primary"></p>
+        </div>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-slate-900 font-headline mb-4">Category Progress</h3>
+        <div id="b-prog" class="space-y-3.5"><div class="p-8 text-center text-sm text-slate-400">Set budgets to see progress</div></div>
+      </div>
     </div>
   </div>
+
+  <!-- Commitments tab -->
+  <div id="b-tab-commitments" style="display:none">
+    <div class="flex justify-between items-center mb-5">
+      <p id="comm-period-label" class="text-sm text-slate-500"></p>
+      <button onclick="toggleCommitmentForm()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:6px">
+        <span class="material-symbols-outlined msym text-[15px]">add</span> Add Commitment
+      </button>
+    </div>
+    <div id="comm-summary" class="mb-4"></div>
+    <div id="comm-form" class="lum-card p-6 mb-5" style="display:none"></div>
+    <div id="comm-list"></div>
+  </div>
+
   </div><!-- end ins-budgets -->
 
   <!-- Forecast pane -->

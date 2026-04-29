@@ -509,8 +509,6 @@ I.7 → I.3 → I.4 → I.2 → I.6 → I.5 → I.1 → I.8
 |---|---|---|---|
 | RD.1 | Top bar + RunwayHero card redesign | ✅ Done | `index.html` (paste `<header>` block + `sc-home` div) + `js/app.js` (paste `renderRunwayHero` function + `renderDashboard` function) |
 | RD.2 | Heatmap UI reskin — match Spend Rhythm design | ✅ Done | `js/app.js` (paste `renderHeatmap` function) |
-| RD.3 | Spend Swarm — replace Spend Rhythm heatmap with scatter plot | ⬜ Not started | `js/app.js` (paste `renderSpendRhythm` function) |
-
 ### RD.1 — Confirmed design decisions
 
 - **Top bar**: strip to right-side only — palette icon (opens floating dropdown: Minimal / Dark / Warm, persists to `localStorage`, closes on outside click) + avatar. Removed: "Financial Intelligence" label, search bar, Overview/Market/Reports nav, bell, moon toggle.
@@ -542,25 +540,304 @@ I.7 → I.3 → I.4 → I.2 → I.6 → I.5 → I.1 → I.8
 - **Legend**: match Spend Rhythm layout exactly — "No spend" left, `LOW [4 swatches] HIGH` right, same 12×12px swatch sizing
 - **Detail panel** (`an-hm-detail`): unchanged — logic and layout stays as-is
 
-### RD.3 — Confirmed design decisions
+---
 
-- **Replaces**: 4-week day-of-week heatmap grid in `renderSpendRhythm()`
-- **Scope**: `js/app.js` — `renderSpendRhythm()` function only; no changes to `index.html` or any other function
-- **Card background**: dark `#131A13` hardcoded — immune to theme token changes (same principle as RunwayHero `#1C2B1A`)
-- **Title**: "Spend swarm" in italic serif 20px, white (`#F0EDE8`)
-- **Subtitle**: "Every transaction · day × amount · clusters reveal habits" — 11px, muted
-- **Entries count pill**: top right, mono font, `rgba(255,255,255,0.08)` background
-- **SVG scatter plot** (inline, `viewBox="0 0 560 200"`, `width="100%"`):
-  - X axis: period start → today (current pay period, expenses only)
-  - Y axis: 0 → `ceil(maxAmt / 100) * 100` (nice round max)
-  - 3 horizontal dotted gridlines at 1/3, 2/3, and max — labels left-gutter in mono
-  - X-axis date labels every 5 days (Apr 1, Apr 5, …) — mono, muted
-  - One circle per expense transaction: `cx=dateToX(t.date)`, `cy=amtToY(t.amount)`, `r = max(3, min(12, 3 + sqrt(amt/niceMax) * 9))`
-  - Dot color by category — deterministic mapping to `SWARM_PAL = ['#C9F560','#F5A15F','#7B9EBC','#9B9590','#C4A882','#8FB896','#E8A598','#B0A8E0']`
-  - Outlier callout (highest single transaction): dark rect + dashed connector line + "OUTLIER" small-caps label + `RM X on [date]` + description (sliced to 22 chars)
-- **Legend row**: below SVG — flex row of 8px colored circles + category names, mono 10px, muted
-- **Empty state**: hide SVG, show "No expense transactions this period yet." in muted text
-- **Data source**: `PAY_PERIOD.filterToPeriod(txs, PAY_PERIOD.currentPeriod())` filtered to `type === 'expense'` and `date <= today` — zero new Firestore reads
+## Phase C — Commitments
+
+**Goal**: A monthly payment checklist that resets each pay period. Users define recurring obligations (loans, bills, subscriptions) once, then tick them off each payday with a single tap — which instantly creates the transaction record. Nothing falls through the cracks.
+
+**Core concept**: each commitment card has a "Pay ✓" button. Tapping it writes a real transaction to Firestore with `commitmentId` set, so the card flips to "Paid" state immediately. Next pay period it resets automatically — no manual reset needed. Commitments are stored separately from budgets so the user manages what they *must* pay, independently from how much they've budgeted overall.
+
+**Firestore path**: `users/{uid}/commitments/list` → `{ items: [{id, name, category, subcategory, amount, dueDay, account}] }`  
+**Paid detection**: filter current-period `txs` for entries where `t.commitmentId === c.id` — no extra Firestore reads.
+
+| # | Session Goal | Status | Files to bring | Session prompt |
+|---|---|---|---|---|
+| C.1 | Commitments tab inside Budget Monitor | ✅ Done — two sub-tabs inside Insights → Budgets: **Settings** (category limits + progress, Save Allocations) and **Commitments** (payment checklist). Commitments auto-sync a floor budget to Firestore on every add/delete. saveBudgets() clamps below-floor attempts. Floor helper `_commFloor()` centralises calculation. | `index.html` (paste sidebar `<nav>` block + mobile nav + `<main>` closing section) + `js/app.js` (paste state globals block + `nav()` function + `initDB()` function + `quickLog()` function) | See full prompt below |
+
+---
+
+### C.1 — Commitments Screen (session prompt)
+
+> "Add a new **Commitments** screen to the Lumina app. This is a monthly payment checklist — users list recurring obligations (loans, bills, subscriptions) and tick them off each pay period. Ticking one creates a real transaction record automatically.
+>
+> ---
+>
+> **1. State + Firestore (js/app.js)**
+>
+> Add `commitments=[]` to the module-level state globals (alongside `txs`, `budgets`, `goals`).
+>
+> In `initDB()`, after the goals listener, add:
+> ```js
+> uref.collection('commitments').doc('list').onSnapshot(doc=>{
+>   commitments=doc.exists?(doc.data().items||[]):[];
+>   if(curScr==='commitments')renderCommitments();
+> });
+> ```
+>
+> In `nav()`, add: `if(scr==='commitments')renderCommitments();`
+>
+> ---
+>
+> **2. Navigation (index.html)**
+>
+> In the sidebar `<nav>`, add between the Activity and Insights nav items:
+> ```html
+> <a onclick="nav('commitments')" id="snav-commitments" class="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer select-none transition-all duration-200 text-slate-500">
+>   <span class="material-symbols-outlined msym">checklist</span>
+>   <span class="text-sm font-medium">Commitments</span>
+> </a>
+> ```
+>
+> In the mobile bottom nav (`#mob-nav`), add a fifth item between Activity and Insights:
+> ```html
+> <a onclick="nav('commitments')" class="flex flex-col items-center gap-0.5 text-slate-400 cursor-pointer">
+>   <span class="material-symbols-outlined msym text-[22px]">checklist</span>
+>   <span class="text-[8px] font-bold uppercase tracking-tight">Pay</span>
+> </a>
+> ```
+>
+> ---
+>
+> **3. Screen HTML (index.html)**
+>
+> Insert immediately before the Quick Log Bar div:
+> ```html
+> <!-- ── COMMITMENTS ── -->
+> <div id="sc-commitments" class="screen p-6 lg:p-8 max-w-4xl slide-in">
+>   <div class="flex items-end justify-between mb-8">
+>     <div>
+>       <h2 class="font-headline text-3xl text-slate-900">Commitments</h2>
+>       <p id="comm-period-label" class="text-sm text-slate-500 mt-1">Current pay period</p>
+>     </div>
+>     <button onclick="toggleCommitmentForm()"
+>       class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all duration-200"
+>       style="background:var(--accent);color:#fff">
+>       <span class="material-symbols-outlined msym text-[16px]">add</span> Add Commitment
+>     </button>
+>   </div>
+>   <div id="comm-summary" class="mb-4"></div>
+>   <div id="comm-form" class="lum-card p-6 mb-6" style="display:none"></div>
+>   <div id="comm-list"></div>
+> </div>
+> ```
+>
+> ---
+>
+> **4. Render + action functions (js/app.js)**
+>
+> Add all functions below. Follow the existing code style — no comments, concise names, early-return spinners.
+>
+> ```js
+> let _commFormOpen=false;
+>
+> function renderCommitments(){
+>   const el=document.getElementById('comm-list');
+>   const sumEl=document.getElementById('comm-summary');
+>   const periodEl=document.getElementById('comm-period-label');
+>   if(!el)return;
+>   if(isLoading){el.innerHTML=LOADING_HTML;return;}
+>   const p=PAY_PERIOD.currentPeriod();
+>   if(periodEl)periodEl.textContent=fd(p.start)+' – '+fd(p.end);
+>   const paidMap={};
+>   txs.forEach(t=>{if(t.commitmentId&&t.date>=p.start&&t.date<=p.end)paidMap[t.commitmentId]=t;});
+>   const total=commitments.reduce((s,c)=>s+(c.amount||0),0);
+>   const paidAmt=commitments.filter(c=>paidMap[c.id]).reduce((s,c)=>s+(c.amount||0),0);
+>   const paidCount=commitments.filter(c=>paidMap[c.id]).length;
+>   const outstanding=total-paidAmt;
+>   const pct=total>0?Math.round(paidAmt/total*100):0;
+>   if(sumEl)sumEl.innerHTML=`
+>     <div class="lum-card p-5 mb-2">
+>       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+>         <span style="font-size:13px;font-weight:600;color:var(--ink-2)">${paidCount} of ${commitments.length} paid</span>
+>         <span style="font-size:13px;color:var(--ink-3)">${pct}% complete</span>
+>       </div>
+>       <div style="height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:16px">
+>         <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:4px;transition:width .7s ease"></div>
+>       </div>
+>       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+>         <div style="text-align:center">
+>           <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Total</div>
+>           <div style="font-family:var(--serif);font-size:22px;color:var(--ink)">${RM(total)}</div>
+>         </div>
+>         <div style="text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+>           <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Paid</div>
+>           <div style="font-family:var(--serif);font-size:22px;color:var(--accent)">${RM(paidAmt)}</div>
+>         </div>
+>         <div style="text-align:center">
+>           <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px">Outstanding</div>
+>           <div style="font-family:var(--serif);font-size:22px;color:${outstanding>0?'var(--warn)':'var(--ink-3)'}">${RM(outstanding)}</div>
+>         </div>
+>       </div>
+>     </div>`;
+>   if(commitments.length===0){
+>     el.innerHTML=`<div class="lum-card p-10 text-center">
+>       <span class="material-symbols-outlined msym text-slate-300" style="font-size:40px;display:block;margin-bottom:12px">checklist</span>
+>       <p class="font-medium text-slate-500 mb-1">No commitments yet</p>
+>       <p class="text-sm text-slate-400">Add recurring bills, loans and subscriptions to track them each pay period.</p>
+>     </div>`;
+>     return;
+>   }
+>   const grouped={};
+>   commitments.forEach(c=>{if(!grouped[c.category])grouped[c.category]=[];grouped[c.category].push(c);});
+>   const catKeys=Object.keys(CATS.expense||{});
+>   el.innerHTML=Object.keys(grouped).map(cat=>{
+>     const idx=catKeys.indexOf(cat);
+>     const clr=PAL[idx>=0?idx%PAL.length:0];
+>     const icon=ICONS[cat]||'category';
+>     const items=grouped[cat];
+>     const catTotal=items.reduce((s,c)=>s+(c.amount||0),0);
+>     const catPaid=items.filter(c=>paidMap[c.id]).reduce((s,c)=>s+(c.amount||0),0);
+>     return `<div class="mb-6">
+>       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+>         <div style="width:32px;height:32px;border-radius:10px;background:${clr}20;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+>           <span class="material-symbols-outlined msym" style="font-size:16px;color:${clr}">${icon}</span>
+>         </div>
+>         <span style="font-weight:600;font-size:14px;color:var(--ink)">${cat}</span>
+>         <span style="font-size:11px;color:var(--ink-4)">${RM(catPaid)} / ${RM(catTotal)}</span>
+>       </div>
+>       <div class="space-y-2">${items.map(c=>_commCard(c,paidMap[c.id],clr)).join('')}</div>
+>     </div>`;
+>   }).join('');
+> }
+>
+> function _commCard(c,paidTx,clr){
+>   const isPaid=!!paidTx;
+>   const dueText=c.dueDay?`Due ${c.dueDay}${_ord(c.dueDay)}`:'';
+>   return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 16px 16px 20px;border-left:3px solid ${isPaid?'#16a34a':clr};opacity:${isPaid?'0.72':'1'};transition:all .2s">
+>     <div style="display:flex;align-items:center;gap:14px">
+>       <div style="flex:1;min-width:0">
+>         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+>           <span style="font-weight:600;font-size:14px;color:var(--ink)">${c.name}</span>
+>           ${c.subcategory?`<span style="font-size:11px;color:var(--ink-4);background:var(--bg-2);padding:2px 8px;border-radius:99px">${c.subcategory}</span>`:''}
+>           ${dueText?`<span style="font-size:11px;color:var(--ink-4)">${dueText}</span>`:''}
+>         </div>
+>         ${isPaid
+>           ?`<div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:500">✓ Paid ${fd(paidTx.date)}${c.account?' · '+c.account:''}</div>`
+>           :`<div style="font-size:11px;color:var(--ink-4);margin-top:3px">${c.account||'&nbsp;'}</div>`}
+>       </div>
+>       <div style="text-align:right;flex-shrink:0">
+>         <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">${RM(c.amount)}</div>
+>         ${isPaid
+>           ?`<button onclick="unmarkCommitmentPaid('${c.id}')" style="font-size:11px;color:var(--ink-4);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Undo</button>`
+>           :`<button onclick="markCommitmentPaid('${c.id}')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--sans)">Pay ✓</button>`}
+>       </div>
+>       <button onclick="deleteCommitment('${c.id}')" style="background:none;border:none;cursor:pointer;color:var(--ink-4);padding:4px;flex-shrink:0;opacity:0.4;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">
+>         <span class="material-symbols-outlined msym text-[16px]">close</span>
+>       </button>
+>     </div>
+>   </div>`;
+> }
+>
+> function _ord(n){const s=['th','st','nd','rd'],v=n%100;return s[(v-20)%10]||s[v]||s[0];}
+>
+> function toggleCommitmentForm(){
+>   _commFormOpen=!_commFormOpen;
+>   const el=document.getElementById('comm-form');
+>   if(!el)return;
+>   if(_commFormOpen){el.style.display='';_renderCommForm();}
+>   else el.style.display='none';
+> }
+>
+> function _renderCommForm(){
+>   const cats=Object.keys(CATS.expense||{});
+>   const el=document.getElementById('comm-form');
+>   if(!el)return;
+>   el.innerHTML=`
+>     <h3 style="font-family:var(--serif);font-size:18px;color:var(--ink);margin-bottom:16px">New Commitment</h3>
+>     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Name</label>
+>         <input id="cf-name" type="text" placeholder="e.g. PTPTN Loan" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none"></div>
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Amount (RM)</label>
+>         <input id="cf-amt" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--mono);outline:none"></div>
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Category</label>
+>         <select id="cf-cat" onchange="_commUpdSub()" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+>           ${cats.map(c=>`<option value="${c}">${c}</option>`).join('')}
+>         </select></div>
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Subcategory</label>
+>         <select id="cf-sub" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+>           <option value="">— none —</option>
+>         </select></div>
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Due Day</label>
+>         <input id="cf-due" type="number" min="1" max="31" placeholder="e.g. 25" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--mono);outline:none"></div>
+>       <div><label style="font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Account</label>
+>         <select id="cf-acct" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--ink);font-family:var(--sans);outline:none;cursor:pointer">
+>           ${ACCTS.map(a=>`<option value="${a}">${a}</option>`).join('')}
+>         </select></div>
+>     </div>
+>     <div style="display:flex;gap:10px">
+>       <button onclick="saveCommitment()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans)">Add Commitment</button>
+>       <button onclick="toggleCommitmentForm()" style="background:var(--bg-2);color:var(--ink-3);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans)">Cancel</button>
+>     </div>`;
+>   _commUpdSub();
+> }
+>
+> function _commUpdSub(){
+>   const cat=document.getElementById('cf-cat')?.value;
+>   const el=document.getElementById('cf-sub');
+>   if(!el)return;
+>   const subs=(CATS.expense&&cat&&CATS.expense[cat])||[];
+>   el.innerHTML=subs.length?subs.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">— none —</option>';
+> }
+>
+> async function saveCommitment(){
+>   if(DEMO_MODE){showDemoToast();return;}
+>   const name=document.getElementById('cf-name')?.value?.trim();
+>   const amount=parseFloat(document.getElementById('cf-amt')?.value);
+>   const category=document.getElementById('cf-cat')?.value;
+>   const subcategory=document.getElementById('cf-sub')?.value||'';
+>   const dueDay=parseInt(document.getElementById('cf-due')?.value)||null;
+>   const account=document.getElementById('cf-acct')?.value||'';
+>   if(!name||isNaN(amount)||amount<=0||!category){alert('Please fill in name, amount, and category.');return;}
+>   const c={id:Date.now().toString(),name,amount,category,subcategory,dueDay,account};
+>   const updated=[...commitments,c];
+>   if(uref)await uref.collection('commitments').doc('list').set({items:updated});
+>   else{commitments=updated;renderCommitments();}
+>   toggleCommitmentForm();
+> }
+>
+> async function deleteCommitment(id){
+>   if(DEMO_MODE){showDemoToast();return;}
+>   if(!confirm('Remove this commitment?'))return;
+>   const updated=commitments.filter(c=>c.id!==id);
+>   if(uref)await uref.collection('commitments').doc('list').set({items:updated});
+>   else{commitments=updated;renderCommitments();}
+> }
+>
+> async function markCommitmentPaid(id){
+>   if(DEMO_MODE){showDemoToast();return;}
+>   const c=commitments.find(x=>x.id===id);
+>   if(!c)return;
+>   const t={date:new Date().toISOString().slice(0,10),amount:c.amount,account:c.account||'',type:'expense',category:c.category,subcategory:c.subcategory||'',description:c.name,commitmentId:id,createdAt:Date.now()};
+>   if(uref)await uref.collection('transactions').add(t);
+>   else{t.id=Date.now();txs.unshift(t);renderCommitments();renderDashboard();renderTx();}
+> }
+>
+> async function unmarkCommitmentPaid(id){
+>   if(DEMO_MODE){showDemoToast();return;}
+>   const p=PAY_PERIOD.currentPeriod();
+>   const tx=txs.find(t=>t.commitmentId===id&&t.date>=p.start&&t.date<=p.end);
+>   if(!tx)return;
+>   if(!confirm('Remove this payment record?'))return;
+>   if(uref)await uref.collection('transactions').doc(tx.id).delete();
+>   else{txs=txs.filter(t=>t.id!==tx.id);renderCommitments();renderDashboard();renderTx();}
+> }
+> ```
+>
+> ---
+>
+> **5. Verify**
+>
+> - Open browser. Navigate to Commitments via sidebar.
+> - Add one commitment (e.g. 'Unifi', Bills, RM 120, Due 1st, CIMB). Confirm it appears grouped under Bills.
+> - Click 'Pay ✓'. Confirm card flips to green 'Paid' state.
+> - Navigate to Activity screen. Confirm a 'Unifi' transaction now appears with today's date.
+> - Click 'Undo'. Confirm card resets and the transaction disappears from Activity.
+> - Click the × button to delete the commitment. Confirm it removes.
+> - Check Dashboard — no regressions on health score, RunwayHero, or spend cards.
+> - Check Insights — no regressions on all three tabs.
+>
+> Do not touch any other screen, render function, or Firestore path."
 
 ---
 
